@@ -200,6 +200,18 @@ class CookingBatchPolicy
     }
 
     /**
+     * Cấu hình kênh thông báo (Slack/Telegram/Chatwork): điều phối viên trở lên, kể cả đợt đã khóa
+     * (cấu hình kênh không đổi dữ liệu đợt; đợt có thể được mở lại và vẫn cần thông báo).
+     *
+     * @param  User  $user  người đăng nhập
+     * @param  CookingBatch  $batch  đợt nấu
+     */
+    public function manageNotifications(User $user, CookingBatch $batch): bool
+    {
+        return $user->isCoordinator();
+    }
+
+    /**
      * Điều kiện chung: điều phối viên trở lên và đợt chưa khóa.
      *
      * @param  User  $user  người đăng nhập

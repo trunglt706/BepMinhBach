@@ -16,6 +16,7 @@ return [
         'writes' => (int) env('BMB_RATE_WRITES', 40),
         'reads' => (int) env('BMB_RATE_READS', 300),
         'public' => (int) env('BMB_RATE_PUBLIC', 120),
+        'contact' => (int) env('BMB_RATE_CONTACT', 5), // số lần bấm gửi liên hệ / 10 phút / IP (kể cả lần bị lỗi)
     ],
 
     /*
@@ -30,6 +31,12 @@ return [
         'quality' => 80,
         'mimes' => ['image/jpeg', 'image/png', 'image/webp'],   // không nhận SVG/GIF/HEIC
     ],
+
+    /*
+     * Proxy/CDN đứng trước ứng dụng (Cloudflare, Nginx của hosting): danh sách IP/dải IP cách nhau dấu phẩy, hoặc '*'.
+     * Để trống khi người dùng truy cập thẳng vào máy chủ — tránh khách giả mạo IP qua header X-Forwarded-For.
+     */
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
 
     // Lượt xem: mỗi người xem (IP + trình duyệt, đã băm) chỉ được tính 1 lần / bài trong khoảng này.
     'post_view_window_minutes' => (int) env('BMB_POST_VIEW_WINDOW', 360),

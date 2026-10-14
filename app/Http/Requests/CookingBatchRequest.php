@@ -44,7 +44,7 @@ class CookingBatchRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:150'],
-            'starts_at' => ['required', 'date'],
+            'starts_on' => ['required', 'date_format:Y-m-d'],
             'location_text' => ['nullable', 'string', 'max:255'],
             'expected_servings' => ['required', 'integer', 'min:0', 'max:100000'],
             'estimated_cost_vnd' => ['nullable', 'integer', 'min:0', 'max:999999999999'],
@@ -56,6 +56,10 @@ class CookingBatchRequest extends FormRequest
                     ->whereIn('role', Role::valuesAtLeast(Role::Coordinator)),
             ],
             'notes' => ['nullable', 'string', 'max:2000'],
+            // Ảnh nền (slider trang chủ, trang đợt công khai): kiểm tra kiểu theo NỘI DUNG file như ảnh bài viết.
+            'cover' => ['nullable', 'file', 'max:'.config('bmb.post_images.max_upload_kb'),
+                'mimetypes:'.implode(',', config('bmb.post_images.mimes')), 'mimes:jpg,jpeg,png,webp'],
+            'remove_cover' => ['nullable', 'boolean'],
             'save_as' => [
                 $this->route('batch') ? 'prohibited' : 'required',
                 Rule::enum(BatchStatus::class)->only(self::CREATE_STATUSES),
@@ -70,12 +74,13 @@ class CookingBatchRequest extends FormRequest
     {
         return [
             'name' => 'tên đợt nấu',
-            'starts_at' => 'ngày giờ bắt đầu',
+            'starts_on' => 'ngày bắt đầu',
             'location_text' => 'địa điểm',
             'expected_servings' => 'số suất dự kiến',
             'estimated_cost_vnd' => 'chi phí dự kiến',
             'coordinator_id' => 'người điều phối',
             'notes' => 'ghi chú',
+            'cover' => 'ảnh nền',
         ];
     }
 
@@ -84,8 +89,13 @@ class CookingBatchRequest extends FormRequest
      */
     public function messages(): array
     {
+        $type = 'Chỉ nhận ảnh JPG, PNG hoặc WebP.';
+
         return [
             'coordinator_id.exists' => 'Người điều phối phải là tài khoản điều phối viên hoặc quản trị đang hoạt động.',
+            'cover.max' => 'Ảnh tối đa '.round((int) config('bmb.post_images.max_upload_kb') / 1024).' MB.',
+            'cover.mimetypes' => $type, 'cover.mimes' => $type, 'cover.file' => $type,
+            'cover.uploaded' => 'Tải ảnh lên không thành công (có thể ảnh quá lớn).',
         ];
     }
 }

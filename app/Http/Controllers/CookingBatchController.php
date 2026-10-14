@@ -9,13 +9,18 @@ use App\Http\Requests\CookingBatchRequest;
 use App\Models\ActivityLog;
 use App\Models\CookingBatch;
 use App\Models\User;
+use App\Support\InvalidImage;
+use App\Support\PostImageProcessor;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 /** Đợt nấu: danh sách, tạo/sửa/xóa (nháp), trang chi tiết và bản in checklist. */
 class CookingBatchController extends Controller
@@ -34,7 +39,7 @@ class CookingBatchController extends Controller
         $batches = $filter->apply(CookingBatch::query())
             ->with('coordinator:id,name')
             ->withTaskProgress()
-            ->orderByDesc('starts_at')
+            ->orderByDesc('starts_on')
             ->paginate(12)
             ->withQueryString();
 
@@ -63,11 +68,13 @@ class CookingBatchController extends Controller
     public function store(CookingBatchRequest $request): JsonResponse|RedirectResponse
     {
         $data = $request->validated();
+        $cover = $this->processCover($request);
 
-        $batch = DB::transaction(function () use ($data, $request) {
+        $batch = $this->transactionWithCover($cover, function () use ($data, $request, $cover) {
             $batch = new CookingBatch($data);
             $batch->status = BatchStatus::from($data['save_as']);
             $batch->created_by = $request->user()->id;
+            $this->fillCover($batch, $cover);
             $batch->save();
 
             ActivityLog::record($batch, $request->user(), ActivityAction::BatchCreated, 'Tạo đợt nấu ('.$batch->status->label().').');
@@ -99,6 +106,7 @@ class CookingBatchController extends Controller
             'tasks' => fn ($q) => $q->orderByRaw('due_at is null')->orderBy('due_at')->orderBy('id'),
             'tasks.assignee:id,name',
             'tasks.completer:id,name',
+            'notificationChannels',
         ]);
 
         // Policy của từng dòng cần $item->batch — gán sẵn để tránh N+1.
@@ -141,13 +149,24 @@ class CookingBatchController extends Controller
      */
     public function update(CookingBatchRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
-        DB::transaction(function () use ($request, $batch) {
+        $cover = $this->processCover($request);
+        $old = $batch->cover_path ? [$batch->cover_path, $batch->cover_widths ?? []] : null;
+        $replaceCover = $cover !== null || $request->boolean('remove_cover');
+
+        $this->transactionWithCover($cover, function () use ($request, $batch, $cover, $replaceCover, $old) {
             $batch->fill($request->validated());
+            if ($replaceCover) {
+                $this->fillCover($batch, $cover);
+            }
             $changed = $batch->isDirty();
             $batch->save();
 
             if ($changed) {
                 ActivityLog::record($batch, $request->user(), ActivityAction::BatchUpdated, 'Sửa thông tin đợt nấu.');
+            }
+            // Ảnh nền cũ chỉ bị xóa khi giao dịch thành công.
+            if ($replaceCover && $old) {
+                DB::afterCommit(fn () => app(PostImageProcessor::class)->delete(...$old));
             }
         });
 
@@ -202,5 +221,66 @@ class CookingBatchController extends Controller
             ->when($currentId, fn ($q) => $q->orWhere('id', $currentId))
             ->orderBy('name')
             ->get(['id', 'name', 'is_active']);
+    }
+
+    /**
+     * Chuyển ảnh nền tải lên thành các bản WebP TRƯỚC khi mở giao dịch (xử lý ảnh chậm, không giữ khóa DB).
+     *
+     * @param  CookingBatchRequest  $request  yêu cầu đã kiểm tra
+     * @return array{path: string, widths: list<int>, width: int, height: int}|null
+     *
+     * @throws ValidationException ảnh hỏng/giả mạo
+     */
+    private function processCover(CookingBatchRequest $request): ?array
+    {
+        $file = $request->file('cover');
+        if (! $file instanceof UploadedFile) {
+            return null;
+        }
+
+        try {
+            return app(PostImageProcessor::class)->store($file, 'batches');
+        } catch (InvalidImage $e) {
+            throw ValidationException::withMessages(['cover' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Gán (hoặc xóa khi null) thông tin ảnh nền cho đợt.
+     *
+     * @param  CookingBatch  $batch  đợt nấu
+     * @param  array{path: string, widths: list<int>, width: int, height: int}|null  $cover  ảnh đã xử lý
+     */
+    private function fillCover(CookingBatch $batch, ?array $cover): void
+    {
+        $batch->forceFill([
+            'cover_path' => $cover['path'] ?? null,
+            'cover_widths' => $cover['widths'] ?? null,
+            'cover_width' => $cover['width'] ?? null,
+            'cover_height' => $cover['height'] ?? null,
+        ]);
+    }
+
+    /**
+     * Chạy giao dịch; lỗi thì xóa file ảnh nền vừa tạo để không để lại file mồ côi.
+     *
+     * @template T
+     *
+     * @param  array{path: string, widths: list<int>}|null  $cover  ảnh vừa xử lý
+     * @param  callable(): T  $callback  thao tác ghi DB
+     * @return T
+     *
+     * @throws Throwable lỗi gốc của giao dịch
+     */
+    private function transactionWithCover(?array $cover, callable $callback): mixed
+    {
+        try {
+            return DB::transaction($callback);
+        } catch (Throwable $e) {
+            if ($cover) {
+                app(PostImageProcessor::class)->delete($cover['path'], $cover['widths']);
+            }
+            throw $e;
+        }
     }
 }

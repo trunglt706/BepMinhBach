@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BatchStatus;
 use App\Http\Requests\PublicPostIndexRequest;
 use App\Models\CookingBatch;
 use App\Models\Post;
-use App\Models\Tag;
 use App\Support\PostViewCounter;
 use App\Support\PublicPostCache;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -22,7 +21,7 @@ use Illuminate\View\View;
 class PublicPostController extends Controller
 {
     /** Số bài mỗi trang danh sách. */
-    private const PER_PAGE = 9;
+    private const PER_PAGE = 6;
 
     /**
      * Danh sách bài đã đăng, tìm theo từ khóa / thẻ / đợt nấu.
@@ -32,7 +31,6 @@ class PublicPostController extends Controller
      */
     public function index(PublicPostIndexRequest $request): View
     {
-        $published = fn (Builder $q) => $q->published();
 
         $q = $request->keyword();
         $tag = $request->tag();
@@ -43,7 +41,7 @@ class PublicPostController extends Controller
         // Kết quả theo đúng bộ lọc + trang được lưu đệm (xem PublicPostCache: tự làm mới khi dữ liệu đổi).
         $cacheKey = 'index:'.md5(json_encode([$words->all(), $tag?->id, $batch?->id, $page]));
         $posts = PublicPostCache::remember($cacheKey, fn () => Post::published()
-            ->with(['tags', 'batch:id,name,starts_at', 'cover'])
+            ->with(['tags', 'batch:id,public_id,name,starts_on', 'cover', 'author:id,name'])
             ->when($tag, fn ($query) => $query->whereHas('tags', fn ($t) => $t->whereKey($tag->id)))
             ->when($batch, fn ($query) => $query->where('cooking_batch_id', $batch->id))
             // Mỗi từ khóa phải xuất hiện ở tiêu đề, tóm tắt, nội dung (chữ thuần, không khớp nhầm thẻ HTML) hoặc tên thẻ.
@@ -63,18 +61,50 @@ class PublicPostController extends Controller
 
         $filtered = $q !== '' || $tag || $batch;
 
+        // Slider đầu trang chủ: các đợt ĐANG DIỄN RA (chỉ trang 1, không lọc).
+        $ongoing = ! $filtered && $posts->onFirstPage()
+            ? PublicPostCache::remember('ongoing-batches', fn () => CookingBatch::where('status', BatchStatus::InProgress->value)
+                ->orderBy('starts_on')->orderBy('id')
+                ->get(['id', 'public_id', 'name', 'starts_on', 'status', 'expected_servings', 'cover_path', 'cover_widths', 'cover_width', 'cover_height']))
+            : collect();
+
         return view('public.posts.index', [
             'posts' => $posts,
+            'ongoing' => $ongoing,
             'q' => $q,
             'tag' => $tag,
             'batch' => $batch,
-            'tags' => PublicPostCache::remember('filter-tags', fn () => Tag::whereHas('posts', $published)
-                ->withCount(['posts' => $published])->orderByDesc('posts_count')->orderBy('name')->get()),
-            'batches' => PublicPostCache::remember('filter-batches', fn () => CookingBatch::whereHas('posts', $published)
-                ->orderByDesc('starts_at')->get(['id', 'name', 'starts_at'])),
             'filtered' => $filtered,
             'noindex' => $filtered,
             'canonical' => $posts->currentPage() > 1 ? $posts->url($posts->currentPage()) : route('blog.index'),
+        ]);
+    }
+
+    /**
+     * Trang đợt nấu công khai: thông tin tổng hợp ở trên, bài viết của đợt ở dưới (phân trang).
+     * Chỉ đợt đang diễn ra hoặc đã có bài đăng (CookingBatch::scopePubliclyVisible); còn lại 404.
+     * Không hiện người điều phối, địa điểm, công việc, nguyên liệu, chi phí (docs/SECURITY_PRIVACY.md).
+     *
+     * URL dùng mã công khai ngẫu nhiên (public_id), không dùng ID tăng dần.
+     *
+     * @param  Request  $request  yêu cầu của người xem
+     * @param  CookingBatch  $batch  đợt nấu (tìm theo public_id)
+     */
+    public function batch(Request $request, CookingBatch $batch): View
+    {
+        $model = CookingBatch::publiclyVisible()->whereKey($batch->getKey())->firstOrFail();
+        $page = max(1, $request->integer('page', 1));
+
+        $posts = PublicPostCache::remember('batch:'.$model->id.':'.$page, fn () => $model->posts()->published()
+            ->with(['tags', 'batch:id,public_id,name,starts_on', 'cover', 'author:id,name'])
+            ->orderByDesc('published_at')->orderByDesc('id')
+            ->paginate(self::PER_PAGE, ['*'], 'page', $page))
+            ->withPath(route('blog.batch', $model));
+
+        return view('public.batches.show', [
+            'batch' => $model,
+            'posts' => $posts,
+            'canonical' => $posts->currentPage() > 1 ? $posts->url($posts->currentPage()) : route('blog.batch', $model),
         ]);
     }
 
@@ -94,7 +124,7 @@ class PublicPostController extends Controller
         // Dòng bài viết luôn lấy mới (lượt xem, trạng thái); phần quan hệ và bài liên quan lấy từ bộ nhớ đệm.
         // Bản xem trước (chưa đăng) không lưu đệm.
         $load = fn () => $this->showData($post);
-        $data = $preview ? $load() : PublicPostCache::remember('post:'.$post->id, $load);
+        $data = $preview ? $load() : PublicPostCache::remember('post:v2:'.$post->id, $load);
         $post->setRelations($data['relations']);
         $views->record($post, $request);
 
@@ -115,7 +145,7 @@ class PublicPostController extends Controller
     private function showData(Post $post): array
     {
         // Bản riêng để lưu đệm (chỉ chạy khi bộ nhớ đệm trống).
-        $loaded = Post::with(['tags', 'batch', 'cover', 'gallery'])->findOrFail($post->id);
+        $loaded = Post::with(['tags', 'batch', 'cover', 'gallery', 'author:id,name'])->findOrFail($post->id);
 
         $related = Post::published()
             ->with('cover')
@@ -138,9 +168,11 @@ class PublicPostController extends Controller
     public function sitemap(): Response
     {
         $posts = Post::published()->orderByDesc('published_at')->get(['slug', 'updated_at', 'published_at']);
+        $batches = CookingBatch::publiclyVisible()->orderByDesc('starts_on')->get(['id', 'public_id', 'updated_at']);
+        $contact = route('contact.create');
 
         return response()
-            ->view('public.sitemap', compact('posts'))
+            ->view('public.sitemap', compact('posts', 'batches', 'contact'))
             ->header('Content-Type', 'application/xml; charset=UTF-8');
     }
 }

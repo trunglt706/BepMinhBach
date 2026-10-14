@@ -37,8 +37,8 @@ class BatchFilter
         return $query
             ->when($this->q, fn (Builder $q) => $q->where('name', 'like', '%'.addcslashes($this->q, '%_\\').'%'))
             ->when($this->status, fn (Builder $q) => $q->where('status', $this->status->value))
-            ->when($this->from, fn (Builder $q) => $q->where('starts_at', '>=', $this->from->startOfDay()))
-            ->when($this->to, fn (Builder $q) => $q->where('starts_at', '<=', $this->to->endOfDay()));
+            ->when($this->from, fn (Builder $q) => $q->where('starts_on', '>=', $this->from->toDateString()))
+            ->when($this->to, fn (Builder $q) => $q->where('starts_on', '<=', $this->to->toDateString()));
     }
 
     /**

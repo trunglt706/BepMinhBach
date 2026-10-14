@@ -18,7 +18,7 @@ class CookingBatchFactory extends Factory
     {
         return [
             'name' => 'Đợt nấu thử '.fake()->unique()->numberBetween(1, 99999),
-            'starts_at' => now()->addDays(fake()->numberBetween(1, 14))->setTime(7, 0),
+            'starts_on' => today()->addDays(fake()->numberBetween(1, 14))->toDateString(),
             'location_text' => 'Bếp thử nghiệm',
             'expected_servings' => fake()->numberBetween(50, 300),
             'coordinator_id' => User::factory()->coordinator(),

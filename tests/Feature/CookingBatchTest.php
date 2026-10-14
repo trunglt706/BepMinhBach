@@ -20,7 +20,7 @@ class CookingBatchTest extends TestCase
     {
         return array_merge([
             'name' => 'Cơm chay chủ nhật',
-            'starts_at' => now()->addDays(3)->format('Y-m-d\TH:i'),
+            'starts_on' => now()->addDays(3)->format('Y-m-d'),
             'location_text' => 'Bếp thử nghiệm',
             'expected_servings' => '150',
             'coordinator_id' => $coordinator->id,
@@ -35,7 +35,7 @@ class CookingBatchTest extends TestCase
     {
         $coordinator = User::factory()->coordinator()->create();
 
-        $response = $this->actingAs($coordinator)->post('/batches', $this->validPayload($coordinator));
+        $response = $this->actingAs($coordinator)->post('/admin/batches', $this->validPayload($coordinator));
 
         $batch = CookingBatch::firstOrFail();
         $response->assertRedirect(route('batches.show', $batch));
@@ -47,11 +47,32 @@ class CookingBatchTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['cooking_batch_id' => $batch->id, 'action' => 'batch.created']);
     }
 
+    public function test_batch_start_is_a_date_only(): void
+    {
+        $coordinator = User::factory()->coordinator()->create();
+
+        $this->actingAs($coordinator)->post('/admin/batches', $this->validPayload($coordinator, ['starts_on' => '2026-11-20']))->assertSessionHasNoErrors();
+        $batch = CookingBatch::sole();
+        $this->assertSame('2026-11-20', $batch->getRawOriginal('starts_on')); // lưu đúng dạng DATE, không kèm giờ
+        $this->assertSame('2026-11-20 00:00:00', $batch->starts_on->format('Y-m-d H:i:s'));
+
+        // Giá trị có giờ (định dạng cũ) bị từ chối với thông báo tiếng Việt
+        $this->actingAs($coordinator)->post('/admin/batches', $this->validPayload($coordinator, ['starts_on' => '2026-11-20T06:30']))
+            ->assertSessionHasErrors('starts_on');
+
+        // Form dùng ô chọn ngày; trang chi tiết không hiện giờ
+        $this->actingAs($coordinator)->get('/admin/batches/create')->assertSee('type="date"', false)->assertSee('Ngày bắt đầu');
+        $this->actingAs($coordinator)->get("/admin/batches/{$batch->id}")->assertSee('20/11/2026')->assertDontSee('00:00');
+
+        // Lọc theo khoảng ngày gồm cả ngày biên (so sánh kiểu DATE)
+        $this->actingAs($coordinator)->get('/admin/batches?from=2026-11-20&to=2026-11-20')->assertSee($batch->name);
+    }
+
     public function test_coordinator_can_save_as_draft(): void
     {
         $coordinator = User::factory()->coordinator()->create();
 
-        $this->actingAs($coordinator)->post('/batches', $this->validPayload($coordinator, ['save_as' => 'draft']));
+        $this->actingAs($coordinator)->post('/admin/batches', $this->validPayload($coordinator, ['save_as' => 'draft']));
 
         $this->assertSame(BatchStatus::Draft, CookingBatch::firstOrFail()->status);
     }
@@ -62,17 +83,17 @@ class CookingBatchTest extends TestCase
         $coordinator = User::factory()->coordinator()->create();
         $volunteer = User::factory()->volunteer()->create();
 
-        $this->actingAs($coordinator)->from('/batches/create')->post('/batches', $this->validPayload($coordinator, [
+        $this->actingAs($coordinator)->from('/admin/batches/create')->post('/admin/batches', $this->validPayload($coordinator, [
             'name' => '',
-            'starts_at' => 'khong-phai-ngay',
+            'starts_on' => 'khong-phai-ngay',
             'expected_servings' => '-5',
             'estimated_cost_vnd' => '-100',
             'coordinator_id' => $volunteer->id,
         ]))
-            ->assertRedirect('/batches/create')
-            ->assertSessionHasErrors(['name', 'starts_at', 'expected_servings', 'estimated_cost_vnd', 'coordinator_id']);
+            ->assertRedirect('/admin/batches/create')
+            ->assertSessionHasErrors(['name', 'starts_on', 'expected_servings', 'estimated_cost_vnd', 'coordinator_id']);
 
-        $this->actingAs($coordinator)->post('/batches', $this->validPayload($coordinator, ['expected_servings' => '10.5']))
+        $this->actingAs($coordinator)->post('/admin/batches', $this->validPayload($coordinator, ['expected_servings' => '10.5']))
             ->assertSessionHasErrors('expected_servings');
 
         $this->assertDatabaseCount('cooking_batches', 0);
@@ -83,8 +104,8 @@ class CookingBatchTest extends TestCase
     {
         $coordinator = User::factory()->coordinator()->create();
 
-        $this->actingAs($coordinator)->from('/batches/create')->followingRedirects()
-            ->post('/batches', $this->validPayload($coordinator, ['name' => 'Giữ lại tên', 'expected_servings' => '']))
+        $this->actingAs($coordinator)->from('/admin/batches/create')->followingRedirects()
+            ->post('/admin/batches', $this->validPayload($coordinator, ['name' => 'Giữ lại tên', 'expected_servings' => '']))
             ->assertOk()
             ->assertSee('Vui lòng nhập số suất dự kiến.')
             ->assertSee('id="f_expected_servings_error"', false)
@@ -98,12 +119,12 @@ class CookingBatchTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::Draft)->create();
 
         foreach ([User::factory()->volunteer()->create(), User::factory()->recorder()->create()] as $user) {
-            $this->actingAs($user)->get('/batches/create')->assertForbidden();
-            $this->actingAs($user)->post('/batches', $this->validPayload($batch->coordinator))->assertForbidden();
-            $this->actingAs($user)->get("/batches/{$batch->id}/edit")->assertForbidden();
-            $this->actingAs($user)->put("/batches/{$batch->id}", $this->validPayload($batch->coordinator, ['save_as' => null]))->assertForbidden();
-            $this->actingAs($user)->delete("/batches/{$batch->id}")->assertForbidden();
-            $this->actingAs($user)->post("/batches/{$batch->id}/status", ['to' => 'planned'])->assertForbidden();
+            $this->actingAs($user)->get('/admin/batches/create')->assertForbidden();
+            $this->actingAs($user)->post('/admin/batches', $this->validPayload($batch->coordinator))->assertForbidden();
+            $this->actingAs($user)->get("/admin/batches/{$batch->id}/edit")->assertForbidden();
+            $this->actingAs($user)->put("/admin/batches/{$batch->id}", $this->validPayload($batch->coordinator, ['save_as' => null]))->assertForbidden();
+            $this->actingAs($user)->delete("/admin/batches/{$batch->id}")->assertForbidden();
+            $this->actingAs($user)->post("/admin/batches/{$batch->id}/status", ['to' => 'planned'])->assertForbidden();
         }
 
         $this->assertModelExists($batch);
@@ -115,7 +136,7 @@ class CookingBatchTest extends TestCase
         $batch = CookingBatch::factory()->create();
         $volunteer = User::factory()->volunteer()->create();
 
-        $this->actingAs($volunteer)->get("/batches/{$batch->id}")
+        $this->actingAs($volunteer)->get("/admin/batches/{$batch->id}")
             ->assertOk()
             ->assertSee($batch->name)
             ->assertDontSee('Sửa thông tin')
@@ -131,7 +152,7 @@ class CookingBatchTest extends TestCase
         $payload = $this->validPayload($coordinator, ['name' => 'Tên mới', 'save_as' => null]);
         unset($payload['save_as']);
 
-        $this->actingAs($coordinator)->put("/batches/{$batch->id}", $payload)
+        $this->actingAs($coordinator)->put("/admin/batches/{$batch->id}", $payload)
             ->assertRedirect(route('batches.show', $batch));
 
         $this->assertSame('Tên mới', $batch->fresh()->name);
@@ -143,23 +164,23 @@ class CookingBatchTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::Draft)->create();
         $coordinator = $batch->coordinator;
 
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/status", ['to' => 'planned']);
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/status", ['to' => 'planned']);
         $this->assertSame(BatchStatus::Planned, $batch->fresh()->status);
 
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/status", ['to' => 'in_progress']);
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/status", ['to' => 'in_progress']);
         $this->assertSame(BatchStatus::InProgress, $batch->fresh()->status);
 
         // Không nhảy thẳng sang hoàn tất qua thao tác đơn giản
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/status", ['to' => 'completed'])
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/status", ['to' => 'completed'])
             ->assertSessionHasErrors('to');
         $this->assertSame(BatchStatus::InProgress, $batch->fresh()->status);
 
         // Hoàn tất cần xác nhận
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/complete", ['completion_notes' => 'Ổn'])
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/complete", ['completion_notes' => 'Ổn'])
             ->assertSessionHasErrors('confirm');
         $this->assertSame(BatchStatus::InProgress, $batch->fresh()->status);
 
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/complete", ['completion_notes' => 'Ổn', 'confirm' => '1'])
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/complete", ['completion_notes' => 'Ổn', 'confirm' => '1'])
             ->assertRedirect(route('batches.show', $batch));
         $batch->refresh();
         $this->assertSame(BatchStatus::Completed, $batch->status);
@@ -172,7 +193,7 @@ class CookingBatchTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         Task::factory()->for($batch, 'batch')->create();
 
-        $this->actingAs($batch->coordinator)->get("/batches/{$batch->id}/complete")
+        $this->actingAs($batch->coordinator)->get("/admin/batches/{$batch->id}/complete")
             ->assertOk()
             ->assertSee('Còn 1 công việc chưa hoàn thành.')
             ->assertSee('Chưa nhập số suất đã chuẩn bị.')
@@ -183,7 +204,7 @@ class CookingBatchTest extends TestCase
     {
         $batch = CookingBatch::factory()->status(BatchStatus::Draft)->create();
 
-        $this->actingAs($batch->coordinator)->post("/batches/{$batch->id}/complete", ['confirm' => '1'])->assertForbidden();
+        $this->actingAs($batch->coordinator)->post("/admin/batches/{$batch->id}/complete", ['confirm' => '1'])->assertForbidden();
     }
 
     /** T09 */
@@ -193,22 +214,22 @@ class CookingBatchTest extends TestCase
         $coordinator = $batch->coordinator;
         $task = Task::factory()->for($batch, 'batch')->create(['assignee_id' => $coordinator->id]);
 
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/cancel", ['cancellation_reason' => 'Mưa lớn'])
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/cancel", ['cancellation_reason' => 'Mưa lớn'])
             ->assertSessionHasErrors('confirm');
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/cancel", ['cancellation_reason' => 'Mưa lớn', 'confirm' => '1']);
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/cancel", ['cancellation_reason' => 'Mưa lớn', 'confirm' => '1']);
 
         $batch->refresh();
         $this->assertSame(BatchStatus::Cancelled, $batch->status);
         $this->assertSame('Mưa lớn', $batch->cancellation_reason);
         $this->assertModelExists($task);
 
-        $this->actingAs($coordinator)->put("/batches/{$batch->id}", array_diff_key($this->validPayload($coordinator), ['save_as' => 1]))->assertForbidden();
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/ingredients", ['name' => 'Gạo', 'expected_quantity' => '1', 'unit' => 'kg'])->assertForbidden();
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/tasks", ['title' => 'Việc mới'])->assertForbidden();
-        $this->actingAs($coordinator)->post("/tasks/{$task->id}/status", ['status' => 'done'])->assertForbidden();
-        $this->actingAs($coordinator)->put("/batches/{$batch->id}/results", ['prepared_servings' => 10, 'results_version' => 0])->assertForbidden();
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/expenses", ['name' => 'Gas', 'amount_vnd' => '1000'])->assertForbidden();
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/status", ['to' => 'planned'])->assertForbidden();
+        $this->actingAs($coordinator)->put("/admin/batches/{$batch->id}", array_diff_key($this->validPayload($coordinator), ['save_as' => 1]))->assertForbidden();
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/ingredients", ['name' => 'Gạo', 'expected_quantity' => '1', 'unit' => 'kg'])->assertForbidden();
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/tasks", ['title' => 'Việc mới'])->assertForbidden();
+        $this->actingAs($coordinator)->post("/admin/tasks/{$task->id}/status", ['status' => 'done'])->assertForbidden();
+        $this->actingAs($coordinator)->put("/admin/batches/{$batch->id}/results", ['prepared_servings' => 10, 'results_version' => 0])->assertForbidden();
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/expenses", ['name' => 'Gas', 'amount_vnd' => '1000'])->assertForbidden();
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/status", ['to' => 'planned'])->assertForbidden();
     }
 
     public function test_reopen_requires_reason_and_confirmation_and_is_logged(): void
@@ -216,13 +237,13 @@ class CookingBatchTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::Completed)->create();
         $coordinator = $batch->coordinator;
 
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/reopen", ['confirm' => '1'])
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/reopen", ['confirm' => '1'])
             ->assertSessionHasErrors('reason');
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/reopen", ['reason' => 'Nhập sai số suất'])
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/reopen", ['reason' => 'Nhập sai số suất'])
             ->assertSessionHasErrors('confirm');
         $this->assertSame(BatchStatus::Completed, $batch->fresh()->status);
 
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/reopen", ['reason' => 'Nhập sai số suất', 'confirm' => '1']);
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/reopen", ['reason' => 'Nhập sai số suất', 'confirm' => '1']);
         $this->assertSame(BatchStatus::InProgress, $batch->fresh()->status);
         // Lý do (chữ tự do) lưu ở đợt nấu; lịch sử chỉ ghi việc mở lại, không chép lý do.
         $this->assertSame('Nhập sai số suất', $batch->fresh()->reopen_reason);
@@ -232,7 +253,7 @@ class CookingBatchTest extends TestCase
         $this->assertStringContainsString('có ghi lý do', $log->summary);
 
         $cancelled = CookingBatch::factory()->status(BatchStatus::Cancelled)->create();
-        $this->actingAs($cancelled->coordinator)->post("/batches/{$cancelled->id}/reopen", ['reason' => 'Tổ chức lại', 'confirm' => '1']);
+        $this->actingAs($cancelled->coordinator)->post("/admin/batches/{$cancelled->id}/reopen", ['reason' => 'Tổ chức lại', 'confirm' => '1']);
         $this->assertSame(BatchStatus::Draft, $cancelled->fresh()->status);
     }
 
@@ -242,8 +263,8 @@ class CookingBatchTest extends TestCase
         $planned = CookingBatch::factory()->create();
         $volunteer = User::factory()->volunteer()->create();
 
-        $this->actingAs($volunteer)->post("/batches/{$completed->id}/reopen", ['reason' => 'abc', 'confirm' => '1'])->assertForbidden();
-        $this->actingAs($volunteer)->post("/batches/{$planned->id}/cancel", ['confirm' => '1'])->assertForbidden();
+        $this->actingAs($volunteer)->post("/admin/batches/{$completed->id}/reopen", ['reason' => 'abc', 'confirm' => '1'])->assertForbidden();
+        $this->actingAs($volunteer)->post("/admin/batches/{$planned->id}/cancel", ['confirm' => '1'])->assertForbidden();
     }
 
     /** T10 */
@@ -253,8 +274,8 @@ class CookingBatchTest extends TestCase
         Ingredient::factory()->for($withIngredient, 'batch')->create();
         $planned = CookingBatch::factory()->create();
 
-        $this->actingAs($withIngredient->coordinator)->delete("/batches/{$withIngredient->id}")->assertForbidden();
-        $this->actingAs($planned->coordinator)->delete("/batches/{$planned->id}")->assertForbidden();
+        $this->actingAs($withIngredient->coordinator)->delete("/admin/batches/{$withIngredient->id}")->assertForbidden();
+        $this->actingAs($planned->coordinator)->delete("/admin/batches/{$planned->id}")->assertForbidden();
 
         $this->assertModelExists($withIngredient);
         $this->assertModelExists($planned);
@@ -264,7 +285,7 @@ class CookingBatchTest extends TestCase
     {
         $batch = CookingBatch::factory()->status(BatchStatus::Draft)->create();
 
-        $this->actingAs($batch->coordinator)->delete("/batches/{$batch->id}")->assertRedirect('/batches');
+        $this->actingAs($batch->coordinator)->delete("/admin/batches/{$batch->id}")->assertRedirect('/admin/batches');
         $this->assertModelMissing($batch);
     }
 
@@ -272,11 +293,11 @@ class CookingBatchTest extends TestCase
     {
         $user = User::factory()->volunteer()->create();
         $coordinator = User::factory()->coordinator()->create();
-        CookingBatch::factory()->count(14)->create(['coordinator_id' => $coordinator->id, 'created_by' => $coordinator->id, 'name' => 'Bếp thứ bảy', 'starts_at' => '2026-11-07 07:00']);
-        CookingBatch::factory()->status(BatchStatus::Cancelled)->create(['name' => 'Bếp bị hủy', 'starts_at' => '2026-11-08 07:00']);
-        CookingBatch::factory()->create(['name' => 'Bếp tháng trước', 'starts_at' => '2026-09-01 07:00']);
+        CookingBatch::factory()->count(14)->create(['coordinator_id' => $coordinator->id, 'created_by' => $coordinator->id, 'name' => 'Bếp thứ bảy', 'starts_on' => '2026-11-07 07:00']);
+        CookingBatch::factory()->status(BatchStatus::Cancelled)->create(['name' => 'Bếp bị hủy', 'starts_on' => '2026-11-08 07:00']);
+        CookingBatch::factory()->create(['name' => 'Bếp tháng trước', 'starts_on' => '2026-09-01 07:00']);
 
-        $response = $this->actingAs($user)->get('/batches?q=thứ+bảy&status=planned&from=2026-11-01&to=2026-11-30');
+        $response = $this->actingAs($user)->get('/admin/batches?q=thứ+bảy&status=planned&from=2026-11-01&to=2026-11-30');
         // Chip "Đã lên kế hoạch" đang được chọn
         $this->assertMatchesRegularExpression('/class="chip active"\s+aria-current="true"\s*>\s*<i class="bi bi-calendar-check"/', $response->getContent());
         $response->assertOk()
@@ -288,21 +309,21 @@ class CookingBatchTest extends TestCase
             ->assertSee('<input type="hidden" name="status" value="planned">', false)
             ->assertSee('q=th%E1%BB%A9%20b%E1%BA%A3y', false); // link phân trang giữ bộ lọc
 
-        $this->actingAs($user)->get('/batches?status=cancelled')->assertSee('Bếp bị hủy')->assertDontSee('Bếp thứ bảy');
-        $this->actingAs($user)->get('/batches?status=khong-hop-le&from=abc')->assertOk();
+        $this->actingAs($user)->get('/admin/batches?status=cancelled')->assertSee('Bếp bị hủy')->assertDontSee('Bếp thứ bảy');
+        $this->actingAs($user)->get('/admin/batches?status=khong-hop-le&from=abc')->assertOk();
     }
 
     public function test_empty_list_and_no_results_states(): void
     {
         $coordinator = User::factory()->coordinator()->create();
 
-        $this->actingAs($coordinator)->get('/batches')->assertSee('Chưa có đợt nấu ăn nào')->assertSee('Tạo đợt nấu đầu tiên');
+        $this->actingAs($coordinator)->get('/admin/batches')->assertSee('Chưa có đợt nấu ăn nào')->assertSee('Tạo đợt nấu đầu tiên');
         CookingBatch::factory()->create();
-        $this->actingAs($coordinator)->get('/batches?q=khongcogi')->assertSee('Không tìm thấy đợt nấu phù hợp');
+        $this->actingAs($coordinator)->get('/admin/batches?q=khongcogi')->assertSee('Không tìm thấy đợt nấu phù hợp');
     }
 
     public function test_unknown_batch_returns_404(): void
     {
-        $this->actingAs(User::factory()->create())->get('/batches/99999')->assertNotFound();
+        $this->actingAs(User::factory()->create())->get('/admin/batches/99999')->assertNotFound();
     }
 }

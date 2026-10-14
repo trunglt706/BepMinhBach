@@ -1,5 +1,5 @@
 /* Bootstrap Icons v1.13.1 (MIT) — bản rút gọn, sinh tự động bởi scripts/build-icons.mjs. Không sửa tay. */
-@font-face{font-display:block;font-family:bootstrap-icons;src:url("fonts/bootstrap-icons-subset.woff2?v=1687dda109") format("woff2")}
+@font-face{font-display:block;font-family:bootstrap-icons;src:url("fonts/bootstrap-icons-subset.woff2?v=6f44935e70") format("woff2")}
 .bi::before,[class*=" bi-"]::before,[class^=bi-]::before{display:inline-block;width:1em;text-align:center;font-family:bootstrap-icons!important;font-style:normal;font-weight:400!important;font-variant:normal;text-transform:none;line-height:1;vertical-align:-.125em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 .bi-alarm::before{content:"\f102"}
 .bi-arrow-counterclockwise::before{content:"\f117"}
@@ -10,21 +10,27 @@
 .bi-bar-chart::before{content:"\f17e"}
 .bi-bar-chart-line::before{content:"\f17c"}
 .bi-basket::before{content:"\f180"}
+.bi-bell::before{content:"\f18a"}
 .bi-box-arrow-in-right::before{content:"\f1be"}
 .bi-box-arrow-right::before{content:"\f1c3"}
 .bi-box-arrow-up-right::before{content:"\f1c5"}
+.bi-box-seam::before{content:"\f1c7"}
 .bi-box2-heart::before{content:"\f70c"}
 .bi-calendar::before{content:"\f1f6"}
 .bi-calendar-check::before{content:"\f1e2"}
+.bi-calendar-day::before{content:"\f1e6"}
 .bi-calendar-plus::before{content:"\f1ef"}
 .bi-calendar-range::before{content:"\f1f1"}
 .bi-calendar3::before{content:"\f214"}
 .bi-cash-coin::before{content:"\f632"}
+.bi-chat-dots::before{content:"\f24a"}
+.bi-chat-square-dots::before{content:"\f25f"}
 .bi-check-circle::before{content:"\f26b"}
 .bi-check-circle-fill::before{content:"\f26a"}
 .bi-check-lg::before{content:"\f633"}
 .bi-check2::before{content:"\f272"}
 .bi-check2-all::before{content:"\f26f"}
+.bi-check2-circle::before{content:"\f270"}
 .bi-check2-square::before{content:"\f271"}
 .bi-chevron-down::before{content:"\f282"}
 .bi-chevron-left::before{content:"\f284"}
@@ -37,6 +43,10 @@
 .bi-download::before{content:"\f30a"}
 .bi-egg-fried::before{content:"\f312"}
 .bi-emoji-smile::before{content:"\f327"}
+.bi-envelope::before{content:"\f32f"}
+.bi-envelope-check::before{content:"\f68c"}
+.bi-envelope-open::before{content:"\f32e"}
+.bi-exclamation-circle::before{content:"\f333"}
 .bi-exclamation-octagon::before{content:"\f337"}
 .bi-exclamation-triangle::before{content:"\f33b"}
 .bi-exclamation-triangle-fill::before{content:"\f33a"}
@@ -49,6 +59,7 @@
 .bi-globe2::before{content:"\f3ef"}
 .bi-hand-index-thumb::before{content:"\f402"}
 .bi-hourglass::before{content:"\f421"}
+.bi-hourglass-split::before{content:"\f41f"}
 .bi-house-door::before{content:"\f423"}
 .bi-image::before{content:"\f42a"}
 .bi-images::before{content:"\f42b"}
@@ -69,6 +80,7 @@
 .bi-people::before{content:"\f4d0"}
 .bi-person::before{content:"\f4e1"}
 .bi-person-badge::before{content:"\f4d3"}
+.bi-person-check::before{content:"\f4d6"}
 .bi-person-dash::before{content:"\f4d9"}
 .bi-person-plus::before{content:"\f4dd"}
 .bi-play-fill::before{content:"\f4f4"}
@@ -77,12 +89,19 @@
 .bi-question-circle::before{content:"\f505"}
 .bi-receipt::before{content:"\f50f"}
 .bi-search::before{content:"\f52a"}
+.bi-send::before{content:"\f6c0"}
 .bi-shield-check::before{content:"\f52f"}
 .bi-shield-lock::before{content:"\f538"}
+.bi-slack::before{content:"\f565"}
 .bi-table::before{content:"\f5aa"}
+.bi-telegram::before{content:"\f5b3"}
+.bi-telephone::before{content:"\f5c1"}
 .bi-three-dots::before{content:"\f5d4"}
 .bi-three-dots-vertical::before{content:"\f5d3"}
+.bi-toggle-off::before{content:"\f5d5"}
+.bi-toggle-on::before{content:"\f5d6"}
 .bi-trash::before{content:"\f5de"}
 .bi-unlock::before{content:"\f600"}
 .bi-x-circle::before{content:"\f623"}
 .bi-x-lg::before{content:"\f659"}
+.bi-zoom-in::before{content:"\f62c"}

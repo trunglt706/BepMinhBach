@@ -13,7 +13,7 @@ class AuthTest extends TestCase
     /** T01 */
     public function test_guest_is_redirected_to_login_from_internal_pages(): void
     {
-        foreach (['/', '/batches', '/cong-viec-cua-toi', '/reports', '/users'] as $url) {
+        foreach (['/admin', '/admin/batches', '/admin/my-tasks', '/admin/reports', '/admin/users'] as $url) {
             $this->get($url)->assertRedirect('/login');
         }
     }
@@ -59,11 +59,11 @@ class AuthTest extends TestCase
     public function test_locked_account_with_active_session_is_logged_out(): void
     {
         $user = User::factory()->coordinator()->create();
-        $this->actingAs($user)->get('/')->assertOk();
+        $this->actingAs($user)->get('/admin')->assertOk();
 
         $user->update(['is_active' => false]);
 
-        $this->actingAs($user)->get('/batches')->assertRedirect('/login');
+        $this->actingAs($user)->get('/admin/batches')->assertRedirect('/login');
         $this->assertGuest();
     }
 
@@ -84,7 +84,7 @@ class AuthTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->post('/logout')->assertRedirect('/login');
+        $this->actingAs($user)->post('/admin/logout')->assertRedirect('/login');
         $this->assertGuest();
     }
 
@@ -92,13 +92,13 @@ class AuthTest extends TestCase
     {
         $user = User::factory()->create(['password' => 'mat-khau-cu']);
 
-        $this->actingAs($user)->put('/tai-khoan/mat-khau', [
+        $this->actingAs($user)->put('/admin/account/password', [
             'current_password' => 'sai',
             'password' => 'mat-khau-moi-123',
             'password_confirmation' => 'mat-khau-moi-123',
         ])->assertSessionHasErrors('current_password');
 
-        $this->actingAs($user)->put('/tai-khoan/mat-khau', [
+        $this->actingAs($user)->put('/admin/account/password', [
             'current_password' => 'mat-khau-cu',
             'password' => 'mat-khau-moi-123',
             'password_confirmation' => 'mat-khau-moi-123',

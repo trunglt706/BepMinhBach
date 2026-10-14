@@ -4,11 +4,15 @@ namespace App\Models;
 
 use App\Enums\BatchStatus;
 use App\Enums\TaskStatus;
+use App\Support\PostImageProcessor;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Đợt nấu ăn: kế hoạch, nguyên liệu, công việc, số suất thực tế, chi phí.
@@ -27,7 +31,7 @@ class CookingBatch extends Model
 
     protected $fillable = [
         'name',
-        'starts_at',
+        'starts_on',
         'location_text',
         'expected_servings',
         'estimated_cost_vnd',
@@ -46,7 +50,6 @@ class CookingBatch extends Model
     protected function casts(): array
     {
         return [
-            'starts_at' => 'datetime',
             'reopened_at' => 'datetime',
             'status' => BatchStatus::class,
             'expected_servings' => 'integer',
@@ -57,7 +60,80 @@ class CookingBatch extends Model
             'results_version' => 'integer',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'cover_widths' => 'array',
+            'cover_width' => 'integer',
+            'cover_height' => 'integer',
         ];
+    }
+
+    /**
+     * Ngày bắt đầu (kiểu DATE, không có giờ). Luôn lưu dạng "Y-m-d" để so sánh khoảng ngày đúng trên mọi CSDL
+     * (cast "date" mặc định của Laravel ghi kèm "00:00:00", sai khi so chuỗi trên SQLite); đọc ra Carbon 00:00.
+     *
+     * @return Attribute<Carbon|null, mixed>
+     */
+    protected function startsOn(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value ? Carbon::parse($value)->startOfDay() : null,
+            set: fn (mixed $value) => $value ? Carbon::parse($value)->toDateString() : null,
+        );
+    }
+
+    /**
+     * Xóa đợt → xóa file ảnh nền sau khi giao dịch thành công.
+     */
+    protected static function booted(): void
+    {
+        // Mã công khai cho URL trang đợt (/dot-nau/{public_id}): ngẫu nhiên, duy nhất, không suy ra được từ ID.
+        static::creating(function (CookingBatch $batch) {
+            while (! $batch->public_id) {
+                $candidate = bin2hex(random_bytes(8));
+                if (! static::where('public_id', $candidate)->exists()) {
+                    $batch->public_id = $candidate;
+                }
+            }
+        });
+
+        static::deleted(function (CookingBatch $batch) {
+            if ($batch->cover_path) {
+                $path = $batch->cover_path;
+                $widths = $batch->cover_widths ?? [];
+                DB::afterCommit(fn () => app(PostImageProcessor::class)->delete($path, $widths));
+            }
+        });
+    }
+
+    /**
+     * Ảnh nền dưới dạng PostImage (không lưu DB) để dùng chung url()/srcset()/x-post-img với ảnh bài viết.
+     */
+    public function coverImage(): ?PostImage
+    {
+        if (! $this->cover_path || ! $this->cover_widths) {
+            return null;
+        }
+
+        return (new PostImage)->forceFill([
+            'kind' => PostImage::COVER,
+            'path' => $this->cover_path,
+            'widths' => $this->cover_widths,
+            'width' => $this->cover_width,
+            'height' => $this->cover_height,
+        ]);
+    }
+
+    /**
+     * Đợt khách được xem ở trang công khai: đang diễn ra, hoặc có bài viết đã đăng.
+     * Đợt nháp/kế hoạch chưa có bài không lộ ra ngoài (không dò được qua ID).
+     *
+     * @param  Builder<CookingBatch>  $query
+     * @return Builder<CookingBatch>
+     */
+    public function scopePubliclyVisible(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->where('status', BatchStatus::InProgress->value)
+            ->orWhereHas('posts', fn (Builder $p) => $p->published()));
     }
 
     /**
@@ -138,6 +214,16 @@ class CookingBatch extends Model
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    /**
+     * Kênh thông báo (Slack/Telegram/Chatwork) của đợt.
+     *
+     * @return HasMany<BatchNotificationChannel, $this>
+     */
+    public function notificationChannels(): HasMany
+    {
+        return $this->hasMany(BatchNotificationChannel::class);
     }
 
     /**

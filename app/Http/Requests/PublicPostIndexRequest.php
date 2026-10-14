@@ -85,6 +85,6 @@ class PublicPostIndexRequest extends FormRequest
     {
         $id = $this->validated('dot');
 
-        return $id ? CookingBatch::whereKey($id)->whereHas('posts', fn (Builder $q) => $q->published())->first(['id', 'name', 'starts_at']) : null;
+        return $id ? CookingBatch::whereKey($id)->whereHas('posts', fn (Builder $q) => $q->published())->first(['id', 'name', 'starts_on']) : null;
     }
 }

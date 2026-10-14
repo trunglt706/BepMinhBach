@@ -22,7 +22,7 @@
                 <div class="panel-header"><h2 class="panel-title"><i class="bi bi-info-circle" aria-hidden="true"></i> Thông tin đợt</h2></div>
                 <div class="card-body">
                     <dl class="row mb-0 small">
-                        <dt class="col-5 text-body-secondary fw-semibold">Thời gian</dt><dd class="col-7">{{ Format::dateTime($batch->starts_at) }}</dd>
+                        <dt class="col-5 text-body-secondary fw-semibold">Thời gian</dt><dd class="col-7">{{ Format::date($batch->starts_on) }}</dd>
                         <dt class="col-5 text-body-secondary fw-semibold">Địa điểm</dt><dd class="col-7">{{ $batch->location_text ?: '—' }}</dd>
                         <dt class="col-5 text-body-secondary fw-semibold">Trạng thái</dt><dd class="col-7"><x-status-badge :status="$batch->status" /></dd>
                         <dt class="col-5 text-body-secondary fw-semibold">Điều phối</dt><dd class="col-7">{{ $batch->coordinator?->name }}</dd>

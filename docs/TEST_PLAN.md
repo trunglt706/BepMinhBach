@@ -44,7 +44,12 @@
 - T27: Checklist in có tên đợt và danh sách cần làm, không in navigation.
 - T28: Trang tổng quan hiển thị empty state khi chưa có dữ liệu.
 - T29: Lỗi validation hiển thị cạnh trường liên quan.
-- T30: Giao diện hoạt động tại viewport 360px, 768px và desktop.
+- T30: Giao diện hoạt động tại viewport 360px, 768px và desktop. *(Kiểm bằng Chrome headless qua DevTools Protocol trên bản cách ly: đo tràn ngang, nút bị cắt, vùng chạm < 24px, lỗi JS/CSP — xem `docs/IMPLEMENTATION_LOG.md` 14/10/2026. Script không nằm trong repo vì cần Chrome.)*
+
+### Production hardening (`ProductionHardeningTest`)
+- T31: Mọi phản hồi (công khai, nội bộ, trang lỗi) có CSP, nosniff, X-Frame-Options, Referrer-Policy; HSTS chỉ khi HTTPS.
+- T32: View không có JS nội tuyến/`on*=`/`javascript:` (sẽ bị CSP chặn).
+- T33: `bmb:check-production` báo lỗi khi debug bật, còn tài khoản demo, thiếu quản trị viên; đạt với cấu hình an toàn.
 
 ## Test data
 - Dùng tài khoản/đợt/nguyên liệu giả.

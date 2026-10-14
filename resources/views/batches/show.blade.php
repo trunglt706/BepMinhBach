@@ -66,15 +66,21 @@
 
     {{-- Phần đầu trang --}}
     <section class="card mb-3" aria-labelledby="batch-title">
+        @if($cover = $batch->coverImage())
+            {{-- Ảnh nền của đợt (cũng dùng cho slider trang chủ và trang đợt công khai). --}}
+            <div class="batch-cover-banner">
+                <x-post-img :image="$cover" :width="960" priority sizes="(min-width: 1400px) 1100px, 100vw" alt="" />
+            </div>
+        @endif
         <div class="batch-hero">
             <div class="d-flex flex-column flex-md-row gap-3 align-items-md-start">
                 <div class="d-flex gap-3 flex-grow-1 min-w-0">
-                    <x-date-tile :date="$batch->starts_at" size="lg" />
+                    <x-date-tile :date="$batch->starts_on" size="lg" />
                     <div class="min-w-0">
                         <x-status-badge :status="$batch->status" class="mb-2" />
                         <h1 id="batch-title" class="batch-hero-title">{{ $batch->name }}</h1>
                         <div class="meta-inline">
-                            <span><i class="bi bi-clock" aria-hidden="true"></i> {{ Format::dateTime($batch->starts_at) }}</span>
+                            <span><i class="bi bi-calendar3" aria-hidden="true"></i> {{ Format::date($batch->starts_on) }}</span>
                             @if($batch->location_text)<span><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ $batch->location_text }}</span>@endif
                             <span><i class="bi bi-person-badge" aria-hidden="true"></i> Điều phối: {{ $batch->coordinator?->name }}</span>
                         </div>
@@ -254,6 +260,8 @@
 
         {{-- Cột phụ --}}
         <div class="col-lg-5 col-xl-4 d-flex flex-column gap-3 gap-lg-4">
+            @include('batches._channels')
+
             {{-- Kết quả --}}
             <section id="ket-qua" class="card scroll-mt" aria-labelledby="h-ket-qua">
                 <div class="panel-header">

@@ -17,13 +17,13 @@ class UserManagementTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
 
-        $this->actingAs($admin)->post('/users', [
+        $this->actingAs($admin)->post('/admin/users', [
             'name' => 'Tình nguyện viên mới',
             'email' => 'TNV.Moi@Example.com',
             'role' => 'volunteer',
             'password' => 'mat-khau-123',
             'password_confirmation' => 'mat-khau-123',
-        ])->assertRedirect('/users');
+        ])->assertRedirect('/admin/users');
 
         $user = User::where('email', 'tnv.moi@example.com')->firstOrFail();
         $this->assertSame(Role::Volunteer, $user->role);
@@ -39,19 +39,19 @@ class UserManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         $user = User::factory()->volunteer()->create(['password' => 'mat-khau-cu']);
 
-        $this->actingAs($admin)->put("/users/{$user->id}", [
+        $this->actingAs($admin)->put("/admin/users/{$user->id}", [
             'name' => $user->name,
             'email' => $user->email,
             'role' => 'recorder',
             'password' => '',
             'password_confirmation' => '',
-        ])->assertRedirect('/users');
+        ])->assertRedirect('/admin/users');
 
         $user->refresh();
         $this->assertSame(Role::Recorder, $user->role);
         $this->assertTrue(password_verify('mat-khau-cu', $user->password), 'Mật khẩu để trống thì không đổi');
 
-        $this->actingAs($admin)->put("/users/{$user->id}", [
+        $this->actingAs($admin)->put("/admin/users/{$user->id}", [
             'name' => $user->name, 'email' => $user->email, 'role' => 'recorder',
             'password' => 'mat-khau-moi-1', 'password_confirmation' => 'mat-khau-moi-1',
         ]);
@@ -63,10 +63,10 @@ class UserManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         $user = User::factory()->create();
 
-        $this->actingAs($admin)->post("/users/{$user->id}/toggle-active")->assertRedirect('/users');
+        $this->actingAs($admin)->post("/admin/users/{$user->id}/toggle-active")->assertRedirect('/admin/users');
         $this->assertFalse($user->fresh()->is_active);
 
-        $this->actingAs($admin)->post("/users/{$user->id}/toggle-active");
+        $this->actingAs($admin)->post("/admin/users/{$user->id}/toggle-active");
         $this->assertTrue($user->fresh()->is_active);
     }
 
@@ -74,10 +74,10 @@ class UserManagementTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
 
-        $this->actingAs($admin)->post("/users/{$admin->id}/toggle-active")->assertForbidden();
+        $this->actingAs($admin)->post("/admin/users/{$admin->id}/toggle-active")->assertForbidden();
         $this->assertTrue($admin->fresh()->is_active);
 
-        $this->actingAs($admin)->put("/users/{$admin->id}", [
+        $this->actingAs($admin)->put("/admin/users/{$admin->id}", [
             'name' => $admin->name, 'email' => $admin->email, 'role' => 'volunteer',
         ])->assertSessionHasErrors('role');
         $this->assertSame(Role::Admin, $admin->fresh()->role);
@@ -88,7 +88,7 @@ class UserManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         $existing = User::factory()->create(['email' => 'trung@example.com']);
 
-        $this->actingAs($admin)->post('/users', [
+        $this->actingAs($admin)->post('/admin/users', [
             'name' => 'A', 'email' => 'trung@example.com', 'role' => 'superuser',
             'password' => 'mat-khau-123', 'password_confirmation' => 'mat-khau-123',
         ])->assertSessionHasErrors(['email', 'role']);
@@ -99,16 +99,16 @@ class UserManagementTest extends TestCase
         $coordinator = User::factory()->coordinator()->create();
         $other = User::factory()->create();
 
-        $this->actingAs($coordinator)->get('/users')->assertForbidden();
-        $this->actingAs($coordinator)->get('/users/create')->assertForbidden();
-        $this->actingAs($coordinator)->post('/users', [
+        $this->actingAs($coordinator)->get('/admin/users')->assertForbidden();
+        $this->actingAs($coordinator)->get('/admin/users/create')->assertForbidden();
+        $this->actingAs($coordinator)->post('/admin/users', [
             'name' => 'X', 'email' => 'x@example.com', 'role' => 'admin',
             'password' => 'mat-khau-123', 'password_confirmation' => 'mat-khau-123',
         ])->assertForbidden();
-        $this->actingAs($coordinator)->put("/users/{$coordinator->id}", [
+        $this->actingAs($coordinator)->put("/admin/users/{$coordinator->id}", [
             'name' => 'X', 'email' => $coordinator->email, 'role' => 'admin',
         ])->assertForbidden();
-        $this->actingAs($coordinator)->post("/users/{$other->id}/toggle-active")->assertForbidden();
+        $this->actingAs($coordinator)->post("/admin/users/{$other->id}/toggle-active")->assertForbidden();
 
         $this->assertSame(Role::Coordinator, $coordinator->fresh()->role);
         $this->assertDatabaseMissing('users', ['email' => 'x@example.com']);
@@ -119,7 +119,7 @@ class UserManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         $user = User::factory()->create();
 
-        $this->actingAs($admin)->delete("/users/{$user->id}")->assertStatus(405);
+        $this->actingAs($admin)->delete("/admin/users/{$user->id}")->assertStatus(405);
         $this->assertModelExists($user);
     }
 
@@ -128,7 +128,7 @@ class UserManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         $user = User::factory()->create();
 
-        $this->actingAs($admin)->get('/users')->assertOk()
+        $this->actingAs($admin)->get('/admin/users')->assertOk()
             ->assertSee($user->email)
             ->assertDontSee($user->password);
     }

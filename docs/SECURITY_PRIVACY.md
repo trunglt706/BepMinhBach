@@ -16,15 +16,25 @@ MVP không cần tên, số điện thoại, địa chỉ nhà, chẩn đoán, d
 - Escape dữ liệu hiển thị; tránh XSS.
 - Dùng Eloquent/parameter binding; không nối chuỗi SQL từ input.
 - Rate limit đăng nhập nếu phù hợp.
-- Session/cookie theo cấu hình production an toàn.
+- Session/cookie: `HttpOnly`, `SameSite=Lax`, `Secure` mặc định khi `APP_URL` là https://.
 - Secret chỉ trong environment variables.
-- Không bật debug trên production.
+- Không bật debug trên production. `php artisan bmb:check-production` kiểm tra cấu hình (xem `docs/DEPLOYMENT.md`).
+
+## Header bảo mật (middleware `SecurityHeaders`, mọi phản hồi)
+- `Content-Security-Policy`: JS chỉ từ chính site (`script-src 'self'`, không `unsafe-inline`/`unsafe-eval`; mọi thư viện nằm trong `public/vendor`, không CDN); ảnh `self`/`data:`/`blob:` (xem trước ảnh trước khi tải lên); `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'self'`. `style-src` cho phép inline vì biểu đồ/thanh tiến độ dùng thuộc tính `style` (không chạy được mã).
+- View không được có `<script>` nội tuyến (trừ JSON-LD), thuộc tính `on*=` hay `javascript:` — có test kiểm tra.
+- `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (tắt camera/micro/vị trí/thanh toán), `Cross-Origin-Opener-Policy: same-origin`.
+- `Strict-Transport-Security` chỉ gửi khi yêu cầu đi qua HTTPS.
+- Chạy sau proxy/CDN: khai báo `TRUSTED_PROXIES` để giới hạn theo IP dùng đúng IP khách; để trống thì không tin header `X-Forwarded-*`.
 
 ## Trang công khai (bài viết)
 - Khách (không đăng nhập) chỉ xem bài viết **đã đăng** và đã tới thời điểm đăng; bản nháp trả 404 (người quản lý được xem trước).
-- Bài viết gắn với một đợt nấu chỉ hiện: tên đợt, thời gian, trạng thái, số suất dự kiến/chuẩn bị/phân phát. **Không** hiện người điều phối, tác giả, địa điểm, ghi chú, công việc, nguyên liệu hay chi phí.
+- Bài viết gắn với một đợt nấu chỉ hiện: tên đợt, ngày, trạng thái, số suất dự kiến/chuẩn bị/phân phát. **Không** hiện người điều phối, địa điểm, ghi chú, công việc, nguyên liệu hay chi phí.
+- **Tên tác giả** (tên tài khoản nội bộ của người viết) hiện trên thẻ bài viết theo yêu cầu 14/10/2026 (OQ-16). Không hiện email/vai trò.
+- Trang đợt nấu công khai `/dot-nau/{public_id}`: chỉ đợt **đang diễn ra** hoặc **đã có bài đăng**; URL dùng mã ngẫu nhiên 16 ký tự hex (không dùng ID tăng dần → không dò được đợt khác). Đợt nháp/kế hoạch chưa có bài trả 404.
+- Ảnh nền đợt nấu xử lý như ảnh bài viết (kiểm tra nội dung, WebP, bỏ EXIF/GPS); form nhắc tránh ảnh nhìn rõ mặt người nhận.
 - Bộ lọc theo thẻ/đợt chỉ chấp nhận thẻ/đợt có bài đã đăng, nên không dò được tên đợt nội bộ qua `?dot=<id>`.
-- Nội dung hiển thị dạng văn bản thuần (escape), không cho HTML. Ô nhập nội dung nhắc không ghi thông tin người nhận.
+- Nội dung là HTML **đã lọc theo danh sách cho phép** (xem mục Ảnh tải lên); tiêu đề, tóm tắt, thẻ được escape. Ô nhập nội dung nhắc không ghi thông tin người nhận.
 - Chỉ điều phối viên trở lên viết/đăng/gỡ/xóa bài.
 
 ## Ảnh tải lên (bài viết)
@@ -66,3 +76,25 @@ MVP không cần tên, số điện thoại, địa chỉ nhà, chẩn đoán, d
 - Kiểm tra IDOR: đổi ID trong URL/form không truy cập được dữ liệu ngoài quyền.
 - Kiểm tra validation, CSRF/XSS cơ bản và xuất CSV chống spreadsheet formula injection.
 - Không dùng dữ liệu thật trong môi trường demo.
+
+## Liên hệ từ khách (trang `/lien-he`)
+- Thu tối thiểu: chủ đề, họ tên, **một** email hoặc số điện thoại, nội dung. Không có chủ đề "đăng ký nhận suất ăn" (không thu thập thông tin người nhận qua trang công khai); form nhắc không ghi thông tin sức khỏe/người nhận.
+- Không lưu IP thô: `client_hash = HMAC(IP, APP_KEY)`, chỉ để giới hạn **1 liên hệ / client / ngày** (theo IP đã băm **hoặc** theo email/SĐT trùng trong ngày).
+- Chống spam: giới hạn 5 lần bấm gửi / 10 phút / IP (tính cả lần lỗi, `BMB_RATE_CONTACT`), ô bẫy bot ẩn, CSRF, kiểm tra phía trình duyệt trước khi gửi + kiểm tra lại đầy đủ ở máy chủ.
+- Chỉ điều phối viên trở lên xem/đánh dấu xử lý/xóa (`ContactMessagePolicy`). Nội dung liên hệ không ghi vào activity log hay file log. Nên xóa liên hệ sau khi đã xử lý.
+
+## Kiểm tra phía trình duyệt
+- `app.js` kiểm tra `required`, độ dài, email, số, email/SĐT trước khi gửi để giảm yêu cầu thừa. **Không** thay thế kiểm tra máy chủ — mọi FormRequest vẫn kiểm tra lại toàn bộ.
+
+## Triển khai (`deploy/deploy.sh`)
+- Mật khẩu CSDL ngẫu nhiên, lưu `/root/.bepminhbach/db.env` (600); `.env` quyền 640 `root:www-data`; mã nguồn không ghi được bởi web server.
+- Mật khẩu quản trị không truyền qua tham số dòng lệnh (biến môi trường `BMB_ADMIN_PASSWORD` hoặc nhập ẩn).
+- Nginx chặn file ẩn và chạy mã trong `/uploads/`; ufw chỉ mở SSH (cổng thật), 80, 443; sao lưu hằng ngày quyền 700.
+
+## Kênh thông báo của đợt (Slack / Telegram / Chatwork)
+- Chỉ điều phối viên trở lên cấu hình (`CookingBatchPolicy::manageNotifications`); mọi tài khoản xem được đợt thấy nút "Tham gia kênh".
+- Webhook/token **mã hóa** trong CSDL (APP_KEY), không bao giờ hiện lại đầy đủ (form chỉ hiện 4 ký tự cuối; để trống = giữ giá trị cũ); không ghi vào log; lỗi gửi được che token trước khi lưu/hiển thị (URL Telegram có token).
+- Chống SSRF: Slack chỉ nhận webhook `https://hooks.slack.com/services/…`; Telegram/Chatwork gọi địa chỉ API cố định; link tham gia chỉ https đúng tên miền dịch vụ.
+- Nội dung gửi: tên + ngày đợt, sự kiện (tóm tắt đã che email/SĐT), người thực hiện, link mở đợt trong hệ thống. **Không gửi** chi phí (tình nguyện viên không được xem chi phí, mà ai có link đều vào kênh được), lý do bị vướng, ghi chú thiếu nguyên liệu, ghi chú chênh lệch. Tên người phụ trách chỉ có trong tin nhắn, không lưu vào activity log.
+- Chatwork: ngoặc vuông trong chữ người dùng nhập được đổi sang ngoặc toàn chiều để không tạo thẻ `[To:]`/`[info]`.
+- Gửi sau khi giao dịch DB thành công và sau khi trả trang (defer), timeout 5 giây/kênh; lỗi không làm hỏng thao tác của người dùng.

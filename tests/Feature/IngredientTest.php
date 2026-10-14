@@ -19,7 +19,7 @@ class IngredientTest extends TestCase
         $batch = CookingBatch::factory()->create();
         $coordinator = $batch->coordinator;
 
-        $this->actingAs($coordinator)->post("/batches/{$batch->id}/ingredients", [
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/ingredients", [
             'name' => 'Gạo', 'expected_quantity' => '12,5', 'unit' => 'kg', 'notes' => 'Gạo tẻ',
         ])->assertRedirect(route('batches.show', $batch).'#nguyen-lieu');
 
@@ -27,7 +27,7 @@ class IngredientTest extends TestCase
         $this->assertSame('12.500', $ingredient->expected_quantity);
         $this->assertNull($ingredient->actual_quantity);
 
-        $this->actingAs($coordinator)->put("/ingredients/{$ingredient->id}", [
+        $this->actingAs($coordinator)->put("/admin/ingredients/{$ingredient->id}", [
             'name' => 'Gạo tẻ', 'expected_quantity' => '12.5', 'actual_quantity' => '11.25', 'unit' => 'other', 'unit_other' => 'bao 5kg',
         ])->assertRedirect();
 
@@ -42,7 +42,7 @@ class IngredientTest extends TestCase
     {
         $batch = CookingBatch::factory()->create();
 
-        $this->actingAs($batch->coordinator)->post("/batches/{$batch->id}/ingredients", [
+        $this->actingAs($batch->coordinator)->post("/admin/batches/{$batch->id}/ingredients", [
             'name' => 'Muối', 'expected_quantity' => '1', 'unit' => 'gói', 'add_another' => '1',
         ])->assertRedirect(route('batches.ingredients.create', $batch));
     }
@@ -52,11 +52,11 @@ class IngredientTest extends TestCase
     {
         $batch = CookingBatch::factory()->create();
 
-        $this->actingAs($batch->coordinator)->post("/batches/{$batch->id}/ingredients", [
+        $this->actingAs($batch->coordinator)->post("/admin/batches/{$batch->id}/ingredients", [
             'name' => '', 'expected_quantity' => '-1', 'actual_quantity' => '-2', 'unit' => 'other', 'unit_other' => '',
         ])->assertSessionHasErrors(['name', 'expected_quantity', 'actual_quantity', 'unit']);
 
-        $this->actingAs($batch->coordinator)->post("/batches/{$batch->id}/ingredients", [
+        $this->actingAs($batch->coordinator)->post("/admin/batches/{$batch->id}/ingredients", [
             'name' => 'Gạo', 'expected_quantity' => '1.23456', 'unit' => 'kg',
         ])->assertSessionHasErrors('expected_quantity');
 
@@ -71,7 +71,7 @@ class IngredientTest extends TestCase
         $volunteer = User::factory()->volunteer()->create();
 
         $this->actingAs($volunteer)->from(route('batches.show', $batch))
-            ->post("/ingredients/{$ingredient->id}/shortage", ['restock_note' => 'Còn thiếu 2 kg'])
+            ->post("/admin/ingredients/{$ingredient->id}/shortage", ['restock_note' => 'Còn thiếu 2 kg'])
             ->assertRedirect(route('batches.show', $batch));
 
         $ingredient->refresh();
@@ -79,8 +79,8 @@ class IngredientTest extends TestCase
         $this->assertSame($volunteer->id, $ingredient->restock_reported_by);
         $this->assertNotNull($ingredient->restock_reported_at);
 
-        $this->actingAs($batch->coordinator)->get('/')->assertSee('Thiếu nguyên liệu')->assertSee('Nấm rơm')->assertSee('Còn thiếu 2 kg');
-        $this->actingAs($batch->coordinator)->get("/batches/{$batch->id}")->assertSee('Cần bổ sung')->assertSee('1 nguyên liệu đang báo thiếu');
+        $this->actingAs($batch->coordinator)->get('/admin')->assertSee('Thiếu nguyên liệu')->assertSee('Nấm rơm')->assertSee('Còn thiếu 2 kg');
+        $this->actingAs($batch->coordinator)->get("/admin/batches/{$batch->id}")->assertSee('Cần bổ sung')->assertSee('1 nguyên liệu đang báo thiếu');
     }
 
     public function test_only_reporter_or_coordinator_can_resolve_shortage(): void
@@ -91,10 +91,10 @@ class IngredientTest extends TestCase
         $ingredient = Ingredient::factory()->for($batch, 'batch')->create();
         $ingredient->forceFill(['needs_restock' => true, 'restock_reported_by' => $reporter->id, 'restock_reported_at' => now()])->save();
 
-        $this->actingAs($other)->delete("/ingredients/{$ingredient->id}/shortage")->assertForbidden();
+        $this->actingAs($other)->delete("/admin/ingredients/{$ingredient->id}/shortage")->assertForbidden();
         $this->assertTrue($ingredient->fresh()->needs_restock);
 
-        $this->actingAs($reporter)->delete("/ingredients/{$ingredient->id}/shortage")->assertRedirect();
+        $this->actingAs($reporter)->delete("/admin/ingredients/{$ingredient->id}/shortage")->assertRedirect();
         $this->assertFalse($ingredient->fresh()->needs_restock);
     }
 
@@ -104,7 +104,7 @@ class IngredientTest extends TestCase
         $batch = CookingBatch::factory()->create();
         Ingredient::factory()->for($batch, 'batch')->create(['name' => 'Đậu hũ', 'expected_quantity' => 30, 'unit' => 'cái']);
 
-        $this->actingAs($batch->coordinator)->get("/batches/{$batch->id}")
+        $this->actingAs($batch->coordinator)->get("/admin/batches/{$batch->id}")
             ->assertSee('<div class="qty-main" data-expected>30 cái</div>', false)
             ->assertSee('chưa ghi nhận')
             ->assertSee('không phải lượng đã có sẵn');
@@ -118,10 +118,10 @@ class IngredientTest extends TestCase
         $ingredient = Ingredient::factory()->for($batch, 'batch')->create();
         $volunteer = User::factory()->volunteer()->create();
 
-        $this->actingAs($volunteer)->get("/batches/{$batch->id}/ingredients/create")->assertForbidden();
-        $this->actingAs($volunteer)->post("/batches/{$batch->id}/ingredients", ['name' => 'X', 'expected_quantity' => '1', 'unit' => 'kg'])->assertForbidden();
-        $this->actingAs($volunteer)->put("/ingredients/{$ingredient->id}", ['name' => 'X', 'expected_quantity' => '1', 'unit' => 'kg'])->assertForbidden();
-        $this->actingAs($volunteer)->delete("/ingredients/{$ingredient->id}")->assertForbidden();
+        $this->actingAs($volunteer)->get("/admin/batches/{$batch->id}/ingredients/create")->assertForbidden();
+        $this->actingAs($volunteer)->post("/admin/batches/{$batch->id}/ingredients", ['name' => 'X', 'expected_quantity' => '1', 'unit' => 'kg'])->assertForbidden();
+        $this->actingAs($volunteer)->put("/admin/ingredients/{$ingredient->id}", ['name' => 'X', 'expected_quantity' => '1', 'unit' => 'kg'])->assertForbidden();
+        $this->actingAs($volunteer)->delete("/admin/ingredients/{$ingredient->id}")->assertForbidden();
         $this->assertModelExists($ingredient);
     }
 
@@ -130,7 +130,7 @@ class IngredientTest extends TestCase
         $batch = CookingBatch::factory()->create();
         $ingredient = Ingredient::factory()->for($batch, 'batch')->create();
 
-        $this->actingAs($batch->coordinator)->delete("/ingredients/{$ingredient->id}")->assertRedirect();
+        $this->actingAs($batch->coordinator)->delete("/admin/ingredients/{$ingredient->id}")->assertRedirect();
         $this->assertModelMissing($ingredient);
     }
 
@@ -140,6 +140,6 @@ class IngredientTest extends TestCase
         $ingredient = Ingredient::factory()->for($batch, 'batch')->create();
 
         $this->actingAs(User::factory()->volunteer()->create())
-            ->post("/ingredients/{$ingredient->id}/shortage")->assertForbidden();
+            ->post("/admin/ingredients/{$ingredient->id}/shortage")->assertForbidden();
     }
 }

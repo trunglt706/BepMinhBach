@@ -34,7 +34,7 @@ class PostMediaTest extends TestCase
      */
     private function storePost(array $data = []): TestResponse
     {
-        return $this->actingAs($this->coordinator)->post('/posts', [
+        return $this->actingAs($this->coordinator)->post('/admin/posts', [
             'title' => 'Bài có ảnh', 'body' => '<div>Nội dung</div>', 'save_as' => 'published', ...$data,
         ], ['Accept' => 'application/json']);
     }
@@ -139,7 +139,7 @@ class PostMediaTest extends TestCase
 
         $post = Post::firstOrFail();
         $update = fn (array $data) => $this->actingAs($this->coordinator)
-            ->put("/posts/{$post->id}", ['title' => 'Bài', 'body' => 'Nội dung', ...$data], ['Accept' => 'application/json']);
+            ->put("/admin/posts/{$post->id}", ['title' => 'Bài', 'body' => 'Nội dung', ...$data], ['Accept' => 'application/json']);
 
         $update(['gallery' => $images(2)])->assertStatus(422)->assertJsonValidationErrors(['gallery' => 'Mỗi bài tối đa 3 ảnh album (đang có 2, thêm 2).']);
         // Xóa 1 ảnh cũ thì thêm được 2
@@ -160,7 +160,7 @@ class PostMediaTest extends TestCase
         $other = Post::factory()->create();
         $foreign = $other->images()->create(['kind' => PostImage::GALLERY, 'path' => 'posts/x/foreign', 'widths' => [480], 'width' => 480, 'height' => 320]);
 
-        $this->actingAs($this->coordinator)->put("/posts/{$post->id}", [
+        $this->actingAs($this->coordinator)->put("/admin/posts/{$post->id}", [
             'title' => 'Bài', 'body' => 'Nội dung',
             'cover' => UploadedFile::fake()->image('moi.jpg', 800, 600),
             'remove_images' => [$galleryImage->id, $foreign->id],
@@ -175,10 +175,10 @@ class PostMediaTest extends TestCase
         $this->assertNull($foreign->fresh()->caption); // ... và không bị sửa chú thích
 
         // Xóa ảnh đại diện; xóa bài thì xóa hết file
-        $this->actingAs($this->coordinator)->put("/posts/{$post->id}", ['title' => 'Bài', 'body' => 'Nội dung', 'remove_cover' => '1'],
+        $this->actingAs($this->coordinator)->put("/admin/posts/{$post->id}", ['title' => 'Bài', 'body' => 'Nội dung', 'remove_cover' => '1'],
             ['Accept' => 'application/json'])->assertOk();
         $this->assertNull($post->fresh()->cover);
-        $this->actingAs($this->coordinator)->deleteJson("/posts/{$post->id}")->assertOk();
+        $this->actingAs($this->coordinator)->deleteJson("/admin/posts/{$post->id}")->assertOk();
         $this->assertSame([], Storage::disk('uploads')->allFiles());
     }
 
@@ -188,7 +188,7 @@ class PostMediaTest extends TestCase
         $post = Post::firstOrFail();
         $image = $post->gallery->first();
 
-        $this->actingAs($this->coordinator)->put("/posts/{$post->id}", [
+        $this->actingAs($this->coordinator)->put("/admin/posts/{$post->id}", [
             'title' => 'Bài', 'body' => 'Nội dung', 'captions' => [$image->id => '  Nấu cơm  '],
         ], ['Accept' => 'application/json'])->assertOk();
         $this->assertSame('Nấu cơm', $image->fresh()->caption);
@@ -250,12 +250,14 @@ class PostMediaTest extends TestCase
         $this->assertStringContainsString('<meta property="article:tag" content="cơm chay">', $html);
         $this->assertStringContainsString('<meta name="twitter:card" content="summary_large_image">', $html);
         $this->assertMatchesRegularExpression('#<script type="application/ld\+json">\{.*"@type":"BlogPosting".*\}</script>#', $html);
-        $this->assertStringContainsString('fetchpriority="high"', $html);
-        $this->assertStringNotContainsString($this->coordinator->name, $html); // không nêu tên tác giả
+        $this->assertStringNotContainsString('class="post-cover"', $html); // ảnh đại diện chỉ dùng cho thẻ bài + chia sẻ link
+        // Người viết hiện trên trang (OQ-16), nhưng dữ liệu có cấu trúc vẫn ghi tác giả là tổ chức
+        $this->assertStringContainsString($this->coordinator->name, $html);
+        $this->assertStringContainsString('"author":{"@type":"Organization","name":'.json_encode('BếpMinhBạch').'}', $html);
 
         // Trang tìm kiếm/lọc: noindex; danh sách gốc: index + canonical
-        $this->get('/bai-viet?q=c%C6%A1m')->assertSee('<meta name="robots" content="noindex, follow">', false);
-        $this->get('/bai-viet')->assertSee('<link rel="canonical" href="'.route('blog.index').'">', false);
+        $this->get('/?q=c%C6%A1m')->assertSee('<meta name="robots" content="noindex, follow">', false);
+        $this->get('/')->assertSee('<link rel="canonical" href="'.route('blog.index').'">', false);
 
         $this->get('/sitemap.xml')->assertOk()
             ->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
@@ -265,7 +267,7 @@ class PostMediaTest extends TestCase
 
     public function test_post_form_renders_editor_image_and_tag_inputs(): void
     {
-        $this->actingAs($this->coordinator)->get('/posts/create?modal=1')->assertOk()
+        $this->actingAs($this->coordinator)->get('/admin/posts/create?modal=1')->assertOk()
             ->assertSee('enctype="multipart/form-data"', false)
             ->assertSee('data-rich-editor', false)
             ->assertSee('name="cover" accept="image/jpeg,image/png,image/webp" data-image-input', false)

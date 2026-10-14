@@ -22,7 +22,7 @@ class MyTaskController extends Controller
         $open = Task::where('assignee_id', $user->id)
             ->where('status', '!=', TaskStatus::Done->value)
             ->whereHas('batch', fn ($q) => $q->active())
-            ->with('batch:id,name,starts_at,status,location_text')
+            ->with('batch:id,name,starts_on,status,location_text')
             ->orderByRaw('due_at is null')
             ->orderBy('due_at')
             ->limit(100)

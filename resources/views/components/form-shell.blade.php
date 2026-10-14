@@ -6,7 +6,6 @@
     'back',
     'backLabel' => 'Quay lại',
     'cancelLabel' => 'Hủy',
-    'warn' => true,
     'size' => null,
     'bare' => false,
     'files' => false,
@@ -24,7 +23,7 @@
 
 @if($asModal)
     <form method="POST" action="{{ $action }}" class="modal-content" data-ajax novalidate @if($files) enctype="multipart/form-data" @endif
-          @if($warn) data-warn-unsaved @endif data-modal-size="{{ $size }}">
+          data-modal-size="{{ $size }}">
         @csrf
         @if(strtoupper($method) !== 'POST') @method($method) @endif
         <div class="modal-header">
@@ -49,7 +48,7 @@
         <div class="form-narrow mx-auto">
             <x-page-header :title="$title" :subtitle="$subtitle" :back="$back" :back-label="$backLabel" />
             {{ $before ?? '' }}
-            <form method="POST" action="{{ $action }}" novalidate @if($warn) data-warn-unsaved @endif @if($files) enctype="multipart/form-data" @endif>
+            <form method="POST" action="{{ $action }}" novalidate @if($files) enctype="multipart/form-data" @endif>
                 @csrf
                 @if(strtoupper($method) !== 'POST') @method($method) @endif
                 @if($bare)

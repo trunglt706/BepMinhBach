@@ -90,10 +90,6 @@
         overlay.classList.remove('is-active');
     }
 
-    function hasDirtyForm() {
-        return document.querySelector('form[data-warn-unsaved][data-dirty="1"]:not([data-submitting="1"])') !== null;
-    }
-
     // =====================================================================
     // Ô tiền tệ: chỉ cho nhập chữ số, tự thêm dấu chấm hàng nghìn,
     // bỏ dấu trước khi gửi (backend cũng tự chuẩn hóa thêm một lần).
@@ -366,7 +362,9 @@
     }
 
     function focusFirstField(root) {
-        var field = root.querySelector('.is-invalid, input:not([type="hidden"]):not([disabled]):not([type="checkbox"]), select, textarea');
+        // Ưu tiên ô đang báo lỗi đầu tiên; không có lỗi thì ô nhập đầu tiên.
+        var field = root.querySelector('.is-invalid:not([type="hidden"]), [aria-invalid="true"]:not([type="hidden"])')
+            || root.querySelector('input:not([type="hidden"]):not([disabled]):not([type="checkbox"]), select, textarea');
         if (field) {
             field.focus();
         }
@@ -434,13 +432,7 @@
     }
 
     if (modalEl) {
-        // Hỏi lại trước khi đóng modal có thay đổi chưa lưu.
-        modalEl.addEventListener('hide.bs.modal', function (event) {
-            var dirty = modalDialog.querySelector('form[data-warn-unsaved][data-dirty="1"]:not([data-submitting="1"])');
-            if (dirty && !window.confirm('Bỏ các thay đổi chưa lưu?')) {
-                event.preventDefault();
-            }
-        });
+        // Đóng modal (nút ×, Hủy, Esc, bấm ra ngoài) đóng ngay, không hỏi lại dù form đã sửa (theo yêu cầu 14/10/2026).
         modalEl.addEventListener('hidden.bs.modal', function () {
             modalDialog.innerHTML = '';
             modalDialog.removeAttribute('data-url');
@@ -480,6 +472,7 @@
             }
             initMoney(document);
             initUnitSelects(document);
+            initLazyImages(document);
         }).catch(function () {
             window.location.reload();
         });
@@ -510,11 +503,20 @@
         }
     }
 
-    function showErrors(form, errors) {
+    function showErrors(form, errors, summary) {
         var unplaced = [];
         Object.keys(errors).forEach(function (name) {
             var message = errors[name][0];
             var fields = form.querySelectorAll('[name="' + name + '"]');
+            if (!fields.length && name.indexOf('.') !== -1) {
+                // Lỗi của mảng ("settings.webhook_url") ↔ ô "settings[webhook_url]" — chỉ ô đang hiện.
+                var bracket = name.replace(/\.([^.]+)/g, '[$1]');
+                fields = Array.prototype.filter.call(form.querySelectorAll('[name="' + bracket + '"]'), function (f) { return !f.disabled; });
+            }
+            if (!fields.length) {
+                // Ô có tên khác khóa lỗi (ví dụ join_urls[slack] ↔ join_url): khai báo bằng data-error-name.
+                fields = Array.prototype.filter.call(form.querySelectorAll('[data-error-name="' + name + '"]'), function (f) { return !f.disabled; });
+            }
             if (!fields.length) {
                 unplaced.push(message);
                 return;
@@ -542,7 +544,7 @@
         if (unplaced.length) {
             showFormAlert(form, unplaced.join(' '));
         } else {
-            showFormAlert(form, 'Chưa lưu được. Vui lòng sửa các mục được đánh dấu.');
+            showFormAlert(form, summary || 'Chưa lưu được. Vui lòng sửa các mục được đánh dấu.');
         }
         focusFirstField(form);
         announce('Có lỗi trong biểu mẫu, vui lòng kiểm tra lại.');
@@ -604,12 +606,10 @@
                     // "Lưu và thêm tiếp": giữ modal, xóa form để nhập mục tiếp theo.
                     restoreForm(form);
                     form.reset();
-                    form.removeAttribute('data-dirty');
                     initMoney(form);
                     initUnitSelects(form);
                     focusFirstField(form);
                 } else {
-                    form.removeAttribute('data-dirty');
                     if (inModal) {
                         modal.hide();
                     }
@@ -623,6 +623,10 @@
             restoreForm(form);
             if (result.status === 422 && data.errors) {
                 showErrors(form, data.errors);
+            } else if (result.status === 422 && data.message) {
+                // Lỗi nghiệp vụ không gắn với ô nhập (ví dụ gửi thử kênh thông báo thất bại): báo rõ lý do.
+                showFormAlert(form, data.message);
+                refreshRegions();
             } else if (result.status === 409 && data.reload && inModal) {
                 // Dữ liệu vừa bị người khác sửa: tải lại form để thấy giá trị mới nhất.
                 loadModal(modalDialog.getAttribute('data-url')).then(function () {
@@ -769,6 +773,168 @@
     }
 
     // =====================================================================
+    // Kiểm tra phía trình duyệt TRƯỚC khi gửi (giảm yêu cầu thừa xuống máy chủ).
+    // Máy chủ vẫn kiểm tra lại mọi thứ — đây chỉ là lớp nhắc sớm cho người dùng.
+    // Dựa trên thuộc tính HTML: required, minlength, min/max/step, type=email, pattern,
+    // data-validate="email-or-phone", data-required (ô ẩn của trình soạn thảo).
+    // Bỏ qua: form tìm kiếm/lọc (GET), form có data-no-validate, nút có formnovalidate.
+    // =====================================================================
+    var PHONE_RE = /^(?:\+84|0)\d{9,10}$/;
+    var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function fieldLabel(form, field) {
+        var text = '';
+        if (field.type === 'radio' || field.type === 'checkbox') {
+            var legend = field.closest('fieldset') && field.closest('fieldset').querySelector('legend');
+            text = legend ? legend.textContent : '';
+        }
+        if (!text && field.id) {
+            var label = form.querySelector('label[for="' + field.id + '"]')
+                || (field.getAttribute('data-error-target') && form.querySelector('label[for="' + field.getAttribute('data-error-target') + '"]'));
+            text = label ? label.textContent : '';
+        }
+        text = (text || field.getAttribute('aria-label') || 'trường này').replace(/\*|\(bắt buộc\)/g, '').replace(/\s+/g, ' ').trim();
+        return text.charAt(0).toLowerCase() + text.slice(1);
+    }
+
+    function fieldError(form, field) {
+        var value = (field.value || '').trim();
+        var label = fieldLabel(form, field);
+        var required = field.required || field.getAttribute('data-required') === '1';
+
+        if (field.type === 'radio') {
+            var group = form.querySelectorAll('input[type="radio"][name="' + field.name + '"]');
+            var anyRequired = Array.prototype.some.call(group, function (r) { return r.required; });
+            var checked = Array.prototype.some.call(group, function (r) { return r.checked; });
+            return anyRequired && !checked ? 'Vui lòng chọn ' + label + '.' : null;
+        }
+        if (field.type === 'checkbox') {
+            return field.required && !field.checked ? 'Vui lòng đánh dấu ' + label + '.' : null;
+        }
+        if (field.type === 'file') {
+            return required && !field.files.length ? 'Vui lòng chọn ' + label + '.' : null;
+        }
+        if (value === '') {
+            if (!required) {
+                return null;
+            }
+            return field.tagName === 'SELECT' ? 'Vui lòng chọn ' + label + '.' : 'Vui lòng nhập ' + label + '.';
+        }
+        var min = parseInt(field.getAttribute('minlength'), 10);
+        if (min && value.length < min) {
+            return 'Vui lòng nhập ' + label + ' ít nhất ' + min + ' ký tự.';
+        }
+        var max = parseInt(field.getAttribute('maxlength'), 10);
+        if (max && value.length > max) {
+            return 'Vui lòng nhập ' + label + ' tối đa ' + max + ' ký tự.';
+        }
+        if (field.type === 'email' && !EMAIL_RE.test(value)) {
+            return 'Email chưa đúng định dạng (ví dụ ten@gmail.com).';
+        }
+        if (field.getAttribute('data-validate') === 'email-or-phone') {
+            var ok = value.indexOf('@') !== -1 ? EMAIL_RE.test(value) : PHONE_RE.test(value.replace(/[\s.\-()]/g, ''));
+            if (!ok) {
+                return 'Vui lòng nhập email hoặc số điện thoại hợp lệ (ví dụ 0901 234 567).';
+            }
+        }
+        if (field.type === 'number' && field.validity) {
+            if (field.validity.badInput || isNaN(Number(value))) {
+                return 'Vui lòng nhập số cho ' + label + '.';
+            }
+            if (field.validity.rangeUnderflow) {
+                return label.charAt(0).toUpperCase() + label.slice(1) + ' không được nhỏ hơn ' + field.min + '.';
+            }
+            if (field.validity.rangeOverflow) {
+                return label.charAt(0).toUpperCase() + label.slice(1) + ' không được lớn hơn ' + field.max + '.';
+            }
+            if (field.validity.stepMismatch) {
+                return 'Vui lòng nhập số nguyên cho ' + label + '.';
+            }
+        }
+        if (field.validity && field.validity.patternMismatch) {
+            return field.getAttribute('data-pattern-message') || ('Giá trị của ' + label + ' chưa đúng định dạng.');
+        }
+        return null;
+    }
+
+    function shouldValidate(form, submitter) {
+        if ((form.getAttribute('method') || 'get').toLowerCase() === 'get' || form.hasAttribute('data-no-validate')) {
+            return false;
+        }
+        return !(submitter && submitter.hasAttribute('formnovalidate'));
+    }
+
+    function clientErrors(form) {
+        var errors = {};
+        Array.prototype.forEach.call(form.elements, function (field) {
+            if (!field.name || field.disabled || errors[field.name] || /^(submit|button|reset)$/.test(field.type)) {
+                return;
+            }
+            if (field.type === 'hidden' && field.getAttribute('data-required') !== '1') {
+                return;
+            }
+            // Trường nằm trong vùng đang ẩn (ví dụ tùy chọn chưa bật) không kiểm tra.
+            if (field.type !== 'hidden' && field.type !== 'radio' && field.type !== 'checkbox' && field.offsetParent === null) {
+                return;
+            }
+            var message = fieldError(form, field);
+            if (message) {
+                errors[field.name] = [message];
+            }
+        });
+        return errors;
+    }
+
+    // Chạy ở pha capture: trước mọi xử lý gửi khác (AJAX, hộp xác nhận, màn chờ).
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!shouldValidate(form, event.submitter)) {
+            return;
+        }
+        var errors = clientErrors(form);
+        if (Object.keys(errors).length) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            clearErrors(form);
+            showErrors(form, errors, 'Vui lòng kiểm tra các mục được đánh dấu.');
+        }
+    }, true);
+
+    // Sửa xong một ô đang báo lỗi thì bỏ đánh dấu ngay.
+    function revalidate(event) {
+        var field = event.target;
+        if (event.type === 'trix-change') {
+            field = document.getElementById(field.getAttribute('input'));
+            if (!field) {
+                return;
+            }
+        }
+        var form = field.form;
+        if (!form || !field.name || field.getAttribute('aria-invalid') !== 'true') {
+            return;
+        }
+        if (!fieldError(form, field)) {
+            form.querySelectorAll('[name="' + field.name + '"]').forEach(function (el) {
+                el.removeAttribute('aria-invalid');
+                el.classList.remove('is-invalid');
+                var target = el.getAttribute('data-error-target') && document.getElementById(el.getAttribute('data-error-target'));
+                if (target) {
+                    target.classList.remove('is-invalid');
+                }
+            });
+            var group = form.querySelectorAll('[name="' + field.name + '"]');
+            var last = group[group.length - 1];
+            var feedback = document.getElementById((last.id || field.name) + '_ajax_error');
+            if (feedback) {
+                feedback.remove();
+            }
+        }
+    }
+    document.addEventListener('input', revalidate);
+    document.addEventListener('change', revalidate);
+    document.addEventListener('trix-change', revalidate);
+
+    // =====================================================================
     // Bắt sự kiện submit
     // =====================================================================
     document.addEventListener('submit', function (event) {
@@ -869,33 +1035,14 @@
         if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) {
             return;
         }
-        if (hasDirtyForm()) {
-            return; // trình duyệt sẽ hỏi lại
-        }
         var reloadsList = link.closest('.pagination, .chip-row') !== null && showSkeletons();
         startPageLoading(reloadsList ? 'Đang tải dữ liệu…' : null, !reloadsList);
     });
 
     // =====================================================================
-    // Form chưa lưu, ô đơn vị "Khác"
+    // Ô đơn vị "Khác"
+    // (Không cảnh báo khi rời trang/đóng modal có form chưa lưu — đã bỏ theo yêu cầu 14/10/2026.)
     // =====================================================================
-    function markDirty(event) {
-        var form = event.target.form || (event.target.closest && event.target.closest('form'));
-        if (form && form.hasAttribute('data-warn-unsaved')) {
-            form.setAttribute('data-dirty', '1');
-        }
-    }
-    document.addEventListener('input', markDirty);
-    document.addEventListener('change', markDirty);
-    document.addEventListener('trix-change', markDirty);
-
-    window.addEventListener('beforeunload', function (event) {
-        if (hasDirtyForm()) {
-            event.preventDefault();
-            event.returnValue = '';
-        }
-    });
-
     function syncUnitSelect(select) {
         var other = document.getElementById(select.getAttribute('data-unit-select'));
         if (!other) {
@@ -980,6 +1127,9 @@
                     editor.setAttribute('aria-describedby', area.getAttribute('aria-describedby'));
                 }
                 hidden.setAttribute('data-error-target', editor.id);
+                if (area.required) {
+                    hidden.setAttribute('data-required', '1');
+                }
                 area.replaceWith(editor);
                 editor.insertAdjacentElement('afterend', hidden);
                 if (label) {
@@ -1047,7 +1197,6 @@
                 input.bmbFiles.splice(index, 1);
                 setFiles(input, input.bmbFiles);
                 renderNewGallery(input);
-                markDirty({ target: input });
                 announce('Đã bỏ ảnh khỏi danh sách tải lên.');
                 input.focus();
             }));
@@ -1076,7 +1225,6 @@
             input.bmbFiles = [];
             input.value = '';
             renderNewCover(input, box);
-            markDirty({ target: input });
             announce('Đã bỏ ảnh đại diện vừa chọn.');
             input.focus();
         }));
@@ -1312,7 +1460,95 @@
         });
     }
 
+    // --- Form kênh thông báo: chỉ hiện (và chỉ gửi) thông số của loại kênh đang chọn ---
+    function syncChannelForm(root) {
+        root.querySelectorAll('[data-channel-form]').forEach(function (box) {
+            var radio = box.querySelector('[data-channel-driver]:checked');
+            var groups = box.querySelectorAll('[data-channel-fields]');
+            var current = radio ? radio.value : (groups.length === 1 ? groups[0].getAttribute('data-channel-fields') : null);
+            groups.forEach(function (group) {
+                var on = group.getAttribute('data-channel-fields') === current;
+                group.hidden = !on;
+                group.querySelectorAll('input, select, textarea').forEach(function (input) { input.disabled = !on; });
+            });
+        });
+    }
+    document.addEventListener('change', function (event) {
+        if (event.target.matches && event.target.matches('[data-channel-driver]')) {
+            syncChannelForm(event.target.closest('[data-channel-form]').parentNode);
+        }
+    });
+
+    // --- Chọn ngày/giờ: flatpickr (MIT) thay ô type="date"/"datetime-local" mặc định ---
+    // Ô hiển thị dd/mm/yyyy (kèm giờ cho hạn công việc), giá trị gửi lên máy chủ giữ nguyên Y-m-d / Y-m-dTH:i.
+    // Dùng cả trên điện thoại (disableMobile) để giao diện thống nhất, ô bấm lớn. Không JS / không tải được
+    // thư viện: vẫn là ô ngày của trình duyệt.
+    function initDatePickers(root) {
+        var inputs = root.querySelectorAll('input[type="date"]:not([data-fp]), input[type="datetime-local"]:not([data-fp])');
+        if (!inputs.length) {
+            return;
+        }
+        Promise.all([
+            loadAsset('vendor/flatpickr/flatpickr.min.css'),
+            loadAsset('vendor/flatpickr/flatpickr.min.js')
+        ]).then(function () {
+            return loadAsset('vendor/flatpickr/vn.js');
+        }).then(function () {
+            inputs.forEach(function (input) {
+                if (input.hasAttribute('data-fp') || !input.isConnected) {
+                    return;
+                }
+                input.setAttribute('data-fp', '1');
+                var withTime = input.type === 'datetime-local';
+                if (input.required) {
+                    input.setAttribute('data-required', '1'); // ô gốc bị ẩn: bộ kiểm tra trước khi gửi vẫn biết là bắt buộc
+                }
+                var picker = window.flatpickr(input, {
+                    locale: Object.assign({}, window.flatpickr.l10ns.vn, { firstDayOfWeek: 1 }),
+                    dateFormat: withTime ? 'Y-m-d\\TH:i' : 'Y-m-d',
+                    altInput: true,
+                    altFormat: withTime ? 'd/m/Y H:i' : 'd/m/Y',
+                    allowInput: true,
+                    disableMobile: true,
+                    enableTime: withTime,
+                    time_24hr: true,
+                    minuteIncrement: 5,
+                    monthSelectorType: 'static',
+                    onChange: function () {
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+                var display = picker.altInput;
+                if (!display) {
+                    return;
+                }
+                // Nhãn, mô tả, lỗi trỏ sang ô hiển thị.
+                display.id = (input.id || input.name) + '_display';
+                display.setAttribute('inputmode', 'numeric');
+                display.setAttribute('autocomplete', 'off');
+                display.placeholder = withTime ? 'dd/mm/yyyy hh:mm' : 'dd/mm/yyyy';
+                ['aria-describedby', 'aria-invalid'].forEach(function (attr) {
+                    if (input.getAttribute(attr)) {
+                        display.setAttribute(attr, input.getAttribute(attr));
+                    }
+                });
+                if (input.classList.contains('is-invalid')) {
+                    display.classList.add('is-invalid');
+                }
+                var label = input.id && document.querySelector('label[for="' + input.id + '"]');
+                if (label) {
+                    label.htmlFor = display.id;
+                }
+                input.setAttribute('data-error-target', display.id);
+            });
+        }).catch(function () {
+            // Không tải được thư viện: giữ ô ngày mặc định của trình duyệt.
+        });
+    }
+
     function initPostForms(root) {
+        syncChannelForm(root);
+        initDatePickers(root);
         initRichEditors(root);
         initTagInputs(root);
         initExistingImageRemovers(root);
@@ -1365,8 +1601,179 @@
         });
     }
 
+    // --- Ảnh tải lười: chỉ tải khi ảnh đi vào khung nhìn (x-post-img) ---
+    // Ảnh ưu tiên (đầu trang) đã có src thật. Ảnh khác giữ URL ở data-src/data-srcset; khi ảnh (gần như) hiện
+    // trong khung nhìn — kể cả khi cuộn ngang album — mới gán src để trình duyệt tải. Ảnh nằm ngoài khung
+    // nhìn không bao giờ được tải. Vùng đệm 50px để ảnh kịp hiện khi vừa cuộn tới.
+    var lazyObserver = 'IntersectionObserver' in window
+        ? new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    lazyObserver.unobserve(entry.target);
+                    loadLazyImage(entry.target);
+                }
+            });
+        }, { rootMargin: '50px' })
+        : null;
+
+    /** Gán src thật cho một ảnh chờ; hiện dần khi tải xong. */
+    function loadLazyImage(img) {
+        img.addEventListener('load', function () { img.classList.add('is-loaded'); }, { once: true });
+        img.addEventListener('error', function () { img.classList.add('is-loaded', 'is-broken'); }, { once: true });
+        if (img.dataset.srcset) {
+            img.srcset = img.dataset.srcset;
+        }
+        img.src = img.dataset.src;
+        img.removeAttribute('data-lazy');
+    }
+
+    // Ảnh hỏng/mất file (kể cả ảnh tải ngay): ẩn đi để thấy nền thay thế thay vì biểu tượng ảnh vỡ.
+    document.addEventListener('error', function (event) {
+        var img = event.target;
+        if (img && img.tagName === 'IMG') {
+            img.classList.add('is-broken');
+        }
+    }, true);
+    // Ảnh đã lỗi trước khi file JS này chạy (ảnh đầu trang tải ngay).
+    document.querySelectorAll('img[src]').forEach(function (img) {
+        if (img.complete && img.naturalWidth === 0) {
+            img.classList.add('is-broken');
+        }
+    });
+
+    function initLazyImages(root) {
+        root.querySelectorAll('img[data-lazy]').forEach(function (img) {
+            if (lazyObserver) {
+                lazyObserver.observe(img);
+            } else {
+                loadLazyImage(img); // trình duyệt quá cũ: tải luôn
+            }
+        });
+    }
+
+    // --- Slider đợt nấu đang diễn ra (trang chủ) ---
+    // Dải trượt ngang dùng scroll-snap (không JS vẫn vuốt được). JS thêm: nút trước/sau, chấm vị trí,
+    // tự chuyển sau 6 giây; dừng khi rê chuột, focus bàn phím, chạm, tab ẩn hoặc người dùng chọn giảm chuyển động.
+    // Ảnh của slide sắp hiện được tải trước để không thấy khung trống khi chuyển.
+    function initSliders() {
+        document.querySelectorAll('[data-slider]').forEach(function (slider) {
+            var track = slider.querySelector('[data-slider-track]');
+            var slides = slider.querySelectorAll('[data-slide]');
+            var dots = slider.querySelectorAll('[data-slider-dot]');
+            var prev = slider.querySelector('[data-slider-prev]');
+            var next = slider.querySelector('[data-slider-next]');
+            if (!track || slides.length < 2) {
+                return;
+            }
+            var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var paused = false;
+            var timer = null;
+            var scrollTimer = null;
+
+            function current() {
+                return Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+            }
+            function preload(i) {
+                var slide = slides[(i + slides.length) % slides.length];
+                slide.querySelectorAll('img[data-lazy]').forEach(function (img) {
+                    if (lazyObserver) {
+                        lazyObserver.unobserve(img);
+                    }
+                    loadLazyImage(img);
+                });
+            }
+            function goTo(i) {
+                i = (i + slides.length) % slides.length;
+                preload(i);
+                track.scrollTo({ left: i * track.clientWidth, behavior: reduced ? 'auto' : 'smooth' });
+            }
+            function update() {
+                var i = current();
+                dots.forEach(function (dot, k) {
+                    if (k === i) {
+                        dot.setAttribute('aria-current', 'true');
+                    } else {
+                        dot.removeAttribute('aria-current');
+                    }
+                });
+                preload(i + 1);
+            }
+            function schedule() {
+                clearInterval(timer);
+                if (!reduced) {
+                    timer = setInterval(function () {
+                        if (!paused && !document.hidden) {
+                            goTo(current() + 1);
+                        }
+                    }, 6000);
+                }
+            }
+
+            if (prev) {
+                prev.addEventListener('click', function () { goTo(current() - 1); schedule(); });
+            }
+            if (next) {
+                next.addEventListener('click', function () { goTo(current() + 1); schedule(); });
+            }
+            dots.forEach(function (dot) {
+                dot.addEventListener('click', function () { goTo(parseInt(dot.dataset.sliderDot, 10)); schedule(); });
+            });
+            track.addEventListener('scroll', function () {
+                clearTimeout(scrollTimer);
+                scrollTimer = setTimeout(update, 80);
+            }, { passive: true });
+            slider.addEventListener('mouseenter', function () { paused = true; });
+            slider.addEventListener('mouseleave', function () { paused = false; });
+            slider.addEventListener('focusin', function () { paused = true; });
+            slider.addEventListener('focusout', function () { paused = false; });
+            track.addEventListener('touchstart', function () { paused = true; }, { passive: true });
+            slider.addEventListener('keydown', function (event) {
+                if (event.key === 'ArrowRight') {
+                    goTo(current() + 1);
+                } else if (event.key === 'ArrowLeft') {
+                    goTo(current() - 1);
+                }
+            });
+            update();
+            schedule();
+        });
+    }
+
+    // --- Ô tìm kiếm có data-submit-on-clear: bấm × (xóa) thì gửi form luôn để về danh sách đầy đủ ---
+    // Bấm × phát sự kiện "search" (Chrome/Edge/Safari) và "input" không có inputType (không phải gõ phím).
+    // Chỉ gửi khi trang đang có từ khóa (giá trị ban đầu khác rỗng); cờ riêng chống gửi hai lần.
+    function submitOnClear(event) {
+        var input = event.target;
+        if (!input.matches || !input.matches('input[data-submit-on-clear]') || input.value !== ''
+            || input.defaultValue === '' || input.clearSubmitted || !input.form) {
+            return;
+        }
+        if (event.type === 'input' && event.inputType) {
+            return; // người dùng tự xóa bằng phím: chờ họ gõ tiếp / bấm Enter
+        }
+        input.clearSubmitted = true;
+        if (input.form.requestSubmit) {
+            input.form.requestSubmit();
+        } else {
+            input.form.submit();
+        }
+    }
+    document.addEventListener('search', submitOnClear, true);
+    document.addEventListener('input', submitOnClear, true);
+
+    // --- Form liên hệ: đổi gợi ý nội dung theo chủ đề đang chọn ---
+    document.addEventListener('change', function (event) {
+        var radio = event.target.closest && event.target.closest('[data-topic-hint]');
+        var help = document.getElementById('f_message_help');
+        if (radio && help) {
+            help.textContent = radio.dataset.topicHint;
+        }
+    });
+
     initMoney(document);
     initUnitSelects(document);
     initPostForms(document);
+    initLazyImages(document);
+    initSliders();
     initGalleries();
 })();

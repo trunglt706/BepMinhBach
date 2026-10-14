@@ -15,6 +15,11 @@
         .checklist td, .checklist th { padding: .4rem .5rem; vertical-align: top; border-color: #555 !important; }
         .checklist th { background: #f2f2f2 !important; }
         .write-line { border-bottom: 1px solid #555; min-width: 90px; display: inline-block; }
+        /* Xem trên điện thoại: bảng cuộn ngang trong khung thay vì làm cả trang tràn ra; bản in A4 không bị ảnh hưởng. */
+        @media screen and (max-width: 575.98px) {
+            .checklist-scroll { overflow-x: auto; margin-bottom: 1rem; }
+            .checklist-scroll .checklist { min-width: 540px; margin-bottom: 0; }
+        }
     </style>
 </head>
 <body>
@@ -29,7 +34,7 @@
 
     <h1 class="h4 mb-1">Checklist: {{ $batch->name }}</h1>
     <p class="mb-1">
-        <strong>Thời gian:</strong> {{ Format::dateTime($batch->starts_at) }}
+        <strong>Thời gian:</strong> {{ Format::date($batch->starts_on) }}
         @if($batch->location_text) · <strong>Địa điểm:</strong> {{ $batch->location_text }} @endif
     </p>
     <p class="mb-1"><strong>Điều phối:</strong> {{ $batch->coordinator?->name }} · <strong>Suất dự kiến:</strong> {{ Format::number($batch->expected_servings) }}
@@ -40,6 +45,7 @@
     @if($batch->tasks->isEmpty())
         <p>Chưa có công việc.</p>
     @else
+        <div class="checklist-scroll" tabindex="0" role="region" aria-label="Bảng checklist (vuốt ngang để xem hết)">
         <table class="table table-bordered checklist">
             <thead><tr><th style="width:36px">Xong</th><th>Công việc</th><th style="width:22%">Người phụ trách</th><th style="width:18%">Hạn</th></tr></thead>
             <tbody>
@@ -56,12 +62,14 @@
             @endforeach
             </tbody>
         </table>
+        </div>
     @endif
 
     <h2 class="h5 mt-4">Nguyên liệu ({{ $batch->ingredients->count() }})</h2>
     @if($batch->ingredients->isEmpty())
         <p>Chưa có nguyên liệu.</p>
     @else
+        <div class="checklist-scroll" tabindex="0" role="region" aria-label="Bảng checklist (vuốt ngang để xem hết)">
         <table class="table table-bordered checklist">
             <thead><tr><th style="width:36px">Đủ</th><th>Nguyên liệu</th><th style="width:20%">Dự kiến</th><th style="width:22%">Thực tế dùng</th><th style="width:20%">Ghi chú</th></tr></thead>
             <tbody>
@@ -76,6 +84,7 @@
             @endforeach
             </tbody>
         </table>
+        </div>
     @endif
 
     <h2 class="h5 mt-4">Kết quả (ghi tay)</h2>

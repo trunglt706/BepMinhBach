@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -46,7 +47,12 @@ class TaskController extends Controller
     {
         $task = new Task($request->validated());
         $task->created_by = $request->user()->id;
-        $batch->tasks()->save($task);
+        DB::transaction(function () use ($batch, $task, $request) {
+            $batch->tasks()->save($task);
+            ActivityLog::record($batch, $request->user(), ActivityAction::TaskCreated,
+                'Thêm việc “'.$task->title.'”'.($task->assignee_id ? ' (có người phụ trách).' : '.'),
+                'Thêm việc “'.$task->title.'”'.$this->assigneeText($task).$this->dueText($task).'.');
+        });
 
         if ($request->boolean('add_another')) {
             return $this->done($request, redirect()->route('batches.tasks.create', $batch), 'Đã thêm việc “'.$task->title.'”. Bạn có thể thêm việc tiếp theo.', ['keepOpen' => true]);
@@ -79,7 +85,19 @@ class TaskController extends Controller
      */
     public function update(TaskRequest $request, Task $task): JsonResponse|RedirectResponse
     {
-        $task->update($request->validated());
+        DB::transaction(function () use ($task, $request) {
+            $task->fill($request->validated());
+            $reassigned = $task->isDirty('assignee_id');
+            $task->save();
+
+            if ($reassigned) {
+                ActivityLog::record($task->batch, $request->user(), ActivityAction::TaskAssigned,
+                    $task->assignee_id ? 'Đổi người phụ trách việc “'.$task->title.'”.' : 'Bỏ người phụ trách việc “'.$task->title.'”.',
+                    $task->assignee_id
+                        ? 'Giao việc “'.$task->title.'”'.$this->assigneeText($task).$this->dueText($task).'.'
+                        : 'Việc “'.$task->title.'” chưa có người phụ trách.');
+            }
+        });
 
         return $this->done($request, redirect()->route('batches.show', $task->cooking_batch_id)->withFragment('cong-viec'), 'Đã lưu việc “'.$task->title.'”.');
     }
@@ -138,5 +156,27 @@ class TaskController extends Controller
             ->when($currentId, fn ($q) => $q->orWhere('id', $currentId))
             ->orderBy('name')
             ->get(['id', 'name', 'role', 'is_active']);
+    }
+
+    /**
+     * " cho <tên>" nếu việc có người phụ trách (chỉ dùng cho nội dung thông báo).
+     *
+     * @param  Task  $task  công việc
+     */
+    private function assigneeText(Task $task): string
+    {
+        $name = $task->assignee_id ? $task->assignee()->value('name') : null;
+
+        return $name ? ' cho '.$name : '';
+    }
+
+    /**
+     * ", hạn dd/mm HH:ii" nếu việc có hạn.
+     *
+     * @param  Task  $task  công việc
+     */
+    private function dueText(Task $task): string
+    {
+        return $task->due_at ? ', hạn '.$task->due_at->format('H:i d/m') : '';
     }
 }

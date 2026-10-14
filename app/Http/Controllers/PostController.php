@@ -44,7 +44,7 @@ class PostController extends Controller
         $status = $request->status();
 
         $posts = Post::query()
-            ->with(['batch:id,name,starts_at', 'tags', 'author:id,name', 'cover'])
+            ->with(['batch:id,name,starts_on', 'tags', 'author:id,name', 'cover'])
             ->when($q !== '', fn ($query) => $query->where('title', 'like', '%'.addcslashes($q, '%_\\').'%'))
             ->when($status, fn ($query) => $query->where('status', $status->value))
             ->orderByRaw('published_at is null desc')
@@ -97,7 +97,8 @@ class PostController extends Controller
             $post->tags()->sync(Tag::findOrCreateMany($data['tag_list'])->pluck('id'));
             $this->applyImages($post, $uploads, $request);
             ActivityLog::record($post->batch, $request->user(), ActivityAction::PostCreated,
-                'Tạo bài viết #'.$post->id.' ('.$post->status->label().').');
+                'Tạo bài viết #'.$post->id.' ('.$post->status->label().').',
+                $post->status === PostStatus::Published ? 'Đăng bài viết “'.$post->title.'”: '.route('blog.show', $post) : null);
         });
 
         return $this->done($request, redirect()->route('posts.index'), $post->status === PostStatus::Published
@@ -167,7 +168,8 @@ class PostController extends Controller
             $published = $post->status === PostStatus::Published;
             ActivityLog::record($post->batch, $request->user(),
                 $published ? ActivityAction::PostPublished : ActivityAction::PostUnpublished,
-                ($published ? 'Đăng' : 'Gỡ').' bài viết #'.$post->id.'.');
+                ($published ? 'Đăng' : 'Gỡ').' bài viết #'.$post->id.'.',
+                $published ? 'Đăng bài viết “'.$post->title.'”: '.route('blog.show', $post) : null);
         });
 
         return $this->done($request, redirect()->route('posts.index'), $post->status === PostStatus::Published
@@ -291,11 +293,11 @@ class PostController extends Controller
      */
     private function batchOptions(?int $currentId = null): array
     {
-        $batches = CookingBatch::query()->orderByDesc('starts_at')->limit(200)->get(['id', 'name', 'starts_at']);
+        $batches = CookingBatch::query()->orderByDesc('starts_on')->limit(200)->get(['id', 'name', 'starts_on']);
         if ($currentId && ! $batches->contains('id', $currentId)) {
-            $batches->push(...CookingBatch::whereKey($currentId)->get(['id', 'name', 'starts_at']));
+            $batches->push(...CookingBatch::whereKey($currentId)->get(['id', 'name', 'starts_on']));
         }
 
-        return $batches->mapWithKeys(fn ($b) => [$b->id => $b->name.' · '.$b->starts_at->format('d/m/Y')])->all();
+        return $batches->mapWithKeys(fn ($b) => [$b->id => $b->name.' · '.$b->starts_on->format('d/m/Y')])->all();
     }
 }

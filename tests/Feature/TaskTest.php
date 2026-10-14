@@ -20,7 +20,7 @@ class TaskTest extends TestCase
         $batch = CookingBatch::factory()->create();
         $volunteer = User::factory()->volunteer()->create();
 
-        $this->actingAs($batch->coordinator)->post("/batches/{$batch->id}/tasks", [
+        $this->actingAs($batch->coordinator)->post("/admin/batches/{$batch->id}/tasks", [
             'title' => 'Sơ chế rau',
             'assignee_id' => $volunteer->id,
             'due_at' => now()->addDay()->format('Y-m-d\TH:i'),
@@ -37,9 +37,9 @@ class TaskTest extends TestCase
         $batch = CookingBatch::factory()->create();
         $locked = User::factory()->locked()->create();
 
-        $this->actingAs($batch->coordinator)->post("/batches/{$batch->id}/tasks", ['title' => 'A', 'assignee_id' => $locked->id])
+        $this->actingAs($batch->coordinator)->post("/admin/batches/{$batch->id}/tasks", ['title' => 'A', 'assignee_id' => $locked->id])
             ->assertSessionHasErrors('assignee_id');
-        $this->actingAs($batch->coordinator)->post("/batches/{$batch->id}/tasks", ['title' => '', 'assignee_id' => 99999, 'due_at' => 'abc'])
+        $this->actingAs($batch->coordinator)->post("/admin/batches/{$batch->id}/tasks", ['title' => '', 'assignee_id' => 99999, 'due_at' => 'abc'])
             ->assertSessionHasErrors(['title', 'assignee_id', 'due_at']);
     }
 
@@ -49,7 +49,7 @@ class TaskTest extends TestCase
         $task = Task::factory()->for($batch, 'batch')->create();
         $newAssignee = User::factory()->volunteer()->create();
 
-        $this->actingAs($batch->coordinator)->put("/tasks/{$task->id}", ['title' => $task->title, 'assignee_id' => $newAssignee->id])
+        $this->actingAs($batch->coordinator)->put("/admin/tasks/{$task->id}", ['title' => $task->title, 'assignee_id' => $newAssignee->id])
             ->assertRedirect();
         $this->assertSame($newAssignee->id, $task->fresh()->assignee_id);
     }
@@ -61,11 +61,11 @@ class TaskTest extends TestCase
         $volunteer = User::factory()->volunteer()->create();
         $task = Task::factory()->for($batch, 'batch')->create(['assignee_id' => $volunteer->id]);
 
-        $this->actingAs($volunteer)->post("/tasks/{$task->id}/status", ['status' => 'in_progress'])->assertRedirect();
+        $this->actingAs($volunteer)->post("/admin/tasks/{$task->id}/status", ['status' => 'in_progress'])->assertRedirect();
         $this->assertSame(TaskStatus::InProgress, $task->fresh()->status);
 
         $this->travelTo(now()->setTime(10, 15));
-        $this->actingAs($volunteer)->post("/tasks/{$task->id}/status", ['status' => 'done'])->assertSessionHas('success');
+        $this->actingAs($volunteer)->post("/admin/tasks/{$task->id}/status", ['status' => 'done'])->assertSessionHas('success');
 
         $task->refresh();
         $this->assertSame(TaskStatus::Done, $task->status);
@@ -74,7 +74,7 @@ class TaskTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['action' => 'task.status', 'user_id' => $volunteer->id]);
 
         // Mở lại việc thì xóa thông tin hoàn thành
-        $this->actingAs($volunteer)->post("/tasks/{$task->id}/status", ['status' => 'todo']);
+        $this->actingAs($volunteer)->post("/admin/tasks/{$task->id}/status", ['status' => 'todo']);
         $this->assertNull($task->fresh()->completed_at);
     }
 
@@ -85,16 +85,16 @@ class TaskTest extends TestCase
         $volunteer = User::factory()->volunteer()->create();
         $task = Task::factory()->for($batch, 'batch')->create(['assignee_id' => $volunteer->id]);
 
-        $this->actingAs($volunteer)->post("/tasks/{$task->id}/status", ['status' => 'blocked', 'blocked_note' => ''])
+        $this->actingAs($volunteer)->post("/admin/tasks/{$task->id}/status", ['status' => 'blocked', 'blocked_note' => ''])
             ->assertSessionHasErrors(['blocked_note' => 'Vui lòng ghi ngắn gọn lý do đang bị vướng.']);
         $this->assertSame(TaskStatus::Todo, $task->fresh()->status);
 
-        $this->actingAs($volunteer)->post("/tasks/{$task->id}/status", ['status' => 'blocked', 'blocked_note' => 'Hết gas']);
+        $this->actingAs($volunteer)->post("/admin/tasks/{$task->id}/status", ['status' => 'blocked', 'blocked_note' => 'Hết gas']);
         $task->refresh();
         $this->assertSame(TaskStatus::Blocked, $task->status);
         $this->assertSame('Hết gas', $task->blocked_note);
 
-        $this->actingAs($batch->coordinator)->get('/')->assertSee('Việc bị vướng')->assertSee('Hết gas');
+        $this->actingAs($batch->coordinator)->get('/admin')->assertSee('Việc bị vướng')->assertSee('Hết gas');
     }
 
     public function test_invalid_status_is_rejected(): void
@@ -102,7 +102,7 @@ class TaskTest extends TestCase
         $batch = CookingBatch::factory()->create();
         $task = Task::factory()->for($batch, 'batch')->create();
 
-        $this->actingAs($batch->coordinator)->post("/tasks/{$task->id}/status", ['status' => 'xong-roi'])
+        $this->actingAs($batch->coordinator)->post("/admin/tasks/{$task->id}/status", ['status' => 'xong-roi'])
             ->assertSessionHasErrors('status');
     }
 
@@ -115,13 +115,13 @@ class TaskTest extends TestCase
         $task = Task::factory()->for($batch, 'batch')->create(['assignee_id' => $owner->id]);
         $unassigned = Task::factory()->for($batch, 'batch')->create(['assignee_id' => null]);
 
-        $this->actingAs($intruder)->post("/tasks/{$task->id}/status", ['status' => 'done'])->assertForbidden();
-        $this->actingAs($intruder)->post("/tasks/{$unassigned->id}/status", ['status' => 'done'])->assertForbidden();
-        $this->actingAs($intruder)->get("/tasks/{$task->id}/edit")->assertForbidden();
-        $this->actingAs($intruder)->put("/tasks/{$task->id}", ['title' => 'Đổi tên', 'assignee_id' => $intruder->id])->assertForbidden();
-        $this->actingAs($intruder)->delete("/tasks/{$task->id}")->assertForbidden();
+        $this->actingAs($intruder)->post("/admin/tasks/{$task->id}/status", ['status' => 'done'])->assertForbidden();
+        $this->actingAs($intruder)->post("/admin/tasks/{$unassigned->id}/status", ['status' => 'done'])->assertForbidden();
+        $this->actingAs($intruder)->get("/admin/tasks/{$task->id}/edit")->assertForbidden();
+        $this->actingAs($intruder)->put("/admin/tasks/{$task->id}", ['title' => 'Đổi tên', 'assignee_id' => $intruder->id])->assertForbidden();
+        $this->actingAs($intruder)->delete("/admin/tasks/{$task->id}")->assertForbidden();
         // Người được giao cũng không tự sửa/phân công lại
-        $this->actingAs($owner)->put("/tasks/{$task->id}", ['title' => 'Đổi tên'])->assertForbidden();
+        $this->actingAs($owner)->put("/admin/tasks/{$task->id}", ['title' => 'Đổi tên'])->assertForbidden();
 
         $task->refresh();
         $this->assertSame(TaskStatus::Todo, $task->status);
@@ -134,10 +134,10 @@ class TaskTest extends TestCase
         $task = Task::factory()->for($batch, 'batch')->create(['assignee_id' => User::factory()->volunteer()]);
         $coordinator = User::factory()->coordinator()->create();
 
-        $this->actingAs($coordinator)->post("/tasks/{$task->id}/status", ['status' => 'done'])->assertRedirect();
+        $this->actingAs($coordinator)->post("/admin/tasks/{$task->id}/status", ['status' => 'done'])->assertRedirect();
         $this->assertSame($coordinator->id, $task->fresh()->completed_by);
 
-        $this->actingAs($coordinator)->delete("/tasks/{$task->id}")->assertRedirect();
+        $this->actingAs($coordinator)->delete("/admin/tasks/{$task->id}")->assertRedirect();
         $this->assertModelMissing($task);
     }
 
@@ -151,7 +151,7 @@ class TaskTest extends TestCase
         $cancelled = CookingBatch::factory()->status(BatchStatus::Cancelled)->create();
         Task::factory()->for($cancelled, 'batch')->create(['assignee_id' => $volunteer->id, 'title' => 'Việc đợt đã hủy']);
 
-        $this->actingAs($volunteer)->get('/cong-viec-cua-toi')
+        $this->actingAs($volunteer)->get('/admin/my-tasks')
             ->assertOk()
             ->assertSeeInOrder(['Hôm nay, quá hạn', 'Việc quá hạn', '(quá hạn)', 'Sắp tới', 'Việc tuần sau'])
             ->assertSee('Đánh dấu hoàn thành')
@@ -162,7 +162,7 @@ class TaskTest extends TestCase
 
     public function test_my_tasks_empty_state(): void
     {
-        $this->actingAs(User::factory()->volunteer()->create())->get('/cong-viec-cua-toi')
+        $this->actingAs(User::factory()->volunteer()->create())->get('/admin/my-tasks')
             ->assertOk()->assertSee('Không có việc gấp hôm nay');
     }
 }

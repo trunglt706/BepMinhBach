@@ -1,7 +1,7 @@
 @php($target = $batch->status === App\Enums\BatchStatus::Completed ? App\Enums\BatchStatus::InProgress : App\Enums\BatchStatus::Draft)
 <x-form-shell title="Mở lại đợt nấu?" :subtitle="$batch->name"
               :action="route('batches.reopen.store', $batch)"
-              :back="route('batches.show', $batch)" back-label="Quay lại đợt nấu" cancel-label="Quay lại" :warn="false">
+              :back="route('batches.show', $batch)" back-label="Quay lại đợt nấu" cancel-label="Quay lại">
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
         <x-status-badge :status="$batch->status" />
         <i class="bi bi-arrow-right text-body-secondary" aria-label="chuyển sang"></i>

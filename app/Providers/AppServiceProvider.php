@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Enums\BatchStatus;
 use App\Enums\TaskStatus;
+use App\Models\ContactMessage;
 use App\Models\CookingBatch;
 use App\Models\Post;
 use App\Models\PostImage;
@@ -12,6 +14,7 @@ use App\Models\User;
 use App\Support\PublicPostCache;
 use Carbon\Carbon;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
@@ -39,20 +42,39 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFive();
         Carbon::setLocale(config('app.locale'));
 
+        // Chạy sau proxy/CDN: tin proxy đã khai báo để lấy đúng IP khách (giới hạn theo IP) và nhận biết HTTPS.
+        if ($proxies = config('bmb.trusted_proxies')) {
+            TrustProxies::at($proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));
+        }
+
         // Báo cáo nội bộ: người ghi nhận kết quả trở lên.
         Gate::define('viewReports', fn (User $user) => $user->isRecorder());
 
         $this->configureRateLimiting();
         $this->configurePublicCache();
 
-        // Số việc đang mở của người dùng — hiển thị trên menu "Công việc của tôi".
+        // Badge trên menu: việc của tôi hôm nay, đợt đang diễn ra, liên hệ chưa xử lý.
         View::composer('components.layouts.app', function ($view) {
             $user = auth()->user();
-            $view->with('navOpenTasks', $user
+            // Việc của tôi HÔM NAY: chưa xong, thuộc đợt chưa khóa, và có hạn trong hôm nay
+            // (hoặc không có hạn nhưng đợt diễn ra hôm nay).
+            $today = today();
+            $view->with('navTodayTasks', $user
                 ? Task::where('assignee_id', $user->id)
                     ->where('status', '!=', TaskStatus::Done->value)
                     ->whereHas('batch', fn ($q) => $q->active())
+                    ->where(fn ($q) => $q->whereBetween('due_at', [$today->copy()->startOfDay(), $today->copy()->endOfDay()])
+                        ->orWhere(fn ($q) => $q->whereNull('due_at')
+                            ->whereHas('batch', fn ($b) => $b->where('starts_on', $today->toDateString()))))
                     ->count()
+                : 0);
+            // Số đợt đang diễn ra (mọi người dùng nội bộ đều thấy).
+            $view->with('navLiveBatches', $user
+                ? CookingBatch::where('status', BatchStatus::InProgress->value)->count()
+                : 0);
+            // Số liên hệ chưa xử lý — chỉ đếm cho người được xem liên hệ.
+            $view->with('navNewContacts', $user && $user->can('viewAny', ContactMessage::class)
+                ? ContactMessage::unhandled()->count()
                 : 0);
         });
     }
@@ -85,6 +107,11 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('public', fn (Request $request) => Limit::perMinute(config('bmb.rate_limits.public'))
             ->by('public:'.$request->ip())
+            ->response($this->tooManyRequests(...)));
+
+        // Gửi liên hệ: tính cả lần gửi lỗi (chống dò/spam form). Giới hạn 1 liên hệ / ngày nằm ở ContactRequest.
+        RateLimiter::for('contact', fn (Request $request) => Limit::perMinutes(10, config('bmb.rate_limits.contact'))
+            ->by('contact:'.$request->ip())
             ->response($this->tooManyRequests(...)));
     }
 

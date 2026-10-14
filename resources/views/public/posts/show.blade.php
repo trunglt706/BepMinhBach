@@ -46,7 +46,7 @@
     <nav aria-label="Đường dẫn" class="mb-2">
         <ol class="breadcrumb small mb-0">
             <li class="breadcrumb-item"><a href="{{ route('blog.index') }}">Bài viết</a></li>
-            @if($batch)<li class="breadcrumb-item"><a href="{{ route('blog.index', ['dot' => $batch->id]) }}">{{ $batch->name }}</a></li>@endif
+            @if($batch)<li class="breadcrumb-item"><a href="{{ route('blog.batch', $batch) }}">{{ $batch->name }}</a></li>@endif
             <li class="breadcrumb-item active text-truncate" aria-current="page">{{ $post->title }}</li>
         </ol>
     </nav>
@@ -61,13 +61,6 @@
     <div class="row g-4">
         <article class="col-lg-8" aria-labelledby="post-title">
             <div class="card overflow-hidden">
-                @if($cover)
-                    {{-- Ảnh đầu bài: tải ngay (ưu tiên cao), trình duyệt chọn bản vừa màn hình qua srcset. --}}
-                    <img class="post-cover" src="{{ $cover->url(960) }}" srcset="{{ $cover->srcset() }}"
-                         sizes="(min-width: 1400px) 860px, (min-width: 992px) 66vw, 100vw"
-                         width="{{ $cover->largestWidth() }}" height="{{ $cover->heightFor($cover->largestWidth()) }}"
-                         alt="{{ $post->title }}" fetchpriority="high" decoding="async">
-                @endif
                 <div class="card-body p-4 p-md-5">
                     @if($post->tags->isNotEmpty())
                         <div class="d-flex flex-wrap gap-1 mb-3">
@@ -78,12 +71,20 @@
                     @endif
                     <h1 id="post-title" class="post-title">{{ $post->title }}</h1>
                     <div class="meta-inline mb-4">
+                        @if($post->author)
+                            <span class="post-author"><i class="bi bi-person" aria-hidden="true"></i> <span class="visually-hidden">Người viết:</span> {{ $post->author->name }}</span>
+                        @endif
                         @if($post->published_at)
                             <span><i class="bi bi-calendar3" aria-hidden="true"></i> <time datetime="{{ $post->published_at->toAtomString() }}">{{ Format::longDate($post->published_at) }}</time></span>
                         @endif
                         <span><i class="bi bi-clock" aria-hidden="true"></i> {{ $post->readingMinutes() }} phút đọc</span>
                         <span><i class="bi bi-eye" aria-hidden="true"></i> {{ Format::number($post->view_count, '0') }} lượt xem</span>
                     </div>
+                    @if(! $preview && auth()->user()?->can('update', $post))
+                        {{-- Người quản lý bài xem không làm tăng lượt xem (chống tăng ảo) — nói rõ để không tưởng là lỗi. --}}
+                        <p class="small text-body-secondary mt-n3 mb-4"><i class="bi bi-info-circle" aria-hidden="true"></i>
+                            Bạn đang đăng nhập với quyền quản lý bài viết nên lượt xem của bạn không được tính. Mỗi người xem khác được tính 1 lần trong {{ intdiv((int) config('bmb.post_view_window_minutes', 360), 60) }} giờ.</p>
+                    @endif
                     @if($post->excerpt)
                         <p class="post-lead">{{ $post->excerpt }}</p>
                     @endif
@@ -102,9 +103,9 @@
                                            data-pswp-width="{{ $image->largestWidth() }}" data-pswp-height="{{ $image->heightFor($image->largestWidth()) }}"
                                            data-pswp-srcset="{{ $image->srcset() }}"
                                            aria-label="Xem ảnh lớn: {{ $alt }}">
-                                            <img src="{{ $image->url(480) }}" srcset="{{ $image->srcset() }}"
-                                                 sizes="(min-width: 992px) 260px, (min-width: 576px) 33vw, 50vw"
-                                                 width="480" height="{{ $image->heightFor(480) }}" alt="{{ $alt }}" loading="lazy" decoding="async">
+                                            <x-post-img :image="$image" :alt="$alt"
+                                                        sizes="(min-width: 992px) 260px, (min-width: 576px) 33vw, 82vw" />
+                                            <span class="album-zoom" aria-hidden="true"><i class="bi bi-zoom-in"></i></span>
                                         </a>
                                         @if($image->caption)<figcaption>{{ $image->caption }}</figcaption>@endif
                                     </figure>
@@ -128,11 +129,11 @@
                     </div>
                     <div class="card-body">
                         <div class="d-flex gap-3 mb-3">
-                            <x-date-tile :date="$batch->starts_at" />
+                            <x-date-tile :date="$batch->starts_on" />
                             <div class="min-w-0">
                                 <x-status-badge :status="$batch->status" class="mb-1" />
-                                <div class="fw-bold">{{ $batch->name }}</div>
-                                <div class="small text-body-secondary"><i class="bi bi-clock" aria-hidden="true"></i> {{ Format::dateTime($batch->starts_at) }}</div>
+                                <a href="{{ route('blog.batch', $batch) }}" class="fw-bold d-block">{{ $batch->name }}</a>
+                                <div class="small text-body-secondary"><i class="bi bi-calendar3" aria-hidden="true"></i> {{ Format::date($batch->starts_on) }}</div>
                             </div>
                         </div>
                         <x-chart.bars caption="Số suất của đợt nấu" empty="Chưa ghi nhận" :rows="[
@@ -144,7 +145,7 @@
                     </div>
                     @if($batchPostCount > 1)
                         <div class="panel-footer">
-                            <a href="{{ route('blog.index', ['dot' => $batch->id]) }}" class="fw-semibold">Xem {{ $batchPostCount }} bài viết về đợt này <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                            <a href="{{ route('blog.batch', $batch) }}" class="fw-semibold">Xem {{ $batchPostCount }} bài viết về đợt này <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                         </div>
                     @endif
                 </section>
@@ -157,7 +158,9 @@
                         @foreach($related as $r)
                             <li class="list-group-item py-3 d-flex gap-3 align-items-center">
                                 @if($r->cover)
-                                    <img src="{{ $r->cover->url(480) }}" alt="" width="72" height="{{ $r->cover->heightFor(72) }}" class="related-thumb" loading="lazy" decoding="async">
+                                    <span class="related-thumb-wrap"><x-post-img :image="$r->cover" :width="72" class="related-thumb" sizes="72px" /></span>
+                                @else
+                                    <span class="related-thumb is-empty" aria-hidden="true"><i class="bi bi-egg-fried"></i></span>
                                 @endif
                                 <div class="min-w-0">
                                     <a href="{{ route('blog.show', $r) }}" class="fw-semibold d-block">{{ $r->title }}</a>

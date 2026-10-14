@@ -77,7 +77,7 @@
                         <tr>
                             <td>
                                 <a href="{{ route('reports.show', $batch) }}" class="fw-semibold">{{ $batch->name }}</a>
-                                <div class="small text-body-secondary">{{ Format::dateTime($batch->starts_at) }}</div>
+                                <div class="small text-body-secondary">{{ Format::date($batch->starts_on) }}</div>
                             </td>
                             <td><x-status-badge :status="$batch->status" /></td>
                             <td class="text-end tabular">{{ Format::number($batch->expected_servings) }}</td>
@@ -95,7 +95,7 @@
             <div class="d-md-none d-print-none" data-skeleton="list" data-skeleton-leading="tile">
                 @foreach($batches as $batch)
                     <a href="{{ route('reports.show', $batch) }}" class="batch-row align-items-start">
-                        <x-date-tile :date="$batch->starts_at" />
+                        <x-date-tile :date="$batch->starts_on" />
                         <div class="flex-grow-1 min-w-0">
                             <div class="fw-bold">{{ $batch->name }}</div>
                             <x-status-badge :status="$batch->status" class="my-1" />

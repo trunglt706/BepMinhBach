@@ -52,26 +52,26 @@ class PublicPostCacheTest extends TestCase
         $post = Post::factory()->published()->create(['title' => 'Tiêu đề cũ', 'cooking_batch_id' => $batch->id]);
 
         $this->get("/bai-viet/{$post->slug}")->assertSee('Tiêu đề cũ');
-        $this->get('/bai-viet')->assertSee('Tiêu đề cũ');
+        $this->get('/')->assertSee('Tiêu đề cũ');
         $version = PublicPostCache::version();
 
         // Sửa bài qua giao diện quản lý → trang công khai thấy ngay
-        $this->actingAs($coordinator)->putJson("/posts/{$post->id}", [
+        $this->actingAs($coordinator)->putJson("/admin/posts/{$post->id}", [
             'title' => 'Tiêu đề mới', 'body' => 'Nội dung', 'tags' => 'mới', 'cooking_batch_id' => $batch->id,
         ])->assertOk();
         $this->assertGreaterThan($version, PublicPostCache::version());
         auth()->guard('web')->logout();
         $this->get("/bai-viet/{$post->slug}")->assertSee('Tiêu đề mới')->assertSee('#mới');
-        $this->get('/bai-viet')->assertSee('Tiêu đề mới')->assertDontSee('Tiêu đề cũ');
+        $this->get('/')->assertSee('Tiêu đề mới')->assertDontSee('Tiêu đề cũ');
 
         // Đợt nấu cập nhật số suất → khung "Thuộc đợt nấu" cập nhật
         $batch->forceFill(['distributed_servings' => 4321])->save();
         $this->get("/bai-viet/{$post->slug}")->assertSee('4.321');
 
         // Gỡ bài → không còn trong danh sách đã lưu đệm
-        $this->actingAs($coordinator)->postJson("/posts/{$post->id}/publish")->assertOk();
+        $this->actingAs($coordinator)->postJson("/admin/posts/{$post->id}/publish")->assertOk();
         auth()->guard('web')->logout();
-        $this->get('/bai-viet')->assertDontSee('Tiêu đề mới');
+        $this->get('/')->assertDontSee('Tiêu đề mới');
         $this->get("/bai-viet/{$post->slug}")->assertNotFound();
     }
 
@@ -90,13 +90,13 @@ class PublicPostCacheTest extends TestCase
     {
         $post = Post::factory()->published()->create();
 
-        $first = $this->get('/bai-viet')->assertOk()->assertHeader('ETag');
+        $first = $this->get('/')->assertOk()->assertHeader('ETag');
         $this->assertStringContainsString('private', $first->headers->get('Cache-Control'));
 
-        $this->withHeader('If-None-Match', $first->headers->get('ETag'))->get('/bai-viet')->assertStatus(304);
+        $this->withHeader('If-None-Match', $first->headers->get('ETag'))->get('/')->assertStatus(304);
 
         // Nội dung đổi → ETag đổi → trả trang mới
         $post->update(['title' => 'Đổi tiêu đề']);
-        $this->withHeader('If-None-Match', $first->headers->get('ETag'))->get('/bai-viet')->assertOk()->assertSee('Đổi tiêu đề');
+        $this->withHeader('If-None-Match', $first->headers->get('ETag'))->get('/')->assertOk()->assertSee('Đổi tiêu đề');
     }
 }

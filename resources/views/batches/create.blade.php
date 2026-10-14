@@ -1,6 +1,6 @@
 @php use App\Enums\BatchStatus; @endphp
 <x-form-shell title="Tạo đợt nấu" subtitle="Điền những gì đã biết; có thể sửa lại sau."
-              :action="route('batches.store')" :back="route('batches.index')" back-label="Đợt nấu ăn" bare>
+              :action="route('batches.store')" :back="route('batches.index')" back-label="Đợt nấu ăn" bare files>
     @include('batches._form')
     <div class="callout callout-info mb-3">
         <i class="bi bi-lightbulb" aria-hidden="true"></i>

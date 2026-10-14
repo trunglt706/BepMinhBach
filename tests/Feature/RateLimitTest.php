@@ -27,9 +27,9 @@ class RateLimitTest extends TestCase
         $coordinator = $batch->coordinator;
 
         foreach (range(1, 3) as $i) {
-            $this->actingAs($coordinator)->postJson("/tasks/{$task->id}/status", ['status' => 'in_progress'])->assertOk();
+            $this->actingAs($coordinator)->postJson("/admin/tasks/{$task->id}/status", ['status' => 'in_progress'])->assertOk();
         }
-        $this->actingAs($coordinator)->postJson("/tasks/{$task->id}/status", ['status' => 'done'])
+        $this->actingAs($coordinator)->postJson("/admin/tasks/{$task->id}/status", ['status' => 'done'])
             ->assertStatus(429)
             ->assertHeader('Retry-After')
             ->assertJsonPath('message', fn (string $m) => (bool) preg_match('/^Bạn thao tác quá nhanh\. Vui lòng đợi \d+ giây rồi thử lại\.$/u', $m));
@@ -37,22 +37,22 @@ class RateLimitTest extends TestCase
 
         // Tài khoản khác (dù cùng IP) không bị ảnh hưởng
         $other = User::factory()->coordinator()->create();
-        $this->actingAs($other)->postJson("/tasks/{$task->id}/status", ['status' => 'done'])->assertOk();
+        $this->actingAs($other)->postJson("/admin/tasks/{$task->id}/status", ['status' => 'done'])->assertOk();
 
         // Đọc trang có hạn mức riêng, không bị khóa vì đã hết lượt ghi
-        $this->actingAs($coordinator)->get("/batches/{$batch->id}")->assertOk();
+        $this->actingAs($coordinator)->get("/admin/batches/{$batch->id}")->assertOk();
     }
 
     public function test_plain_form_submit_over_limit_returns_to_form_with_message_and_input(): void
     {
         $coordinator = User::factory()->coordinator()->create();
         foreach (range(1, 3) as $i) {
-            $this->actingAs($coordinator)->post('/posts', ['title' => 'Bài '.$i, 'body' => 'x', 'save_as' => 'draft']);
+            $this->actingAs($coordinator)->post('/admin/posts', ['title' => 'Bài '.$i, 'body' => 'x', 'save_as' => 'draft']);
         }
 
-        $this->actingAs($coordinator)->from('/posts/create')
-            ->post('/posts', ['title' => 'Bài thứ tư', 'body' => 'Nội dung dài', 'save_as' => 'draft'])
-            ->assertRedirect('/posts/create')
+        $this->actingAs($coordinator)->from('/admin/posts/create')
+            ->post('/admin/posts', ['title' => 'Bài thứ tư', 'body' => 'Nội dung dài', 'save_as' => 'draft'])
+            ->assertRedirect('/admin/posts/create')
             ->assertSessionHas('error')
             ->assertSessionHasInput('title', 'Bài thứ tư');
         $this->assertDatabaseMissing('posts', ['title' => 'Bài thứ tư']);
@@ -62,16 +62,16 @@ class RateLimitTest extends TestCase
     {
         $user = User::factory()->volunteer()->create();
         foreach (range(1, 5) as $i) {
-            $this->actingAs($user)->get('/')->assertOk();
+            $this->actingAs($user)->get('/admin')->assertOk();
         }
-        $this->actingAs($user)->get('/')->assertStatus(429)->assertSee('Thao tác quá nhanh')->assertSeeText('giây rồi tải lại trang');
+        $this->actingAs($user)->get('/admin')->assertStatus(429)->assertSee('Thao tác quá nhanh')->assertSeeText('giây rồi tải lại trang');
     }
 
     public function test_public_pages_are_limited_per_ip(): void
     {
-        $this->get('/bai-viet')->assertOk();
-        $this->get('/bai-viet')->assertOk();
-        $this->get('/bai-viet')->assertStatus(429);
-        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.9'])->get('/bai-viet')->assertOk();
+        $this->get('/')->assertOk();
+        $this->get('/')->assertOk();
+        $this->get('/')->assertStatus(429);
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.9'])->get('/')->assertOk();
     }
 }

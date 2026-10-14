@@ -77,8 +77,10 @@ DB_CONNECTION=mysql DB_DATABASE=bepminhbach_test php artisan test
 | Quản trị | + quản lý tài khoản (tạo, sửa vai trò, khóa/mở khóa) |
 
 ### Vận hành cơ bản
-- Production: `APP_ENV=production`, `APP_DEBUG=false`, HTTPS, `SESSION_SECURE_COOKIE=true`; chạy `php artisan config:cache route:cache view:cache`.
-- Backup MySQL: `mysqldump --single-transaction -u USER -p bepminhbach > backup-$(date +%F).sql`. Khôi phục: `mysql -u USER -p bepminhbach < backup-YYYY-MM-DD.sql`. Nên backup tự động hằng ngày và thử khôi phục định kỳ.
+- **Kênh thông báo:** mỗi đợt nấu có thể gắn kênh Slack / Telegram / Chatwork (trang chi tiết đợt → "Kênh thông báo"); hướng dẫn lấy token ngay dưới từng ô nhập. Mọi người thấy nút "Tham gia kênh".
+- **Triển khai VPS một lệnh:** `sudo DOMAIN=ten-mien LE_EMAIL=email bash deploy/deploy.sh` trên Ubuntu 22.04/24.04 hoặc Debian 12 (cài toàn bộ, HTTPS, tường lửa, sao lưu hằng ngày; chạy lại = cập nhật). Chi tiết, sao lưu/khôi phục và cách làm thủ công (cPanel): `docs/DEPLOYMENT.md`.
+- Production: `APP_ENV=production`, `APP_DEBUG=false`, HTTPS; sau khi cấu hình chạy `php artisan bmb:check-production` (chỉ đọc, báo LỖI/CHÚ Ý, mã thoát 1 nếu còn lỗi).
+- Backup gồm **cơ sở dữ liệu + thư mục `public/uploads/`** (ảnh bài viết). Nên backup tự động hằng ngày và thử khôi phục định kỳ.
 - Cập nhật Bootstrap: sửa phiên bản trong `package.json`, `npm install && npm run assets`.
 
 Nhật ký triển khai: `docs/IMPLEMENTATION_LOG.md`. Câu hỏi chờ xác nhận: `docs/OPEN_QUESTIONS.md`.

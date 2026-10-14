@@ -16,8 +16,10 @@
     $user = auth()->user();
     $navItems = [
         ['route' => 'dashboard', 'match' => ['dashboard'], 'icon' => 'bi-house-door', 'label' => 'Tổng quan', 'short' => 'Tổng quan', 'show' => true],
-        ['route' => 'batches.index', 'match' => ['batches.*', 'ingredients.*', 'tasks.edit', 'expenses.*'], 'icon' => 'bi-calendar3', 'label' => 'Đợt nấu ăn', 'short' => 'Đợt nấu', 'show' => true],
-        ['route' => 'my-tasks', 'match' => ['my-tasks'], 'icon' => 'bi-check2-square', 'label' => 'Công việc của tôi', 'short' => 'Việc của tôi', 'show' => true, 'badge' => $navOpenTasks ?? 0],
+        ['route' => 'batches.index', 'match' => ['batches.*', 'ingredients.*', 'tasks.edit', 'expenses.*', 'channels.*'], 'icon' => 'bi-calendar3', 'label' => 'Đợt nấu ăn', 'short' => 'Đợt nấu', 'show' => true,
+            'badge' => $navLiveBatches ?? 0, 'badgeLabel' => 'đợt đang diễn ra', 'badgeClass' => 'is-live'],
+        ['route' => 'my-tasks', 'match' => ['my-tasks'], 'icon' => 'bi-check2-square', 'label' => 'Công việc của tôi', 'short' => 'Việc của tôi', 'show' => true,
+            'badge' => $navTodayTasks ?? 0, 'badgeLabel' => 'việc của tôi hôm nay'],
         ['route' => 'reports.index', 'match' => ['reports.*'], 'icon' => 'bi-bar-chart-line', 'label' => 'Báo cáo', 'short' => 'Báo cáo', 'show' => $user->can('viewReports')],
     ];
 @endphp
@@ -35,7 +37,7 @@
             <a href="{{ route($item['route']) }}" @class(['active' => $active]) @if($active) aria-current="page" @endif>
                 <i class="bi {{ $item['icon'] }}" aria-hidden="true"></i> {{ $item['label'] }}
                 @if(($item['badge'] ?? 0) > 0)
-                    <span class="nav-badge" aria-label="{{ $item['badge'] }} việc đang mở">{{ $item['badge'] }}</span>
+                    <span class="nav-badge {{ $item['badgeClass'] ?? '' }}" aria-label="{{ $item['badge'] }} {{ $item['badgeLabel'] ?? '' }}" title="{{ $item['badge'] }} {{ $item['badgeLabel'] ?? '' }}">{{ $item['badge'] }}</span>
                 @endif
             </a>
         @endforeach
@@ -43,6 +45,14 @@
         @can('viewAny', App\Models\Post::class)
             <a href="{{ route('posts.index') }}" @class(['active' => request()->routeIs('posts.*')]) @if(request()->routeIs('posts.*')) aria-current="page" @endif>
                 <i class="bi bi-newspaper" aria-hidden="true"></i> Bài viết
+            </a>
+        @endcan
+        @can('viewAny', App\Models\ContactMessage::class)
+            <a href="{{ route('contacts.index') }}" @class(['active' => request()->routeIs('contacts.*')]) @if(request()->routeIs('contacts.*')) aria-current="page" @endif>
+                <i class="bi bi-envelope" aria-hidden="true"></i> Liên hệ
+                @if(($navNewContacts ?? 0) > 0)
+                    <span class="nav-badge" aria-label="{{ $navNewContacts }} liên hệ chưa xử lý">{{ $navNewContacts }}</span>
+                @endif
             </a>
         @endcan
         <a href="{{ route('blog.index') }}" target="_blank" rel="noopener">
@@ -65,7 +75,7 @@
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('account.password') }}" data-modal class="btn btn-sm btn-outline-secondary flex-grow-1">Đổi mật khẩu</a>
-            <form method="POST" action="{{ route('logout') }}">
+            <form method="POST" action="{{ route('logout') }}" data-confirm="Bạn muốn đăng xuất khỏi BếpMinhBạch?" data-confirm-label="Đăng xuất">
                 @csrf
                 <button type="submit" class="btn btn-sm btn-outline-secondary btn-icon" title="Đăng xuất" aria-label="Đăng xuất" data-loading-text="Đang đăng xuất…">
                     <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
@@ -96,13 +106,17 @@
                 @can('viewAny', App\Models\Post::class)
                     <li><a class="dropdown-item" href="{{ route('posts.index') }}"><i class="bi bi-newspaper" aria-hidden="true"></i> Bài viết</a></li>
                 @endcan
+                @can('viewAny', App\Models\ContactMessage::class)
+                    <li><a class="dropdown-item" href="{{ route('contacts.index') }}"><i class="bi bi-envelope" aria-hidden="true"></i> Liên hệ
+                        @if(($navNewContacts ?? 0) > 0)<span class="badge rounded-pill text-bg-warning ms-1">{{ $navNewContacts }}</span>@endif</a></li>
+                @endcan
                 <li><a class="dropdown-item" href="{{ route('blog.index') }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Xem trang công khai</a></li>
                 @can('viewAny', App\Models\User::class)
                     <li><a class="dropdown-item" href="{{ route('users.index') }}"><i class="bi bi-people" aria-hidden="true"></i> Quản lý tài khoản</a></li>
                 @endcan
                 <li><a class="dropdown-item" href="{{ route('account.password') }}" data-modal><i class="bi bi-key" aria-hidden="true"></i> Đổi mật khẩu</a></li>
                 <li>
-                    <form method="POST" action="{{ route('logout') }}">
+                    <form method="POST" action="{{ route('logout') }}" data-confirm="Bạn muốn đăng xuất khỏi BếpMinhBạch?" data-confirm-label="Đăng xuất">
                         @csrf
                         <button type="submit" class="dropdown-item" data-loading-text="Đang đăng xuất…"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Đăng xuất</button>
                     </form>
@@ -154,7 +168,7 @@
             <i class="bi {{ $item['icon'] }}" aria-hidden="true"></i>
             <span>{{ $item['short'] }}</span>
             @if(($item['badge'] ?? 0) > 0)
-                <span class="nav-badge" aria-label="{{ $item['badge'] }} việc đang mở">{{ $item['badge'] }}</span>
+                <span class="nav-badge {{ $item['badgeClass'] ?? '' }}" aria-label="{{ $item['badge'] }} {{ $item['badgeLabel'] ?? '' }}" title="{{ $item['badge'] }} {{ $item['badgeLabel'] ?? '' }}">{{ $item['badge'] }}</span>
             @endif
         </a>
     @endforeach

@@ -21,6 +21,9 @@ enum ActivityAction: string
     case IngredientShortage = 'ingredient.shortage';
     case IngredientResolved = 'ingredient.resolved';
     case TaskStatusChanged = 'task.status';
+    case TaskCreated = 'task.created';
+    /** Giao / đổi / bỏ người phụ trách. */
+    case TaskAssigned = 'task.assigned';
     case UserCreated = 'user.created';
     case UserUpdated = 'user.updated';
     case UserToggled = 'user.toggled';

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ActivityAction;
+use App\Support\BatchNotifier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -68,15 +69,22 @@ class ActivityLog extends Model
      * @param  User|null  $user  người thực hiện
      * @param  ActivityAction  $action  loại sự kiện
      * @param  string  $summary  mô tả ngắn, KHÔNG chứa dữ liệu nhạy cảm (xem ghi chú lớp)
+     * @param  string|null  $notify  nội dung riêng cho kênh thông báo của đợt (mặc định = tóm tắt). Truyền giá trị
+     *                               cũng là yêu cầu gửi kể cả khi sự kiện không nằm trong BatchNotifier::EVENTS.
      */
-    public static function record(?CookingBatch $batch, ?User $user, ActivityAction $action, string $summary): self
+    public static function record(?CookingBatch $batch, ?User $user, ActivityAction $action, string $summary, ?string $notify = null): self
     {
-        return self::create([
+        $log = self::create([
             'cooking_batch_id' => $batch?->id,
             'user_id' => $user?->id,
             'action' => $action,
             'summary' => mb_substr(self::redact($summary), 0, self::SUMMARY_MAX),
         ]);
+
+        // Kênh thông báo của đợt (Slack/Telegram/Chatwork): gửi sau khi lưu xong, không làm chậm thao tác.
+        app(BatchNotifier::class)->queue($log, self::redact($notify ?? $summary), $user?->name, $notify !== null);
+
+        return $log;
     }
 
     /**

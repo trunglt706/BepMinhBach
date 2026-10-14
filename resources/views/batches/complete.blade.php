@@ -1,6 +1,6 @@
 <x-form-shell title="Hoàn tất đợt nấu" :subtitle="$batch->name"
               :action="route('batches.complete.store', $batch)"
-              :back="route('batches.show', $batch)" back-label="Quay lại đợt nấu" cancel-label="Quay lại" :warn="false">
+              :back="route('batches.show', $batch)" back-label="Quay lại đợt nấu" cancel-label="Quay lại">
     <x-slot:before>
         <h3 class="h6 mb-2"><i class="bi bi-clipboard-check" aria-hidden="true"></i> Kiểm tra trước khi hoàn tất</h3>
         @if($reminders)

@@ -15,3 +15,5 @@
 <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
 <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.subset.css') }}?v={{ $iconVersion }}">
 <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
+{{-- Không có JS: ảnh chờ tải (data-src) không bao giờ có src → ẩn đi, dùng bản <noscript> bên cạnh. --}}
+<noscript><style>img[data-lazy]{display:none!important}</style></noscript>

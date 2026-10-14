@@ -82,7 +82,7 @@ class DemoSeeder extends Seeder
         // 1. Đợt đã hoàn tất tuần trước
         $done = $makeBatch([
             'name' => 'Cơm chay chủ nhật (demo)',
-            'starts_at' => now()->subWeek()->setTime(6, 30),
+            'starts_on' => today()->subWeek()->toDateString(),
             'expected_servings' => 150,
             'estimated_cost_vnd' => 2_000_000,
         ], BatchStatus::Completed);
@@ -106,7 +106,7 @@ class DemoSeeder extends Seeder
         // 2. Đợt đang diễn ra hôm nay
         $today = $makeBatch([
             'name' => 'Cháo dinh dưỡng thứ năm (demo)',
-            'starts_at' => now()->setTime(6, 0),
+            'starts_on' => today()->toDateString(),
             'expected_servings' => 200,
         ], BatchStatus::InProgress);
         $addIngredients($today, [['Gạo nếp', 10, 'kg', null], ['Nấm rơm', 5, 'kg', null], ['Cà rốt', 6, 'kg', null]]);
@@ -125,7 +125,7 @@ class DemoSeeder extends Seeder
         // 3. Đợt đã lên kế hoạch tuần sau
         $planned = $makeBatch([
             'name' => 'Bánh mì sáng thứ bảy (demo)',
-            'starts_at' => now()->addDays(5)->setTime(5, 30),
+            'starts_on' => today()->addDays(5)->toDateString(),
             'expected_servings' => 120,
             'estimated_cost_vnd' => 1_500_000,
         ], BatchStatus::Planned);
@@ -135,7 +135,7 @@ class DemoSeeder extends Seeder
         // 4. Đợt nháp
         $makeBatch([
             'name' => 'Bữa trưa cuối tháng (nháp demo)',
-            'starts_at' => now()->addDays(14)->setTime(10, 0),
+            'starts_on' => today()->addDays(14)->toDateString(),
             'expected_servings' => 100,
         ], BatchStatus::Draft);
 
@@ -151,8 +151,8 @@ class DemoSeeder extends Seeder
             return;
         }
 
-        $completed = CookingBatch::where('status', BatchStatus::Completed->value)->orderByDesc('starts_at')->first();
-        $planned = CookingBatch::where('status', BatchStatus::Planned->value)->orderBy('starts_at')->first();
+        $completed = CookingBatch::where('status', BatchStatus::Completed->value)->orderByDesc('starts_on')->first();
+        $planned = CookingBatch::where('status', BatchStatus::Planned->value)->orderBy('starts_on')->first();
 
         $rows = [
             ['Nhìn lại đợt nấu tuần trước (demo)', $completed, ['nhìn lại', 'cơm chay'], now()->subDays(5),

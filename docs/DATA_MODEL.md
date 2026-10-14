@@ -121,3 +121,12 @@ Khác biệt so với đề xuất ban đầu ở trên:
 - `expense_items.note` tối đa 500 ký tự.
 - `activity_logs` đã triển khai ở mức tối thiểu: `cooking_batch_id` (nullable — thao tác tài khoản không gắn đợt), `user_id`, `action`, `summary` (≤ 500 ký tự, không chứa mật khẩu), `created_at`.
 - Thời gian lưu theo `APP_TIMEZONE=Asia/Ho_Chi_Minh`.
+
+## Bổ sung 14/10/2026
+- `cooking_batches.public_id` char(16) unique — mã ngẫu nhiên (hex) cho URL công khai `/dot-nau/{public_id}`; tự sinh khi tạo đợt, migration gán cho đợt cũ.
+- `cooking_batches.cover_path`, `cover_widths` (json), `cover_width`, `cover_height` — ảnh nền đợt (WebP 480/960/1600, thư mục `uploads/batches/Y/m`).
+- `contact_messages`: `topic` (enum `ContactTopic`), `name` (100), `contact` (150, email viết thường hoặc SĐT không dấu cách), `message` (text ≤ 2000), `client_hash` char(64) = HMAC(IP), `sent_on` date, `handled_at`, `handled_by` → users (null on delete), timestamps. Index: (`client_hash`, `sent_on`), (`contact`, `sent_on`), (`handled_at`, `created_at`).
+
+- `cooking_batches.starts_at` (datetime) → **`starts_on` (date)** — đợt nấu chỉ cần ngày bắt đầu (yêu cầu 14/10/2026). Migration `2026_10_14_001300` chép `DATE(starts_at)` rồi xóa cột cũ (đã thử với dữ liệu có sẵn + rollback trên MySQL 8.4 và SQLite). Model luôn lưu `Y-m-d` (accessor/mutator; không dùng cast `date` vì cast ghi kèm `00:00:00` → so sánh khoảng ngày sai trên SQLite); mọi truy vấn khoảng ngày truyền chuỗi `Y-m-d`.
+- `batch_notification_channels`: `cooking_batch_id` (cascade), `driver` (`slack`/`telegram`/`chatwork`, unique theo đợt), `settings` (text, **mã hóa** `encrypted:array` bằng APP_KEY — webhook/token/chat id/room id), `join_url` (≤ 500, https đúng tên miền dịch vụ), `is_enabled`, `last_sent_at`, `last_failed_at`, `last_error` (≤ 255, đã che token), `created_by` → users. **Đổi APP_KEY thì phải nhập lại token.**
+- `activity_logs.action` thêm `task.created`, `task.assigned`.

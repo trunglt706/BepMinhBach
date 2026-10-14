@@ -18,8 +18,13 @@
         <h1 class="h3">@yield('title')</h1>
         <p class="text-body-secondary">@yield('message')</p>
         <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
-            <a href="javascript:history.back()" class="btn btn-outline-secondary"><i class="bi bi-arrow-left" aria-hidden="true"></i> Quay lại</a>
-            <a href="{{ url('/') }}" class="btn btn-primary">Về trang tổng quan</a>
+            @php($back = str_starts_with(url()->previous(), url('/')) ? url()->previous() : url('/'))
+            <a href="{{ $back }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left" aria-hidden="true"></i> Quay lại</a>
+            @auth
+                <a href="{{ route('dashboard') }}" class="btn btn-primary">Về trang tổng quan</a>
+            @else
+                <a href="{{ url('/') }}" class="btn btn-primary">Về trang chủ</a>
+            @endauth
         </div>
     </div>
 </main>

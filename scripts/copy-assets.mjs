@@ -16,6 +16,11 @@ const copies = [
     ['node_modules/photoswipe/dist/umd/photoswipe-lightbox.umd.min.js', 'public/vendor/photoswipe/photoswipe-lightbox.umd.min.js'],
     ['node_modules/photoswipe/dist/photoswipe.css', 'public/vendor/photoswipe/photoswipe.css'],
     ['node_modules/photoswipe/LICENSE', 'public/vendor/photoswipe/LICENSE'],
+    // Chọn ngày/giờ (MIT) — thay ô ngày mặc định của trình duyệt; chỉ tải ở trang có ô ngày.
+    ['node_modules/flatpickr/dist/flatpickr.min.js', 'public/vendor/flatpickr/flatpickr.min.js'],
+    ['node_modules/flatpickr/dist/flatpickr.min.css', 'public/vendor/flatpickr/flatpickr.min.css'],
+    ['node_modules/flatpickr/dist/l10n/vn.js', 'public/vendor/flatpickr/vn.js'],
+    ['node_modules/flatpickr/LICENSE.md', 'public/vendor/flatpickr/LICENSE.md'],
 ];
 
 for (const [from, to] of copies) {

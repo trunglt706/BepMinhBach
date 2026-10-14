@@ -52,7 +52,7 @@
                     @php($isPublished = $post->status === PostStatus::Published)
                     <li class="list-group-item py-3 d-flex gap-3 align-items-start">
                         @if($post->cover)
-                            <img src="{{ $post->cover->url(480) }}" alt="" width="64" height="{{ $post->cover->heightFor(64) }}" class="related-thumb d-none d-sm-block" loading="lazy">
+                            <span class="related-thumb-wrap d-none d-sm-block"><x-post-img :image="$post->cover" :width="64" class="related-thumb" sizes="64px" /></span>
                         @else
                             <span class="related-thumb is-empty d-none d-sm-grid" aria-hidden="true"><i class="bi bi-image"></i></span>
                         @endif

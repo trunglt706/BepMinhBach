@@ -33,7 +33,7 @@ class ReportController extends Controller
         $filter = $request->filter();
 
         $batches = $this->reportQuery($filter)
-            ->orderByDesc('starts_at')
+            ->orderByDesc('starts_on')
             ->paginate(20)
             ->withQueryString();
 
@@ -69,18 +69,18 @@ class ReportController extends Controller
                 'Chi phí thực tế (VND)', $summary['expenseTotal']]);
             $put([]);
             $put([
-                'Mã đợt', 'Tên đợt', 'Ngày giờ bắt đầu', 'Địa điểm', 'Trạng thái', 'Người điều phối',
+                'Mã đợt', 'Tên đợt', 'Ngày bắt đầu', 'Địa điểm', 'Trạng thái', 'Người điều phối',
                 'Suất dự kiến', 'Suất đã chuẩn bị', 'Suất đã phân phát', 'Phân phát trừ chuẩn bị',
                 'Chi phí dự kiến (VND)', 'Chi phí thực tế (VND)', 'Số khoản chi',
                 'Việc đã xong', 'Tổng số việc', 'Ghi chú chênh lệch',
             ]);
 
-            $this->reportQuery($filter)->orderBy('starts_at')->chunk(200, function ($batches) use ($put) {
+            $this->reportQuery($filter)->orderBy('starts_on')->chunk(200, function ($batches) use ($put) {
                 foreach ($batches as $batch) {
                     $put([
                         $batch->id,
                         $batch->name,
-                        $batch->starts_at->format('Y-m-d H:i'),
+                        $batch->starts_on->format('Y-m-d'),
                         $batch->location_text,
                         $batch->status->label(),
                         $batch->coordinator?->name,
@@ -134,7 +134,7 @@ class ReportController extends Controller
             $put([]);
             $put(['THÔNG TIN ĐỢT']);
             $put(['Tên đợt', $batch->name]);
-            $put(['Ngày giờ bắt đầu', $batch->starts_at->format('Y-m-d H:i')]);
+            $put(['Ngày bắt đầu', $batch->starts_on->format('Y-m-d')]);
             $put(['Địa điểm', $batch->location_text]);
             $put(['Trạng thái', $batch->status->label()]);
             $put(['Người điều phối', $batch->coordinator?->name]);

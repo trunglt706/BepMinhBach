@@ -1,6 +1,6 @@
 <x-form-shell title="Hủy đợt nấu?" :subtitle="$batch->name"
               :action="route('batches.cancel.store', $batch)"
-              :back="route('batches.show', $batch)" back-label="Quay lại đợt nấu" cancel-label="Không hủy" :warn="false">
+              :back="route('batches.show', $batch)" back-label="Quay lại đợt nấu" cancel-label="Không hủy">
     <h3 class="h6 mb-2"><i class="bi bi-exclamation-triangle-fill text-danger" aria-hidden="true"></i> Điều gì sẽ xảy ra</h3>
     <ul class="mb-3 ps-3">
         <li>Đợt nấu chuyển sang “Đã hủy”, <strong>dữ liệu không bị xóa</strong>.</li>

@@ -11,4 +11,14 @@
             <lastmod>{{ $post->updated_at->toAtomString() }}</lastmod>
         </url>
     @endforeach
+    @foreach($batches as $batch)
+        <url>
+            <loc>{{ route('blog.batch', $batch) }}</loc>
+            <lastmod>{{ $batch->updated_at->toAtomString() }}</lastmod>
+        </url>
+    @endforeach
+    <url>
+        <loc>{{ $contact }}</loc>
+        <changefreq>yearly</changefreq>
+    </url>
 </urlset>

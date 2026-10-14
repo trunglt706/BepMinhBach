@@ -1,6 +1,6 @@
 <x-form-shell title="Sửa đợt nấu" :subtitle="$batch->name"
               :action="route('batches.update', $batch)" method="PUT"
-              :back="route('batches.show', $batch)" back-label="Quay lại đợt nấu" bare>
+              :back="route('batches.show', $batch)" back-label="Quay lại đợt nấu" bare files>
     @include('batches._form')
     <x-slot:actions>
         <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> Lưu thay đổi</button>

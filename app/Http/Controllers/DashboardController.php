@@ -30,7 +30,7 @@ class DashboardController extends Controller
         $hasBatches = CookingBatch::exists();
 
         $upcomingQuery = CookingBatch::whereIn('status', [BatchStatus::Draft->value, BatchStatus::Planned->value])
-            ->where('starts_at', '>=', now()->startOfDay());
+            ->where('starts_on', '>=', today()->toDateString());
         $inProgressQuery = CookingBatch::where('status', BatchStatus::InProgress->value);
 
         $unlockedBatch = fn (Builder $q) => $q->active();
@@ -40,7 +40,7 @@ class DashboardController extends Controller
 
         $periodStart = now()->subDays($days)->startOfDay();
         $periodBatches = CookingBatch::where('status', '!=', BatchStatus::Cancelled->value)
-            ->whereBetween('starts_at', [$periodStart, now()])
+            ->whereBetween('starts_on', [$periodStart->toDateString(), today()->toDateString()])
             ->whereNotNull('distributed_servings');
 
         return view('dashboard', [
@@ -57,13 +57,13 @@ class DashboardController extends Controller
                 ->with('coordinator:id,name')
                 ->withTaskProgress()
                 ->orderByRaw('case when status = ? then 0 else 1 end', [BatchStatus::InProgress->value])
-                ->orderBy('starts_at')
+                ->orderBy('starts_on')
                 ->limit(6)
                 ->get(),
             'myTasks' => Task::where('assignee_id', $user->id)
                 ->where('status', '!=', TaskStatus::Done->value)
                 ->whereHas('batch', $unlockedBatch)
-                ->with('batch:id,name,starts_at,status')
+                ->with('batch:id,name,starts_on,status')
                 ->orderByRaw('due_at is null')
                 ->orderBy('due_at')
                 ->limit(5)
@@ -81,7 +81,7 @@ class DashboardController extends Controller
                 ->limit(10)
                 ->get(),
             'latestResult' => CookingBatch::where(fn ($q) => $q->whereNotNull('prepared_servings')->orWhereNotNull('distributed_servings'))
-                ->orderByDesc('starts_at')
+                ->orderByDesc('starts_on')
                 ->first(),
         ]);
     }
@@ -100,24 +100,24 @@ class DashboardController extends Controller
 
         // So sánh dự kiến với phân phát chỉ trên các đợt đã nhập số phân phát, để "chưa nhập" không bị hiểu là thiếu suất.
         $withResults = CookingBatch::where('status', '!=', BatchStatus::Cancelled->value)
-            ->whereBetween('starts_at', [$from, $to])
+            ->whereBetween('starts_on', [$from->toDateString(), $to->toDateString()])
             ->whereNotNull('distributed_servings')
-            ->get(['id', 'starts_at', 'expected_servings', 'distributed_servings']);
+            ->get(['id', 'starts_on', 'expected_servings', 'distributed_servings']);
 
         // Trạng thái: các đợt bắt đầu từ đầu khoảng thời gian, gồm cả đợt sắp tới.
-        $statusCounts = CookingBatch::where('starts_at', '>=', $from)
+        $statusCounts = CookingBatch::where('starts_on', '>=', $from->toDateString())
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
 
         $expenseChart = null;
         if ($user->can('viewReports')) {
-            $withExpenses = CookingBatch::whereBetween('starts_at', [$from, $to])
+            $withExpenses = CookingBatch::whereBetween('starts_on', [$from->toDateString(), $to->toDateString()])
                 ->whereHas('expenseItems')
                 ->withSum('expenseItems', 'amount_vnd')
-                ->get(['id', 'starts_at']);
+                ->get(['id', 'starts_on']);
             $expenseChart = [
-                'groups' => Charts::groupByTime($withExpenses, fn ($b) => $b->starts_at,
+                'groups' => Charts::groupByTime($withExpenses, fn ($b) => $b->starts_on,
                     ['amount' => fn ($b) => (int) $b->expense_items_sum_amount_vnd], $from, $to),
                 'batchCount' => $withExpenses->count(),
             ];
@@ -125,7 +125,7 @@ class DashboardController extends Controller
 
         return [
             'servingsChart' => [
-                'groups' => Charts::groupByTime($withResults, fn ($b) => $b->starts_at, [
+                'groups' => Charts::groupByTime($withResults, fn ($b) => $b->starts_on, [
                     'expected' => fn ($b) => $b->expected_servings,
                     'distributed' => fn ($b) => $b->distributed_servings,
                 ], $from, $to),

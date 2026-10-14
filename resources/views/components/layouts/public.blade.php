@@ -33,15 +33,28 @@
         </a>
         <nav class="public-nav me-auto" aria-label="Điều hướng công khai">
             <a href="{{ route('blog.index') }}" @class(['active' => request()->routeIs('blog.*')]) @if(request()->routeIs('blog.index')) aria-current="page" @endif>Bài viết</a>
+            <a href="{{ route('contact.create') }}" @class(['active' => request()->routeIs('contact.*')]) @if(request()->routeIs('contact.*')) aria-current="page" @endif>Liên hệ</a>
         </nav>
+        {{-- Tìm bài viết: máy tính hiện sẵn ô tìm; điện thoại bấm biểu tượng kính lúp để mở (details: không cần JS). --}}
+        @php($headerQ = request()->routeIs('blog.index') ? mb_substr(trim((string) request()->query('q', '')), 0, 100) : '')
+        <form method="GET" action="{{ route('blog.index') }}" class="header-search d-none d-md-flex" role="search" aria-label="Tìm bài viết">
+            <label for="hs_q" class="visually-hidden">Tìm bài viết</label>
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" id="hs_q" name="q" value="{{ $headerQ }}" maxlength="100" placeholder="Tìm bài viết…" autocomplete="off" data-submit-on-clear>
+        </form>
+        <details class="header-search-mobile d-md-none" @if($headerQ !== '') open @endif>
+            <summary class="btn btn-sm btn-outline-secondary btn-icon" aria-label="Tìm bài viết" title="Tìm bài viết"><i class="bi bi-search" aria-hidden="true"></i></summary>
+            <form method="GET" action="{{ route('blog.index') }}" class="header-search-panel" role="search" aria-label="Tìm bài viết">
+                <label for="hs_q_m" class="visually-hidden">Tìm bài viết</label>
+                <input type="search" id="hs_q_m" name="q" value="{{ $headerQ }}" maxlength="100" placeholder="Tìm bài viết…" class="form-control" autocomplete="off" data-submit-on-clear>
+                <button type="submit" class="btn btn-primary" data-loading-text="Đang tìm…">Tìm</button>
+            </form>
+        </details>
         {{-- Màn rất hẹp (< 400px): nút chỉ còn biểu tượng, tên đọc qua aria-label/title. --}}
-        @auth
-            <a href="{{ route('dashboard') }}" class="btn btn-sm btn-outline-primary public-header-action" aria-label="Trang quản lý" title="Trang quản lý">
-                <i class="bi bi-house-door" aria-hidden="true"></i> <span class="public-header-action-text" aria-hidden="true">Quản lý</span></a>
-        @else
+        @guest
             <a href="{{ route('login') }}" class="btn btn-sm btn-outline-primary public-header-action" aria-label="Đăng nhập" title="Đăng nhập">
                 <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> <span class="public-header-action-text" aria-hidden="true">Đăng nhập</span></a>
-        @endauth
+        @endguest
     </div>
 </header>
 
@@ -51,9 +64,7 @@
 
 <footer class="public-footer d-print-none">
     <div class="container-xxl">
-        <p class="mb-1"><strong>BếpMinhBạch</strong> — nhật ký các đợt nấu ăn thiện nguyện và suất ăn cộng đồng.</p>
-        <p class="mb-0">Thông tin và số liệu do đội bếp tự ghi nhận, không phải kiểm toán độc lập hay chứng nhận an toàn thực phẩm.
-            Chúng tôi không công khai thông tin cá nhân của người nhận suất ăn.</p>
+        <p class="public-footer-copy">© {{ now()->year }} BếpMinhBạch. Bảo lưu mọi quyền.</p>
     </div>
 </footer>
 

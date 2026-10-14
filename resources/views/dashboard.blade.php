@@ -174,14 +174,14 @@
                     <div>
                         @foreach($activeBatches as $batch)
                             <a href="{{ route('batches.show', $batch) }}" class="batch-row">
-                                <x-date-tile :date="$batch->starts_at" />
+                                <x-date-tile :date="$batch->starts_on" />
                                 <div class="flex-grow-1 min-w-0">
                                     <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
                                         <span class="fw-bold">{{ $batch->name }}</span>
                                         <x-status-badge :status="$batch->status" />
                                     </div>
                                     <div class="meta-inline mb-2">
-                                        <span><i class="bi bi-clock" aria-hidden="true"></i> {{ $batch->starts_at->format('H:i') }}</span>
+                                        <span><i class="bi bi-calendar3" aria-hidden="true"></i> {{ $batch->starts_on->format('d/m/Y') }}</span>
                                         <span><i class="bi bi-box2-heart" aria-hidden="true"></i> {{ Format::number($batch->expected_servings) }} suất dự kiến</span>
                                     </div>
                                     <x-task-progress :done="$batch->tasks_done_count" :total="$batch->tasks_count" />
@@ -228,7 +228,7 @@
                 <div class="card-body">
                     @if($latestResult)
                         <a href="{{ route('batches.show', $latestResult) }}" class="fw-semibold">{{ $latestResult->name }}</a>
-                        <div class="small text-body-secondary mb-3">{{ Format::dateTime($latestResult->starts_at) }}</div>
+                        <div class="small text-body-secondary mb-3">{{ Format::date($latestResult->starts_on) }}</div>
                         <div class="serving-grid">
                             <div><div class="serving-label">Dự kiến</div><div class="serving-value">{{ Format::number($latestResult->expected_servings) }}</div></div>
                             <div><div class="serving-label">Đã chuẩn bị</div><div @class(['serving-value', 'is-empty' => $latestResult->prepared_servings === null])>{{ Format::number($latestResult->prepared_servings) }}</div></div>

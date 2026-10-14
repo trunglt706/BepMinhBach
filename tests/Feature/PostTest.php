@@ -22,7 +22,7 @@ class PostTest extends TestCase
         $coordinator = User::factory()->coordinator()->create();
         $batch = CookingBatch::factory()->create();
 
-        $this->actingAs($coordinator)->postJson('/posts', [
+        $this->actingAs($coordinator)->postJson('/admin/posts', [
             'title' => 'Cơm chay chủ nhật', 'body' => "Đoạn 1\n\nĐoạn 2", 'cooking_batch_id' => $batch->id,
             'tags' => 'Cơm chay, cảm ơn ; cơm CHAY,  ', 'save_as' => 'published',
         ])->assertOk()->assertExactJson(['message' => 'Đã đăng bài “Cơm chay chủ nhật”.']);
@@ -36,7 +36,7 @@ class PostTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['action' => 'post.created', 'cooking_batch_id' => $batch->id]);
 
         // Trùng tiêu đề → đường dẫn khác
-        $this->actingAs($coordinator)->postJson('/posts', ['title' => 'Cơm chay chủ nhật', 'body' => 'x', 'save_as' => 'draft'])->assertOk();
+        $this->actingAs($coordinator)->postJson('/admin/posts', ['title' => 'Cơm chay chủ nhật', 'body' => 'x', 'save_as' => 'draft'])->assertOk();
         $this->assertDatabaseHas('posts', ['slug' => 'com-chay-chu-nhat-2', 'status' => 'draft']);
     }
 
@@ -44,12 +44,12 @@ class PostTest extends TestCase
     {
         $coordinator = User::factory()->coordinator()->create();
 
-        $this->actingAs($coordinator)->postJson('/posts', [
+        $this->actingAs($coordinator)->postJson('/admin/posts', [
             'title' => '', 'body' => '', 'cooking_batch_id' => 99999, 'save_as' => 'x',
             'tags' => implode(',', range(1, 11)),
         ])->assertStatus(422)->assertJsonValidationErrors(['title', 'body', 'cooking_batch_id', 'save_as', 'tags']);
 
-        $this->actingAs($coordinator)->postJson('/posts', ['title' => 'A', 'body' => 'B', 'save_as' => 'draft', 'tags' => str_repeat('a', 41)])
+        $this->actingAs($coordinator)->postJson('/admin/posts', ['title' => 'A', 'body' => 'B', 'save_as' => 'draft', 'tags' => str_repeat('a', 41)])
             ->assertStatus(422)->assertJsonValidationErrors(['tags' => 'Mỗi thẻ tối đa 40 ký tự.']);
     }
 
@@ -58,17 +58,17 @@ class PostTest extends TestCase
         $post = Post::factory()->create();
 
         foreach ([User::factory()->volunteer()->create(), User::factory()->recorder()->create()] as $user) {
-            $this->actingAs($user)->get('/posts')->assertForbidden();
-            $this->actingAs($user)->get('/posts/create?modal=1')->assertForbidden();
-            $this->actingAs($user)->postJson('/posts', ['title' => 'X', 'body' => 'Y', 'save_as' => 'published'])->assertForbidden();
-            $this->actingAs($user)->putJson("/posts/{$post->id}", ['title' => 'X', 'body' => 'Y'])->assertForbidden();
-            $this->actingAs($user)->postJson("/posts/{$post->id}/publish")->assertForbidden();
-            $this->actingAs($user)->deleteJson("/posts/{$post->id}")->assertForbidden();
+            $this->actingAs($user)->get('/admin/posts')->assertForbidden();
+            $this->actingAs($user)->get('/admin/posts/create?modal=1')->assertForbidden();
+            $this->actingAs($user)->postJson('/admin/posts', ['title' => 'X', 'body' => 'Y', 'save_as' => 'published'])->assertForbidden();
+            $this->actingAs($user)->putJson("/admin/posts/{$post->id}", ['title' => 'X', 'body' => 'Y'])->assertForbidden();
+            $this->actingAs($user)->postJson("/admin/posts/{$post->id}/publish")->assertForbidden();
+            $this->actingAs($user)->deleteJson("/admin/posts/{$post->id}")->assertForbidden();
         }
         $this->assertSame(PostStatus::Draft, $post->fresh()->status);
 
         auth()->guard('web')->logout();
-        $this->get('/posts')->assertRedirect('/login');
+        $this->get('/admin/posts')->assertRedirect('/login');
     }
 
     public function test_publish_toggle_keeps_slug_and_first_publish_date(): void
@@ -76,18 +76,18 @@ class PostTest extends TestCase
         $coordinator = User::factory()->coordinator()->create();
         $post = Post::factory()->create(['title' => 'Tiêu đề đầu']);
 
-        $this->actingAs($coordinator)->postJson("/posts/{$post->id}/publish")->assertOk();
+        $this->actingAs($coordinator)->postJson("/admin/posts/{$post->id}/publish")->assertOk();
         $firstPublished = $post->fresh()->published_at;
         $this->assertTrue($post->fresh()->isPublished());
 
         // Đã đăng: đổi tiêu đề không đổi đường dẫn
-        $this->actingAs($coordinator)->putJson("/posts/{$post->id}", ['title' => 'Tiêu đề mới', 'body' => 'Nội dung'])->assertOk();
+        $this->actingAs($coordinator)->putJson("/admin/posts/{$post->id}", ['title' => 'Tiêu đề mới', 'body' => 'Nội dung'])->assertOk();
         $this->assertSame('tieu-de-dau', $post->fresh()->slug);
 
-        $this->actingAs($coordinator)->postJson("/posts/{$post->id}/publish")->assertOk(); // gỡ
+        $this->actingAs($coordinator)->postJson("/admin/posts/{$post->id}/publish")->assertOk(); // gỡ
         $this->assertSame(PostStatus::Draft, $post->fresh()->status);
         $this->travel(1)->days();
-        $this->actingAs($coordinator)->postJson("/posts/{$post->id}/publish")->assertOk(); // đăng lại
+        $this->actingAs($coordinator)->postJson("/admin/posts/{$post->id}/publish")->assertOk(); // đăng lại
         $this->assertTrue($post->fresh()->published_at->equalTo($firstPublished));
     }
 
@@ -98,7 +98,7 @@ class PostTest extends TestCase
         $post->tags()->sync(Tag::findOrCreateMany(['riêng', 'chung'])->pluck('id'));
         Post::factory()->create()->tags()->sync(Tag::where('slug', 'chung')->pluck('id'));
 
-        $this->actingAs($coordinator)->deleteJson("/posts/{$post->id}")->assertOk();
+        $this->actingAs($coordinator)->deleteJson("/admin/posts/{$post->id}")->assertOk();
         $this->assertModelMissing($post);
         $this->assertSame(['chung'], Tag::pluck('slug')->all());
     }
@@ -109,7 +109,7 @@ class PostTest extends TestCase
         $draft = Post::factory()->create(['title' => 'Bài nháp bí mật']);
         $scheduled = Post::factory()->published(now()->addDay())->create(['title' => 'Bài hẹn giờ']);
 
-        $this->get('/bai-viet')->assertOk()
+        $this->get('/')->assertOk()
             ->assertSee('Bài đã đăng')->assertDontSee('Bài nháp bí mật')->assertDontSee('Bài hẹn giờ')
             ->assertDontSee('app-sidebar');
         $this->get("/bai-viet/{$published->slug}")->assertOk()->assertSee('Bài đã đăng');
@@ -130,13 +130,14 @@ class PostTest extends TestCase
         $a->tags()->sync(Tag::findOrCreateMany(['cảm ơn'])->pluck('id'));
         $b->tags()->sync(Tag::findOrCreateMany(['kinh nghiệm'])->pluck('id'));
 
-        $this->get('/bai-viet?q=rau')->assertSee('Cảm ơn nhà hảo tâm')->assertSee('Mẹo sơ chế');
-        $this->get('/bai-viet?q=rau+tươi')->assertSee('Cảm ơn nhà hảo tâm')->assertDontSee('Mẹo sơ chế'); // mọi từ khóa
-        $this->get('/bai-viet?q=kinh+nghiệm')->assertSee('Mẹo sơ chế')->assertDontSee('Cảm ơn nhà hảo tâm'); // khớp tên thẻ
-        $this->get('/bai-viet?q=100%25')->assertOk()->assertSee('Không tìm thấy bài viết phù hợp'); // % không là ký tự đại diện
-        $this->get('/bai-viet?tag=kinh-nghiem')->assertSee('Mẹo sơ chế')->assertDontSee('Cảm ơn nhà hảo tâm');
-        $this->get("/bai-viet?dot={$batch->id}")->assertSee('Cảm ơn nhà hảo tâm')->assertDontSee('Mẹo sơ chế')
-            ->assertSee('<option value="'.$batch->id.'" selected>', false); // bộ lọc giữ giá trị
+        $this->get('/?q=rau')->assertSee('Cảm ơn nhà hảo tâm')->assertSee('Mẹo sơ chế')
+            ->assertSee('id="hs_q" name="q" value="rau"', false); // ô tìm trên header giữ từ khóa
+        $this->get('/?q=rau+tươi')->assertSee('Cảm ơn nhà hảo tâm')->assertDontSee('Mẹo sơ chế'); // mọi từ khóa
+        $this->get('/?q=kinh+nghiệm')->assertSee('Mẹo sơ chế')->assertDontSee('Cảm ơn nhà hảo tâm'); // khớp tên thẻ
+        $this->get('/?q=100%25')->assertOk()->assertSee('Không tìm thấy bài viết phù hợp'); // % không là ký tự đại diện
+        $this->get('/?tag=kinh-nghiem')->assertSee('Mẹo sơ chế')->assertDontSee('Cảm ơn nhà hảo tâm');
+        $this->get("/?dot={$batch->id}")->assertSee('Cảm ơn nhà hảo tâm')->assertDontSee('Mẹo sơ chế')
+            ->assertSee('đợt <strong>Đợt bánh mì</strong>', false); // dòng kết quả nêu rõ bộ lọc đang áp dụng
     }
 
     public function test_batch_filter_does_not_reveal_batches_without_published_posts(): void
@@ -145,7 +146,7 @@ class PostTest extends TestCase
         Post::factory()->create(['cooking_batch_id' => $internal->id]); // chỉ là nháp
         Post::factory()->published()->create(['title' => 'Bài công khai']);
 
-        $this->get("/bai-viet?dot={$internal->id}")->assertOk()
+        $this->get("/?dot={$internal->id}")->assertOk()
             ->assertDontSee('Đợt nội bộ chưa công khai')
             ->assertSee('Bài công khai'); // bộ lọc không hợp lệ bị bỏ qua
     }
@@ -165,7 +166,7 @@ class PostTest extends TestCase
             ->assertDontSee($batch->coordinator->name)
             ->assertDontSee('Bếp bí mật')->assertDontSee('Ghi chú nội bộ')
             ->assertDontSee('Khoản chi nội bộ')->assertDontSee('1.234.000')->assertDontSee('3.000.000')
-            ->assertDontSee($post->author->name)
+            ->assertSee($post->author->name) // OQ-16: hiện người viết bài (không hiện người điều phối đợt)
             ->assertDontSee('<script>alert(1)</script>', false);
 
         // Bài không thuộc đợt nào: không có khung đợt nấu
@@ -178,7 +179,7 @@ class PostTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::Draft)->create();
         $post = Post::factory()->published()->create(['cooking_batch_id' => $batch->id]);
 
-        $this->actingAs($batch->coordinator)->deleteJson("/batches/{$batch->id}")->assertOk();
+        $this->actingAs($batch->coordinator)->deleteJson("/admin/batches/{$batch->id}")->assertOk();
         $this->assertNull($post->fresh()->cooking_batch_id);
     }
 }

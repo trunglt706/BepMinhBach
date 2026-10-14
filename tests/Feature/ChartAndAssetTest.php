@@ -20,12 +20,12 @@ class ChartAndAssetTest extends TestCase
     {
         $recorder = User::factory()->recorder()->create();
         $batch = CookingBatch::factory()->status(BatchStatus::Completed)->create([
-            'starts_at' => now()->subDays(3), 'expected_servings' => 200, 'distributed_servings' => 180,
+            'starts_on' => now()->subDays(3), 'expected_servings' => 200, 'distributed_servings' => 180,
         ]);
         ExpenseItem::factory()->for($batch, 'batch')->create(['amount_vnd' => 1_250_000]);
-        CookingBatch::factory()->status(BatchStatus::Planned)->create(['starts_at' => now()->addDays(2)]);
+        CookingBatch::factory()->status(BatchStatus::Planned)->create(['starts_on' => now()->addDays(2)]);
 
-        $html = $this->actingAs($recorder)->get('/?days=7')->assertOk()->getContent();
+        $html = $this->actingAs($recorder)->get('/admin?days=7')->assertOk()->getContent();
         $this->assertStringContainsString('1 đợt đã nhập số liệu', $html);
         $this->assertStringContainsString('class="col-group"', $html);
         $this->assertStringContainsString('Dự kiến 200; Đã phân phát 180', $html); // aria-label của nhóm cột
@@ -35,7 +35,7 @@ class ChartAndAssetTest extends TestCase
         $this->assertMatchesRegularExpression('#Đã lên kế hoạch\s*</span>\s*<span class="hbar-track">.*?hbar-value">1<#s', $html);
 
         $volunteer = User::factory()->volunteer()->create();
-        $this->actingAs($volunteer)->get('/?days=7')->assertOk()
+        $this->actingAs($volunteer)->get('/admin?days=7')->assertOk()
             ->assertSee('chart-servings-title', false)
             ->assertDontSee('chart-expense-title', false)
             ->assertDontSee('1.250.000');
@@ -43,9 +43,9 @@ class ChartAndAssetTest extends TestCase
 
     public function test_dashboard_charts_show_empty_state_without_results(): void
     {
-        CookingBatch::factory()->create(['starts_at' => now()->subDay()]);
+        CookingBatch::factory()->create(['starts_on' => now()->subDay()]);
 
-        $this->actingAs(User::factory()->coordinator()->create())->get('/')->assertOk()
+        $this->actingAs(User::factory()->coordinator()->create())->get('/admin')->assertOk()
             ->assertSee('Chưa có số liệu phân phát')
             ->assertDontSee('class="col-group"', false);
     }
@@ -61,7 +61,7 @@ class ChartAndAssetTest extends TestCase
             ExpenseItem::factory()->for($batch, 'batch')->create(['name' => $name, 'amount_vnd' => $amount]);
         }
 
-        $html = $this->actingAs($batch->coordinator)->get("/batches/{$batch->id}")->assertOk()->getContent();
+        $html = $this->actingAs($batch->coordinator)->get("/admin/batches/{$batch->id}")->assertOk()->getContent();
 
         $this->assertStringContainsString('aria-label="Hoàn thành: 2 việc (67%)"', $html);
         $this->assertStringContainsString('aria-label="Đang bị vướng: 1 việc (33%)"', $html);
@@ -75,7 +75,7 @@ class ChartAndAssetTest extends TestCase
 
         // Tình nguyện viên không thấy biểu đồ chi phí
         $volunteer = User::factory()->volunteer()->create();
-        $this->actingAs($volunteer)->get("/batches/{$batch->id}")->assertOk()
+        $this->actingAs($volunteer)->get("/admin/batches/{$batch->id}")->assertOk()
             ->assertSee('Hoàn thành: 2 việc', false)
             ->assertDontSee('Theo khoản chi')
             ->assertDontSee('Thực tế đã nhập');
@@ -93,7 +93,8 @@ class ChartAndAssetTest extends TestCase
             ->assertDontSee('bootstrap-icons.min.css');
 
         // Mọi icon dùng trong view/PHP/JS phải có trong bộ rút gọn (nếu thiếu: chạy `npm run icons`).
-        $json = json_decode(file_get_contents(base_path('node_modules/bootstrap-icons/font/bootstrap-icons.json')) ?: '{}', true);
+        $iconMap = base_path('node_modules/bootstrap-icons/font/bootstrap-icons.json');
+        $json = is_file($iconMap) ? json_decode((string) file_get_contents($iconMap), true) : null;
         if (! $json) {
             $this->markTestSkipped('Chưa cài node_modules; không kiểm tra được danh sách icon.');
         }

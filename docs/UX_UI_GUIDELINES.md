@@ -45,7 +45,7 @@ Chia nhóm:
 3. Ghi chú.
 - Hiển thị lỗi cạnh trường tương ứng.
 - Có nút lưu nháp và lưu kế hoạch nếu phù hợp workflow.
-- Cảnh báo trước khi rời trang nếu có thay đổi chưa lưu, nếu kỹ thuật cho phép.
+- ~~Cảnh báo trước khi rời trang nếu có thay đổi chưa lưu~~ — **đã bỏ theo yêu cầu người vận hành (14/10/2026)**: đóng modal hoặc rời trang không hỏi lại. Thao tác phá hủy dữ liệu (xóa, hủy đợt…) vẫn có hộp xác nhận.
 
 ### E. Chi tiết đợt nấu
 - Header: tên, thời gian, trạng thái, số suất dự kiến.
@@ -106,3 +106,8 @@ Nguồn: `public/css/app.css` (ghi đè biến CSS của Bootstrap 5.3, không c
 - **Component:** `page-header`, `stat`, `date-tile`, `avatar`, `status-badge`, `task-status`, `batch-card`, `batch-stepper`, `row-menu`, `empty-state`, `input`/`select`/`textarea`.
 - **Danh sách trên điện thoại:** thẻ thay cho bảng (báo cáo); bảng chỉ dùng từ 768px trở lên và khi in.
 - **Trạng thái tải:** thanh tiến trình đầu trang khi chuyển trang; skeleton cho bảng/danh sách khi lọc hoặc phân trang (khai báo bằng `data-skeleton="table|cards|list"`); nút gửi hiện spinner + chữ theo ngữ cảnh (`data-loading-text`) và bị khóa để tránh gửi hai lần. Link tải file phải có `download data-no-loading`.
+
+## Bổ sung 14/10/2026
+- Menu: badge cam "việc của tôi hôm nay" (chưa xong; hạn hôm nay, hoặc không có hạn nhưng đợt diễn ra hôm nay) và badge xanh "đợt đang diễn ra"; nhãn đọc màn hình đầy đủ.
+- Chọn ngày/giờ: flatpickr (tiếng Việt, tuần bắt đầu thứ Hai, hiển thị dd/mm/yyyy, gõ tay được); không JS thì dùng ô ngày của trình duyệt.
+- Đăng xuất có hộp xác nhận; đóng modal/rời trang có form chưa lưu **không** hỏi lại.
