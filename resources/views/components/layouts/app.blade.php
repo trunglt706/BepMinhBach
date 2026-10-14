@@ -7,10 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ isset($title) ? $title.' · ' : '' }}BếpMinhBạch</title>
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ asset('vendor/be-vietnam-pro/font.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
+    @include('partials.head-assets')
 </head>
 <body>
 <a class="visually-hidden-focusable btn btn-light position-fixed top-0 start-0 m-2" style="z-index: 2000" href="#main">Bỏ qua điều hướng</a>
@@ -42,6 +39,15 @@
                 @endif
             </a>
         @endforeach
+        <div class="side-nav-label">Công khai</div>
+        @can('viewAny', App\Models\Post::class)
+            <a href="{{ route('posts.index') }}" @class(['active' => request()->routeIs('posts.*')]) @if(request()->routeIs('posts.*')) aria-current="page" @endif>
+                <i class="bi bi-newspaper" aria-hidden="true"></i> Bài viết
+            </a>
+        @endcan
+        <a href="{{ route('blog.index') }}" target="_blank" rel="noopener">
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Xem trang công khai
+        </a>
         @can('viewAny', App\Models\User::class)
             <div class="side-nav-label">Quản trị</div>
             <a href="{{ route('users.index') }}" @class(['active' => request()->routeIs('users.*')])>
@@ -87,6 +93,10 @@
                     <div class="small text-body-secondary">{{ $user->role->label() }}</div>
                 </li>
                 <li><hr class="dropdown-divider"></li>
+                @can('viewAny', App\Models\Post::class)
+                    <li><a class="dropdown-item" href="{{ route('posts.index') }}"><i class="bi bi-newspaper" aria-hidden="true"></i> Bài viết</a></li>
+                @endcan
+                <li><a class="dropdown-item" href="{{ route('blog.index') }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Xem trang công khai</a></li>
                 @can('viewAny', App\Models\User::class)
                     <li><a class="dropdown-item" href="{{ route('users.index') }}"><i class="bi bi-people" aria-hidden="true"></i> Quản lý tài khoản</a></li>
                 @endcan

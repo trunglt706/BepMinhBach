@@ -76,6 +76,27 @@ Chỉ triển khai nếu cần lịch sử kiểm tra các thay đổi quan tr�
 
 Không ghi payload nhạy cảm đầy đủ vào log. Không xây audit framework phức tạp cho mọi trường ngay từ đầu.
 
+## posts
+- `id`, `title` (≤ 200), `slug` (duy nhất; tạo từ tiêu đề, giữ nguyên sau khi đã đăng), `excerpt` (≤ 500, tùy chọn), `body` (văn bản thuần, ≤ 20.000)
+- `status`: `draft` | `published`; `published_at` (lần đăng đầu; gỡ rồi đăng lại giữ nguyên)
+- `cooking_batch_id` (tùy chọn, FK → cooking_batches, **null on delete**: xóa đợt nháp không xóa bài)
+- `author_id` (FK → users, không hiện công khai), timestamps
+- `body` là HTML **đã lọc** (allowlist, `App\Support\PostHtml`) — lọc ngay khi gán vào model; `body_text` là chữ thuần dùng cho tìm kiếm/tóm tắt/SEO.
+- `view_count`: lượt xem (mỗi người xem tính 1 lần / 6 giờ, không tính bot/người quản lý); tăng bằng query builder nên không đổi `updated_at`.
+
+## post_images
+- `post_id` (FK, cascade), `kind`: `cover` (tối đa 1) | `gallery` (tối đa `BMB_POST_MAX_IMAGES`, mặc định 12)
+- `path`: đường dẫn gốc không đuôi (`posts/2026/10/<ngẫu nhiên>`); file thật `public/uploads/{path}-{width}.webp`
+- `widths` (JSON, ví dụ `[480, 960, 1600]` — không phóng to quá ảnh gốc), `width`, `height` (ảnh sau khi xoay đúng hướng), `caption` (≤ 200), `sort_order`
+- Chỉ lưu WebP do máy chủ mã hóa lại (không lưu file gốc, không EXIF/GPS). Xóa bản ghi → xóa file sau khi giao dịch thành công.
+
+## cooking_batches (bổ sung)
+- `reopen_reason` (≤ 500), `reopened_at`: lý do mở lại gần nhất. Trước đây lý do nằm trong tóm tắt activity log; nay log không chứa chữ tự do.
+
+## tags, post_tag
+- `tags`: `id`, `name` (≤ 40), `slug` (duy nhất — "Cơm Chay" và "cơm chay" là một thẻ)
+- `post_tag`: khóa chính (`post_id`, `tag_id`), xóa theo bài/thẻ. Mỗi bài 0–10 thẻ; thẻ không còn bài nào được dọn tự động.
+
 ## Quan hệ
 - User has many batches as coordinator/creator.
 - CookingBatch has many ingredients, tasks, expense items.

@@ -59,13 +59,13 @@
                 @if($status !== TaskStatus::Done)
                     <form method="POST" action="{{ route('tasks.status', $task) }}" data-ajax>
                         @csrf
-                        <input type="hidden" name="status" value="done">
+                        <input type="hidden" name="status" value="{{ TaskStatus::Done->value }}">
                         <button type="submit" class="btn btn-primary btn-sm" data-loading-text="Đang cập nhật…"><i class="bi bi-check-lg" aria-hidden="true"></i> Đánh dấu hoàn thành</button>
                     </form>
                     @if($status !== TaskStatus::InProgress)
                         <form method="POST" action="{{ route('tasks.status', $task) }}" data-ajax>
                             @csrf
-                            <input type="hidden" name="status" value="in_progress">
+                            <input type="hidden" name="status" value="{{ TaskStatus::InProgress->value }}">
                             <button type="submit" class="btn btn-outline-secondary btn-sm" data-loading-text="Đang cập nhật…">
                                 <i class="bi bi-play-fill" aria-hidden="true"></i> {{ $status === TaskStatus::Blocked ? 'Hết vướng, làm tiếp' : 'Bắt đầu làm' }}
                             </button>
@@ -76,7 +76,7 @@
                             {{ $status === TaskStatus::Blocked ? 'Cập nhật lý do bị vướng' : 'Báo đang bị vướng' }}</summary>
                     <form method="POST" action="{{ route('tasks.status', $task) }}" data-ajax class="quick-form mt-2">
                         @csrf
-                        <input type="hidden" name="status" value="blocked">
+                        <input type="hidden" name="status" value="{{ TaskStatus::Blocked->value }}">
                         <input type="hidden" name="_task" value="{{ $task->id }}">
                         <label for="blocked_note_{{ $task->id }}" class="form-label small">Đang vướng gì? <span class="required-mark" aria-hidden="true">*</span></label>
                         <textarea id="blocked_note_{{ $task->id }}" name="blocked_note" rows="2" maxlength="500" required
@@ -92,7 +92,7 @@
                 @else
                     <form method="POST" action="{{ route('tasks.status', $task) }}" data-ajax>
                         @csrf
-                        <input type="hidden" name="status" value="todo">
+                        <input type="hidden" name="status" value="{{ TaskStatus::Todo->value }}">
                         <button type="submit" class="btn btn-outline-secondary btn-sm" data-loading-text="Đang cập nhật…"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Đánh dấu chưa xong</button>
                     </form>
                 @endif

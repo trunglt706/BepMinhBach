@@ -1,9 +1,10 @@
 @csrf
 @php
-    $units = App\Models\Ingredient::UNITS;
+    use App\Models\Ingredient;
+    $units = Ingredient::UNITS;
     $currentUnit = old('unit', $ingredient->unit);
     $isCustom = $currentUnit !== null && $currentUnit !== '' && ! in_array($currentUnit, $units, true);
-    $selectedUnit = old('unit') === 'other' || $isCustom ? 'other' : ($currentUnit ?? 'kg');
+    $selectedUnit = old('unit') === Ingredient::UNIT_OTHER || $isCustom ? Ingredient::UNIT_OTHER : ($currentUnit ?? Ingredient::DEFAULT_UNIT);
     $otherValue = old('unit_other', $isCustom ? $currentUnit : '');
 @endphp
 <x-input name="name" label="Tên nguyên liệu" :value="$ingredient->name" required maxlength="150" help="Ví dụ: Gạo, Đậu hũ, Rau muống" />
@@ -15,12 +16,13 @@
     <div class="col-sm-6">
         <div class="mb-3">
             <label for="f_unit" class="form-label fw-semibold">Đơn vị <span class="text-danger" aria-hidden="true">*</span></label>
-            <select id="f_unit" name="unit" class="form-select @error('unit') is-invalid @enderror" data-unit-select="unit_other_wrap" required
+            <select id="f_unit" name="unit" class="form-select @error('unit') is-invalid @enderror" data-unit-select="unit_other_wrap"
+                    data-other-value="{{ Ingredient::UNIT_OTHER }}" required
                     @error('unit') aria-invalid="true" aria-describedby="f_unit_error" @enderror>
                 @foreach($units as $unit)
                     <option value="{{ $unit }}" @selected($selectedUnit === $unit)>{{ $unit }}</option>
                 @endforeach
-                <option value="other" @selected($selectedUnit === 'other')>Khác (tự nhập)</option>
+                <option value="{{ Ingredient::UNIT_OTHER }}" @selected($selectedUnit === Ingredient::UNIT_OTHER)>Khác (tự nhập)</option>
             </select>
             @error('unit')<div id="f_unit_error" class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>

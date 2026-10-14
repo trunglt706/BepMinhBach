@@ -5,24 +5,46 @@ namespace App\Policies;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
+/** Quản lý tài khoản: chỉ quản trị viên. Không có quyền xóa tài khoản (giữ lịch sử). */
 class UserPolicy
 {
+    /**
+     * Xem danh sách tài khoản.
+     *
+     * @param  User  $user  người đăng nhập
+     */
     public function viewAny(User $user): bool
     {
         return $user->isAdmin();
     }
 
+    /**
+     * Tạo tài khoản.
+     *
+     * @param  User  $user  người đăng nhập
+     */
     public function create(User $user): bool
     {
         return $user->isAdmin();
     }
 
+    /**
+     * Sửa tài khoản (tên, email, vai trò, đặt lại mật khẩu).
+     *
+     * @param  User  $user  người đăng nhập
+     * @param  User  $target  tài khoản cần sửa
+     */
     public function update(User $user, User $target): bool
     {
         return $user->isAdmin();
     }
 
-    /** Không tự khóa chính mình để tránh mất quyền quản trị. */
+    /**
+     * Khóa/mở khóa tài khoản; không tự khóa chính mình để tránh mất quyền quản trị.
+     *
+     * @param  User  $user  người đăng nhập
+     * @param  User  $target  tài khoản cần đổi
+     */
     public function toggleActive(User $user, User $target): Response
     {
         if (! $user->isAdmin()) {

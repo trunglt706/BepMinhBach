@@ -10,12 +10,43 @@
     $percent = $taskTotal > 0 ? (int) round($doneCount / $taskTotal * 100) : 0;
     $expenseTotal = $canViewFinancials ? $batch->expenseItems->sum('amount_vnd') : null;
 
+    // Biểu đồ: màu trạng thái có nghĩa cố định (xong = xanh lá, vướng = đỏ), luôn kèm biểu tượng + tên.
+    $taskSegments = collect([
+        [TaskStatus::Done, 'primary'], [TaskStatus::InProgress, 'info'], [TaskStatus::Todo, 'plan'], [TaskStatus::Blocked, 'critical'],
+    ])->map(fn ($s) => [
+        'label' => $s[0]->label(), 'icon' => $s[0]->icon(), 'tone' => $s[1],
+        'value' => $batch->tasks->where('status', $s[0])->count(),
+    ])->all();
+    $percentOf = fn (?int $part, ?int $whole, string $of) => $part !== null && $whole ? round($part / $whole * 100).'% '.$of : null;
+    $servingRows = [
+        ['label' => 'Dự kiến', 'value' => $batch->expected_servings, 'tone' => 'plan', 'note' => 'Theo kế hoạch'],
+        ['label' => 'Đã chuẩn bị', 'value' => $batch->prepared_servings, 'tone' => 'primary',
+            'note' => $percentOf($batch->prepared_servings, $batch->expected_servings, 'so với dự kiến')],
+        ['label' => 'Đã phân phát', 'value' => $batch->distributed_servings, 'tone' => 'primary',
+            'note' => $percentOf($batch->distributed_servings, $batch->prepared_servings, 'số đã chuẩn bị')],
+    ];
+    if ($canViewFinancials) {
+        $actualCost = $batch->expenseItems->isEmpty() ? null : (int) $expenseTotal;
+        $costRows = [
+            ['label' => 'Dự kiến', 'value' => $batch->estimated_cost_vnd, 'tone' => 'plan'],
+            ['label' => 'Thực tế đã nhập', 'value' => $actualCost, 'tone' => 'money',
+                'note' => $percentOf($actualCost, $batch->estimated_cost_vnd, 'so với dự kiến')],
+        ];
+        // Theo khoản chi: 5 khoản lớn nhất, phần còn lại gộp vào "Khác" (không thêm màu mới).
+        $sorted = $batch->expenseItems->sortByDesc('amount_vnd')->values();
+        $expenseRows = $sorted->take(5)->map(fn ($e) => ['label' => $e->name, 'value' => (int) $e->amount_vnd, 'tone' => 'money'])->all();
+        if ($sorted->count() > 5) {
+            $rest = $sorted->slice(5);
+            $expenseRows[] = ['label' => 'Khác ('.$rest->count().' khoản)', 'value' => (int) $rest->sum('amount_vnd'), 'tone' => 'plan'];
+        }
+    }
+
     // Một hành động chính duy nhất = bước tiếp theo của quy trình.
     $primary = null;
     if ($user->can('changeStatus', $batch) && $batch->status === BatchStatus::Draft) {
-        $primary = ['type' => 'status', 'to' => 'planned', 'label' => 'Chốt kế hoạch', 'icon' => 'bi-calendar-check'];
+        $primary = ['type' => 'status', 'to' => BatchStatus::Planned->value, 'label' => 'Chốt kế hoạch', 'icon' => 'bi-calendar-check'];
     } elseif ($user->can('changeStatus', $batch) && $batch->status === BatchStatus::Planned) {
-        $primary = ['type' => 'status', 'to' => 'in_progress', 'label' => 'Bắt đầu nấu', 'icon' => 'bi-fire'];
+        $primary = ['type' => 'status', 'to' => BatchStatus::InProgress->value, 'label' => 'Bắt đầu nấu', 'icon' => 'bi-fire'];
     } elseif ($batch->status === BatchStatus::InProgress && $user->can('complete', $batch)) {
         $primary = ['type' => 'link', 'url' => route('batches.complete', $batch), 'label' => 'Hoàn tất đợt', 'icon' => 'bi-check-circle'];
     } elseif ($user->can('reopen', $batch)) {
@@ -81,11 +112,14 @@
                                     <li>
                                         <form method="POST" action="{{ route('batches.status', $batch) }}" data-ajax>
                                             @csrf
-                                            <input type="hidden" name="to" value="draft">
+                                            <input type="hidden" name="to" value="{{ BatchStatus::Draft->value }}">
                                             <button type="submit" class="dropdown-item"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Chuyển về nháp</button>
                                         </form>
                                     </li>
                                 @endif
+                                @can('create', App\Models\Post::class)
+                                    <li><a class="dropdown-item" href="{{ route('posts.create', ['batch' => $batch->id]) }}" data-modal><i class="bi bi-pencil-square" aria-hidden="true"></i> Viết bài về đợt này</a></li>
+                                @endcan
                                 @if($canReport)
                                     <li><a class="dropdown-item" href="{{ route('reports.show', $batch) }}"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Báo cáo đợt này</a></li>
                                 @endif
@@ -183,6 +217,9 @@
                         Thêm các việc như đi chợ, sơ chế, nấu, chia suất, dọn dẹp và giao cho từng người.
                     </x-empty-state>
                 @else
+                    <div class="card-body border-bottom py-3">
+                        <x-chart.stack unit="việc" caption="Công việc theo trạng thái" :segments="$taskSegments" />
+                    </div>
                     <div>
                         @foreach($batch->tasks as $task)
                             @include('tasks._item', ['task' => $task, 'showBatch' => false])
@@ -226,14 +263,10 @@
                     @endcan
                 </div>
                 <div class="card-body">
-                    <div class="serving-grid mb-3">
-                        <div><div class="serving-label">Dự kiến</div><div class="serving-value">{{ Format::number($batch->expected_servings) }}</div></div>
-                        <div><div class="serving-label">Đã chuẩn bị</div><div @class(['serving-value', 'is-empty' => $batch->prepared_servings === null])>{{ Format::number($batch->prepared_servings) }}</div></div>
-                        <div><div class="serving-label">Đã phân phát</div><div @class(['serving-value', 'is-empty' => $batch->distributed_servings === null])>{{ Format::number($batch->distributed_servings) }}</div></div>
-                    </div>
+                    <x-chart.bars :rows="$servingRows" caption="Số suất dự kiến, đã chuẩn bị và đã phân phát" class="mb-3" />
                     @foreach($batch->servingVariances() as $variance)
                         <div class="callout callout-{{ $variance['level'] }} mb-2" role="note">
-                            <i class="bi {{ $variance['level'] === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle' }}" aria-hidden="true"></i>
+                            <i class="bi {{ $variance['level'] === App\Models\CookingBatch::VARIANCE_WARNING ? 'bi-exclamation-triangle' : 'bi-info-circle' }}" aria-hidden="true"></i>
                             <span>{{ $variance['message'] }}</span>
                         </div>
                     @endforeach
@@ -259,15 +292,12 @@
                             <a href="{{ route('batches.expenses.create', $batch) }}" data-modal class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Thêm khoản chi</a>
                         @endcan
                     </div>
-                    <div class="card-body pb-2">
-                        <div class="d-flex justify-content-between align-items-baseline">
-                            <span class="text-body-secondary small fw-semibold">Tổng thực tế đã nhập</span>
-                            <span class="fs-5 fw-bold tabular">{{ $batch->expenseItems->isEmpty() ? 'Chưa nhập' : Format::vnd($expenseTotal) }}</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-baseline small">
-                            <span class="text-body-secondary">Chi phí dự kiến</span>
-                            <span class="tabular">{{ Format::vnd($batch->estimated_cost_vnd) }}</span>
-                        </div>
+                    <div class="card-body">
+                        <x-chart.bars :rows="$costRows" format="vnd" caption="Chi phí dự kiến và thực tế" />
+                        @if(count($expenseRows) >= 3)
+                            <h3 class="h6 small fw-bold text-body-secondary text-uppercase mt-4 mb-2" style="letter-spacing: .04em">Theo khoản chi</h3>
+                            <x-chart.bars :rows="$expenseRows" format="vnd" caption="Các khoản chi lớn nhất" />
+                        @endif
                     </div>
                     @if($batch->expenseItems->isEmpty())
                         <x-empty-state icon="bi-receipt" title="Chưa nhập khoản chi nào" compact>
@@ -297,7 +327,7 @@
                 </section>
             @endif
 
-            @if($batch->notes || $batch->completion_notes)
+            @if($batch->notes || $batch->completion_notes || ($batch->reopen_reason && $canEdit))
                 <section class="card" aria-labelledby="h-ghi-chu">
                     <div class="panel-header"><h2 id="h-ghi-chu" class="panel-title"><i class="bi bi-journal-text" aria-hidden="true"></i> Ghi chú</h2></div>
                     <div class="card-body">
@@ -306,7 +336,12 @@
                         @endif
                         @if($batch->completion_notes)
                             <h3 class="h6 mt-2">Rút kinh nghiệm</h3>
-                            <p class="text-pre-line mb-0">{{ $batch->completion_notes }}</p>
+                            <p class="text-pre-line mb-2">{{ $batch->completion_notes }}</p>
+                        @endif
+                        {{-- Lý do mở lại chỉ hiện cho người quản lý đợt (không nằm trong lịch sử thay đổi). --}}
+                        @if($batch->reopen_reason && $canEdit)
+                            <h3 class="h6 mt-2">Lý do mở lại gần nhất @if($batch->reopened_at)<span class="small text-body-secondary fw-normal">({{ Format::dateTime($batch->reopened_at) }})</span>@endif</h3>
+                            <p class="text-pre-line mb-0">{{ $batch->reopen_reason }}</p>
                         @endif
                     </div>
                 </section>

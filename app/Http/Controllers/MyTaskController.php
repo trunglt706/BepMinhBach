@@ -7,9 +7,14 @@ use App\Models\Task;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+/** "Công việc của tôi": các việc được giao cho người đang đăng nhập. */
 class MyTaskController extends Controller
 {
-    /** Việc của tôi: quá hạn + hôm nay lên đầu, sau đó việc sắp tới, cuối cùng việc đã xong gần đây. */
+    /**
+     * Việc của tôi: quá hạn + hôm nay lên đầu, sau đó việc sắp tới, cuối cùng việc đã xong gần đây.
+     *
+     * @param  Request  $request  yêu cầu hiện tại (lấy người dùng)
+     */
     public function __invoke(Request $request): View
     {
         $user = $request->user();

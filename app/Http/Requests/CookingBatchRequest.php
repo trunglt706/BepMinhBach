@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\BatchStatus;
 use App\Enums\Role;
 use App\Models\CookingBatch;
 use App\Support\Input;
@@ -9,8 +10,15 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
+/** Tạo/sửa thông tin đợt nấu. */
 class CookingBatchRequest extends FormRequest
 {
+    /** Trạng thái được chọn khi tạo đợt (nút "Lưu nháp" / "Lưu kế hoạch"). */
+    public const CREATE_STATUSES = [BatchStatus::Draft, BatchStatus::Planned];
+
+    /**
+     * Sửa: CookingBatchPolicy::update; tạo: CookingBatchPolicy::create.
+     */
     public function authorize(): bool
     {
         $batch = $this->route('batch');
@@ -19,6 +27,9 @@ class CookingBatchRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Chuẩn hóa số tiền "1.500.000 đ" → "1500000" trước khi kiểm tra.
+     */
     protected function prepareForValidation(): void
     {
         $this->merge([
@@ -26,6 +37,9 @@ class CookingBatchRequest extends FormRequest
         ]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -39,13 +53,19 @@ class CookingBatchRequest extends FormRequest
                 'integer',
                 Rule::exists('users', 'id')
                     ->where('is_active', true)
-                    ->whereIn('role', [Role::Coordinator->value, Role::Admin->value]),
+                    ->whereIn('role', Role::valuesAtLeast(Role::Coordinator)),
             ],
             'notes' => ['nullable', 'string', 'max:2000'],
-            'save_as' => [$this->route('batch') ? 'prohibited' : 'required', Rule::in(['draft', 'planned'])],
+            'save_as' => [
+                $this->route('batch') ? 'prohibited' : 'required',
+                Rule::enum(BatchStatus::class)->only(self::CREATE_STATUSES),
+            ],
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function attributes(): array
     {
         return [
@@ -59,6 +79,9 @@ class CookingBatchRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

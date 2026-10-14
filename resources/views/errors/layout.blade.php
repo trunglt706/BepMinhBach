@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title') · BếpMinhBạch</title>
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ asset('vendor/be-vietnam-pro/font.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
+    @include('partials.head-assets')
 </head>
 <body>
 <main class="container d-flex align-items-center justify-content-center" style="min-height: 100vh;">

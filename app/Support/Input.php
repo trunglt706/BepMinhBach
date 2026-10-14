@@ -9,6 +9,9 @@ class Input
      * "150.000", "150,000 đ", "150 000" → "150000".
      * Chỉ bỏ dấu phân cách khi đúng nhóm 3 chữ số, để "12,5" không bị hiểu thành 125.
      * Giá trị không hợp lệ được giữ nguyên để validation báo lỗi.
+     *
+     * @param  mixed  $value  giá trị người dùng nhập
+     * @return mixed chuỗi chữ số, null nếu trống, hoặc giá trị gốc nếu không nhận dạng được
      */
     public static function money(mixed $value): mixed
     {
@@ -28,7 +31,12 @@ class Input
         return $trimmed;
     }
 
-    /** "1,5" → "1.5" (dấu phẩy thập phân). */
+    /**
+     * Số thập phân kiểu Việt Nam: "1,5" → "1.5". Giá trị khác giữ nguyên để validation báo lỗi.
+     *
+     * @param  mixed  $value  giá trị người dùng nhập
+     * @return mixed chuỗi số dùng dấu chấm, null nếu trống, hoặc giá trị gốc
+     */
     public static function decimal(mixed $value): mixed
     {
         if (! is_string($value)) {

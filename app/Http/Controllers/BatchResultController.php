@@ -2,17 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActivityAction;
+use App\Http\Requests\BatchResultRequest;
 use App\Models\ActivityLog;
 use App\Models\CookingBatch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
+/** Nhập số suất thực tế (đã chuẩn bị / đã phân phát) của đợt nấu. */
 class BatchResultController extends Controller
 {
+    /**
+     * Form nhập số suất.
+     *
+     * @param  CookingBatch  $batch  đợt nấu
+     */
     public function edit(CookingBatch $batch): View
     {
         Gate::authorize('recordResults', $batch);
@@ -20,20 +27,16 @@ class BatchResultController extends Controller
         return view('batches.results', compact('batch'));
     }
 
-    public function update(Request $request, CookingBatch $batch): JsonResponse|RedirectResponse
+    /**
+     * Lưu số suất có kiểm tra phiên bản (khóa dòng): nếu người khác vừa lưu thì không ghi đè,
+     * trả 409 (AJAX) hoặc quay lại form với giá trị mới nhất.
+     *
+     * @param  BatchResultRequest  $request  dữ liệu đã kiểm tra + quyền recordResults
+     * @param  CookingBatch  $batch  đợt nấu
+     */
+    public function update(BatchResultRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
-        Gate::authorize('recordResults', $batch);
-
-        $validated = $request->validate([
-            'prepared_servings' => ['nullable', 'integer', 'min:0', 'max:100000'],
-            'distributed_servings' => ['nullable', 'integer', 'min:0', 'max:100000'],
-            'variance_note' => ['nullable', 'string', 'max:1000'],
-            'results_version' => ['required', 'integer'],
-        ], [], [
-            'prepared_servings' => 'số suất đã chuẩn bị',
-            'distributed_servings' => 'số suất đã phân phát',
-            'variance_note' => 'giải thích chênh lệch',
-        ]);
+        $validated = $request->validated();
 
         $saved = DB::transaction(function () use ($batch, $validated, $request) {
             $fresh = CookingBatch::whereKey($batch->id)->lockForUpdate()->firstOrFail();
@@ -53,8 +56,9 @@ class BatchResultController extends Controller
             $fresh->results_version++;
             $fresh->save();
 
+            // Chỉ ghi số liệu; ghi chú chênh lệch là chữ tự do nên không đưa vào log.
             $fmt = fn (?int $v) => $v === null ? 'chưa nhập' : number_format($v, 0, ',', '.');
-            ActivityLog::record($fresh, $request->user(), 'batch.results', sprintf(
+            ActivityLog::record($fresh, $request->user(), ActivityAction::BatchResultsUpdated, sprintf(
                 'Cập nhật số suất: chuẩn bị %s → %s; phân phát %s → %s.',
                 $fmt($old[0]), $fmt($fresh->prepared_servings), $fmt($old[1]), $fmt($fresh->distributed_servings),
             ));

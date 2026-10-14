@@ -27,8 +27,9 @@
                 <label for="u_state" class="form-label small mb-1">Trạng thái</label>
                 <select id="u_state" name="state" class="form-select">
                     <option value="">Tất cả</option>
-                    <option value="active" @selected($state === 'active')>Đang hoạt động</option>
-                    <option value="locked" @selected($state === 'locked')>Đã khóa</option>
+                    @foreach(App\Enums\AccountState::cases() as $s)
+                        <option value="{{ $s->value }}" @selected($state === $s)>{{ $s->label() }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="col-12 col-md-2 d-grid">

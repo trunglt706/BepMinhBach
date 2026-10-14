@@ -4,24 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Enums\BatchStatus;
 use App\Enums\TaskStatus;
+use App\Http\Requests\DashboardRequest;
 use App\Models\CookingBatch;
 use App\Models\Ingredient;
 use App\Models\Task;
+use App\Models\User;
+use App\Support\Charts;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+/** Trang tổng quan: số liệu nhanh, biểu đồ theo khoảng thời gian, việc cần xử lý, đợt đang mở, việc của tôi. */
 class DashboardController extends Controller
 {
-    public const PERIODS = [7 => '7 ngày qua', 30 => '30 ngày qua', 90 => '90 ngày qua', 365 => '12 tháng qua'];
-
-    public function __invoke(Request $request): View
+    /**
+     * Trang tổng quan.
+     *
+     * @param  DashboardRequest  $request  khoảng thời gian đã kiểm tra (?days=)
+     */
+    public function __invoke(DashboardRequest $request): View
     {
         $user = $request->user();
-        $days = (int) $request->query('days', 30);
-        if (! array_key_exists($days, self::PERIODS)) {
-            $days = 30;
-        }
+        $days = $request->days();
 
         $hasBatches = CookingBatch::exists();
 
@@ -40,9 +44,10 @@ class DashboardController extends Controller
             ->whereNotNull('distributed_servings');
 
         return view('dashboard', [
+            ...$this->charts($user, $periodStart),
             'hasBatches' => $hasBatches,
             'days' => $days,
-            'periods' => self::PERIODS,
+            'periods' => DashboardRequest::PERIODS,
             'upcomingCount' => (clone $upcomingQuery)->count(),
             'inProgressCount' => (clone $inProgressQuery)->count(),
             'openTasksCount' => (clone $openTasksQuery)->count(),
@@ -79,5 +84,60 @@ class DashboardController extends Controller
                 ->orderByDesc('starts_at')
                 ->first(),
         ]);
+    }
+
+    /**
+     * Số liệu cho biểu đồ, cùng khoảng thời gian với bộ chọn phía trên.
+     * Chỉ là số tổng hợp theo đợt, không có thông tin người nhận. Chi phí chỉ dành cho người xem được báo cáo.
+     *
+     * @param  User  $user  người đang xem (quyết định có biểu đồ chi phí hay không)
+     * @param  CarbonInterface  $from  đầu khoảng thời gian
+     * @return array{servingsChart: array, statusChart: list<array>, expenseChart: ?array} biến cho view
+     */
+    private function charts(User $user, CarbonInterface $from): array
+    {
+        $to = now();
+
+        // So sánh dự kiến với phân phát chỉ trên các đợt đã nhập số phân phát, để "chưa nhập" không bị hiểu là thiếu suất.
+        $withResults = CookingBatch::where('status', '!=', BatchStatus::Cancelled->value)
+            ->whereBetween('starts_at', [$from, $to])
+            ->whereNotNull('distributed_servings')
+            ->get(['id', 'starts_at', 'expected_servings', 'distributed_servings']);
+
+        // Trạng thái: các đợt bắt đầu từ đầu khoảng thời gian, gồm cả đợt sắp tới.
+        $statusCounts = CookingBatch::where('starts_at', '>=', $from)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $expenseChart = null;
+        if ($user->can('viewReports')) {
+            $withExpenses = CookingBatch::whereBetween('starts_at', [$from, $to])
+                ->whereHas('expenseItems')
+                ->withSum('expenseItems', 'amount_vnd')
+                ->get(['id', 'starts_at']);
+            $expenseChart = [
+                'groups' => Charts::groupByTime($withExpenses, fn ($b) => $b->starts_at,
+                    ['amount' => fn ($b) => (int) $b->expense_items_sum_amount_vnd], $from, $to),
+                'batchCount' => $withExpenses->count(),
+            ];
+        }
+
+        return [
+            'servingsChart' => [
+                'groups' => Charts::groupByTime($withResults, fn ($b) => $b->starts_at, [
+                    'expected' => fn ($b) => $b->expected_servings,
+                    'distributed' => fn ($b) => $b->distributed_servings,
+                ], $from, $to),
+                'batchCount' => $withResults->count(),
+            ],
+            'statusChart' => collect(BatchStatus::cases())->map(fn (BatchStatus $s) => [
+                'label' => $s->label(),
+                'icon' => $s->icon(),
+                'value' => (int) ($statusCounts[$s->value] ?? 0),
+                'tone' => 'primary',
+            ])->all(),
+            'expenseChart' => $expenseChart,
+        ];
     }
 }

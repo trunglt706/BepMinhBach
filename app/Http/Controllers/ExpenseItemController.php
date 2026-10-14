@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActivityAction;
 use App\Http\Requests\ExpenseItemRequest;
 use App\Models\ActivityLog;
 use App\Models\CookingBatch;
@@ -14,8 +15,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
+/**
+ * Khoản chi nguyên liệu của đợt nấu (ghi nhận nội bộ, không phải sổ sách kế toán).
+ * Log ghi tên khoản + số tiền để đối chiếu; ghi chú của khoản chi (chữ tự do) không đưa vào log.
+ */
 class ExpenseItemController extends Controller
 {
+    /**
+     * Form thêm khoản chi.
+     *
+     * @param  CookingBatch  $batch  đợt nấu
+     */
     public function create(CookingBatch $batch): View
     {
         Gate::authorize('manageExpenses', $batch);
@@ -23,6 +33,12 @@ class ExpenseItemController extends Controller
         return view('expenses.create', ['batch' => $batch, 'expense' => new ExpenseItem]);
     }
 
+    /**
+     * Thêm khoản chi; "Lưu và thêm tiếp" giữ modal mở.
+     *
+     * @param  ExpenseItemRequest  $request  dữ liệu đã kiểm tra (số tiền đã bỏ dấu phân cách)
+     * @param  CookingBatch  $batch  đợt nấu
+     */
     public function store(ExpenseItemRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
         $expense = new ExpenseItem($request->validated());
@@ -30,7 +46,7 @@ class ExpenseItemController extends Controller
 
         DB::transaction(function () use ($batch, $expense, $request) {
             $batch->expenseItems()->save($expense);
-            ActivityLog::record($batch, $request->user(), 'expense.created',
+            ActivityLog::record($batch, $request->user(), ActivityAction::ExpenseCreated,
                 'Thêm khoản chi “'.$expense->name.'”: '.Format::vnd($expense->amount_vnd).'.');
         });
 
@@ -43,6 +59,11 @@ class ExpenseItemController extends Controller
             'Đã thêm khoản chi “'.$expense->name.'”.');
     }
 
+    /**
+     * Form sửa khoản chi.
+     *
+     * @param  ExpenseItem  $expense  khoản chi
+     */
     public function edit(ExpenseItem $expense): View
     {
         Gate::authorize('update', $expense);
@@ -50,12 +71,18 @@ class ExpenseItemController extends Controller
         return view('expenses.edit', ['batch' => $expense->batch, 'expense' => $expense]);
     }
 
+    /**
+     * Lưu thay đổi khoản chi (log ghi số tiền cũ → mới).
+     *
+     * @param  ExpenseItemRequest  $request  dữ liệu đã kiểm tra
+     * @param  ExpenseItem  $expense  khoản chi
+     */
     public function update(ExpenseItemRequest $request, ExpenseItem $expense): JsonResponse|RedirectResponse
     {
         DB::transaction(function () use ($expense, $request) {
             $oldAmount = $expense->amount_vnd;
             $expense->update($request->validated());
-            ActivityLog::record($expense->batch, $request->user(), 'expense.updated', sprintf(
+            ActivityLog::record($expense->batch, $request->user(), ActivityAction::ExpenseUpdated, sprintf(
                 'Sửa khoản chi “%s”: %s → %s.', $expense->name, Format::vnd($oldAmount), Format::vnd($expense->amount_vnd),
             ));
         });
@@ -64,13 +91,19 @@ class ExpenseItemController extends Controller
             'Đã lưu khoản chi “'.$expense->name.'”.');
     }
 
+    /**
+     * Xóa khoản chi.
+     *
+     * @param  Request  $request  yêu cầu (không có dữ liệu nhập)
+     * @param  ExpenseItem  $expense  khoản chi
+     */
     public function destroy(Request $request, ExpenseItem $expense): JsonResponse|RedirectResponse
     {
         Gate::authorize('delete', $expense);
 
         DB::transaction(function () use ($expense, $request) {
             $expense->delete();
-            ActivityLog::record($expense->batch, $request->user(), 'expense.deleted',
+            ActivityLog::record($expense->batch, $request->user(), ActivityAction::ExpenseDeleted,
                 'Xóa khoản chi “'.$expense->name.'”: '.Format::vnd($expense->amount_vnd).'.');
         });
 

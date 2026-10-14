@@ -38,6 +38,16 @@ return [
             'report' => false,
         ],
 
+        // Ảnh bài viết: lưu thẳng dưới public/ (không cần `storage:link`, chạy được trên Windows/hosting chia sẻ).
+        // Chỉ chứa ảnh WebP do máy chủ tự mã hóa lại — không bao giờ lưu file gốc người dùng tải lên.
+        'uploads' => [
+            'driver' => 'local',
+            'root' => public_path('uploads'),
+            'visibility' => 'public',
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

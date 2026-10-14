@@ -9,6 +9,7 @@
     'warn' => true,
     'size' => null,
     'bare' => false,
+    'files' => false,
 ])
 {{--
     Khung form dùng cho tác vụ ngắn.
@@ -16,12 +17,13 @@
     - Mở bằng ?modal=1 (app.js): chỉ trả nội dung modal; form gửi bằng AJAX, lỗi hiện ngay trong modal,
       thành công thì đóng modal và cập nhật vùng dữ liệu trên trang, không tải lại trang.
     - bare: nội dung đã tự chia thành các <section class="card">, không bọc thêm thẻ.
+    - files: form có tải file (enctype multipart/form-data).
     - $after: chỉ hiện ở trang đầy đủ, nằm ngoài form (ví dụ vùng xóa) — không lồng form trong modal.
 --}}
 @php($asModal = request()->boolean('modal'))
 
 @if($asModal)
-    <form method="POST" action="{{ $action }}" class="modal-content" data-ajax novalidate
+    <form method="POST" action="{{ $action }}" class="modal-content" data-ajax novalidate @if($files) enctype="multipart/form-data" @endif
           @if($warn) data-warn-unsaved @endif data-modal-size="{{ $size }}">
         @csrf
         @if(strtoupper($method) !== 'POST') @method($method) @endif
@@ -47,7 +49,7 @@
         <div class="form-narrow mx-auto">
             <x-page-header :title="$title" :subtitle="$subtitle" :back="$back" :back-label="$backLabel" />
             {{ $before ?? '' }}
-            <form method="POST" action="{{ $action }}" novalidate @if($warn) data-warn-unsaved @endif>
+            <form method="POST" action="{{ $action }}" novalidate @if($warn) data-warn-unsaved @endif @if($files) enctype="multipart/form-data" @endif>
                 @csrf
                 @if(strtoupper($method) !== 'POST') @method($method) @endif
                 @if($bare)

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,22 +12,31 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
+/** Đăng nhập/đăng xuất bằng session. */
 class LoginController extends Controller
 {
+    /** Số lần nhập sai tối đa cho mỗi cặp email + IP trước khi phải chờ. */
     private const MAX_ATTEMPTS = 5;
 
+    /**
+     * Trang đăng nhập.
+     */
     public function create(): View
     {
         return view('auth.login');
     }
 
-    public function store(Request $request): RedirectResponse
+    /**
+     * Xử lý đăng nhập: giới hạn số lần sai, không tiết lộ email có tồn tại hay không,
+     * chỉ báo "tài khoản bị khóa" khi mật khẩu đã đúng.
+     *
+     * @param  LoginRequest  $request  email + mật khẩu đã kiểm tra định dạng
+     *
+     * @throws ValidationException sai thông tin, quá số lần thử hoặc tài khoản bị khóa
+     */
+    public function store(LoginRequest $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'string', 'email', 'max:255'],
-            'password' => ['required', 'string', 'max:255'],
-        ]);
-
+        $credentials = $request->credentials();
         $throttleKey = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
 
         if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_ATTEMPTS)) {
@@ -59,6 +69,11 @@ class LoginController extends Controller
         return redirect()->intended(route('dashboard'));
     }
 
+    /**
+     * Đăng xuất: hủy phiên và token CSRF.
+     *
+     * @param  Request  $request  yêu cầu hiện tại
+     */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();

@@ -31,4 +31,7 @@
         <i class="bi bi-question-circle" aria-hidden="true"></i>
         Quên mật khẩu hoặc chưa có tài khoản? Liên hệ quản trị viên của bếp.
     </p>
+    <p class="text-center small mt-2 mb-0">
+        <a href="{{ route('blog.index') }}" class="fw-semibold"><i class="bi bi-newspaper" aria-hidden="true"></i> Xem bài viết về các đợt nấu</a>
+    </p>
 </x-layouts.guest>

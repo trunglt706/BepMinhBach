@@ -9,6 +9,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseItemController;
 use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\MyTaskController;
+use App\Http\Controllers\PostController;
+use App\Http\Controllers\PublicPostController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\UserController;
@@ -19,7 +21,16 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [LoginController::class, 'store'])->name('login.store');
 });
 
-Route::middleware(['auth', 'active'])->group(function () {
+// Trang công khai cho khách: bài viết đã đăng. Giới hạn theo IP chống spam/cào dữ liệu.
+// ETag: trang không đổi thì trình duyệt nhận 304 (không tải lại nội dung). "private" vì trang có token CSRF riêng.
+Route::middleware(['throttle:public', 'cache.headers:private;max_age=0;must_revalidate;etag'])->group(function () {
+    Route::get('/bai-viet', [PublicPostController::class, 'index'])->name('blog.index');
+    Route::get('/bai-viet/{post:slug}', [PublicPostController::class, 'show'])->name('blog.show');
+    Route::get('/sitemap.xml', [PublicPostController::class, 'sitemap'])->name('sitemap');
+});
+
+// Nội bộ: giới hạn số thao tác theo TỪNG tài khoản (config/bmb.php).
+Route::middleware(['auth', 'active', 'throttle:user-actions'])->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::get('/', DashboardController::class)->name('dashboard');
@@ -69,4 +80,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Quản lý tài khoản (Admin)
     Route::resource('users', UserController::class)->except(['show', 'destroy']);
     Route::post('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle-active');
+
+    // Bài viết công khai (điều phối viên trở lên)
+    Route::resource('posts', PostController::class)->except('show');
+    Route::post('/posts/{post}/publish', [PostController::class, 'togglePublish'])->name('posts.publish');
 });

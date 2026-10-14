@@ -3,16 +3,22 @@
 namespace App\Support;
 
 use App\Enums\BatchStatus;
+use App\Models\CookingBatch;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 
 /**
- * Bộ lọc đợt nấu dùng chung cho danh sách và báo cáo.
- * Giá trị không hợp lệ bị bỏ qua thay vì gây lỗi, để người dùng luôn thấy được trang.
+ * Bộ lọc đợt nấu đã chuẩn hóa (tạo từ App\Http\Requests\BatchFilterRequest::filter()),
+ * dùng chung cho danh sách đợt và báo cáo.
  */
 class BatchFilter
 {
+    /**
+     * @param  string|null  $q  từ khóa trong tên đợt
+     * @param  BatchStatus|null  $status  trạng thái cần lọc
+     * @param  CarbonImmutable|null  $from  từ ngày (tính cả ngày)
+     * @param  CarbonImmutable|null  $to  đến ngày (tính cả ngày)
+     */
     public function __construct(
         public readonly ?string $q = null,
         public readonly ?BatchStatus $status = null,
@@ -20,24 +26,12 @@ class BatchFilter
         public readonly ?CarbonImmutable $to = null,
     ) {}
 
-    public static function fromRequest(Request $request): self
-    {
-        $q = trim((string) $request->query('q', ''));
-
-        $from = self::parseDate($request->query('from'));
-        $to = self::parseDate($request->query('to'));
-        if ($from && $to && $to->lt($from)) {
-            [$from, $to] = [$to, $from];
-        }
-
-        return new self(
-            q: $q !== '' ? mb_substr($q, 0, 100) : null,
-            status: is_string($request->query('status')) ? BatchStatus::tryFrom($request->query('status')) : null,
-            from: $from,
-            to: $to,
-        );
-    }
-
+    /**
+     * Áp bộ lọc vào truy vấn đợt nấu.
+     *
+     * @param  Builder<CookingBatch>  $query
+     * @return Builder<CookingBatch>
+     */
     public function apply(Builder $query): Builder
     {
         return $query
@@ -47,12 +41,17 @@ class BatchFilter
             ->when($this->to, fn (Builder $q) => $q->where('starts_at', '<=', $this->to->endOfDay()));
     }
 
+    /**
+     * Không có điều kiện lọc nào.
+     */
     public function isEmpty(): bool
     {
         return ! $this->q && ! $this->status && ! $this->from && ! $this->to;
     }
 
-    /** Mô tả phạm vi dữ liệu cho báo cáo. */
+    /**
+     * Mô tả phạm vi dữ liệu cho báo cáo ("Từ … đến … · Trạng thái … · Tên chứa …").
+     */
     public function describe(): string
     {
         $parts = [];
@@ -68,18 +67,5 @@ class BatchFilter
         }
 
         return implode(' · ', $parts);
-    }
-
-    private static function parseDate(mixed $value): ?CarbonImmutable
-    {
-        if (! is_string($value) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-            return null;
-        }
-
-        try {
-            return CarbonImmutable::createFromFormat('!Y-m-d', $value) ?: null;
-        } catch (\Throwable) {
-            return null;
-        }
     }
 }

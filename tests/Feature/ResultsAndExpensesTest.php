@@ -147,15 +147,15 @@ class ResultsAndExpensesTest extends TestCase
         $recorder = User::factory()->recorder()->create();
 
         $this->actingAs($recorder)->get("/batches/{$batch->id}")
-            ->assertSeeInOrder(['Tổng thực tế đã nhập', 'Chưa nhập']);
+            ->assertSeeInOrder(['Thực tế đã nhập', 'Chưa nhập']);
 
         ExpenseItem::factory()->for($batch, 'batch')->create(['amount_vnd' => 0]);
         $this->actingAs($recorder)->get("/batches/{$batch->id}")
-            ->assertSeeInOrder(['Tổng thực tế đã nhập', '0 đ']);
+            ->assertSeeInOrder(['Thực tế đã nhập', '0 đ']);
 
         ExpenseItem::factory()->for($batch, 'batch')->create(['amount_vnd' => 1_250_000]);
         ExpenseItem::factory()->for($batch, 'batch')->create(['amount_vnd' => 300_000]);
         $this->actingAs($recorder)->get("/batches/{$batch->id}")
-            ->assertSeeInOrder(['Tổng thực tế đã nhập', '1.550.000 đ']);
+            ->assertSeeInOrder(['Thực tế đã nhập', '1.550.000 đ']);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ActivityAction;
 use App\Enums\BatchStatus;
 use App\Models\ActivityLog;
 use App\Models\CookingBatch;
@@ -223,7 +224,12 @@ class CookingBatchTest extends TestCase
 
         $this->actingAs($coordinator)->post("/batches/{$batch->id}/reopen", ['reason' => 'Nhập sai số suất', 'confirm' => '1']);
         $this->assertSame(BatchStatus::InProgress, $batch->fresh()->status);
-        $this->assertStringContainsString('Nhập sai số suất', ActivityLog::where('action', 'batch.reopened')->firstOrFail()->summary);
+        // Lý do (chữ tự do) lưu ở đợt nấu; lịch sử chỉ ghi việc mở lại, không chép lý do.
+        $this->assertSame('Nhập sai số suất', $batch->fresh()->reopen_reason);
+        $this->assertNotNull($batch->fresh()->reopened_at);
+        $log = ActivityLog::where('action', ActivityAction::BatchReopened)->firstOrFail();
+        $this->assertStringNotContainsString('Nhập sai số suất', $log->summary);
+        $this->assertStringContainsString('có ghi lý do', $log->summary);
 
         $cancelled = CookingBatch::factory()->status(BatchStatus::Cancelled)->create();
         $this->actingAs($cancelled->coordinator)->post("/batches/{$cancelled->id}/reopen", ['reason' => 'Tổ chức lại', 'confirm' => '1']);

@@ -8,6 +8,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class Csv
 {
     /**
+     * Trả file CSV tải về (stream, không giữ cả file trong bộ nhớ, không cache).
+     *
+     * @param  string  $filename  tên file tải về
      * @param  callable(callable(array): void): void  $writeRows  nhận hàm $put để ghi từng dòng
      */
     public static function download(string $filename, callable $writeRows): StreamedResponse
@@ -27,7 +30,12 @@ class Csv
         ]);
     }
 
-    /** Chuỗi bắt đầu bằng = + - @ hoặc ký tự điều khiển được thêm dấu ' để bảng tính không coi là công thức. */
+    /**
+     * Chuỗi bắt đầu bằng = + - @ hoặc ký tự điều khiển được thêm dấu ' để bảng tính không coi là công thức.
+     * Số giữ nguyên kiểu; null → ô trống; bool → "Có"/"Không".
+     *
+     * @param  mixed  $value  giá trị một ô
+     */
     public static function sanitize(mixed $value): string|int|float
     {
         if ($value === null) {

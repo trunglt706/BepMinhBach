@@ -6,8 +6,12 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
+/** Thêm/sửa công việc của đợt nấu (giao cho tài khoản đang hoạt động). */
 class TaskRequest extends FormRequest
 {
+    /**
+     * Sửa: TaskPolicy::update; thêm: CookingBatchPolicy::manageChecklist.
+     */
     public function authorize(): bool
     {
         $task = $this->route('task');
@@ -18,6 +22,9 @@ class TaskRequest extends FormRequest
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -29,6 +36,9 @@ class TaskRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function attributes(): array
     {
         return [
@@ -40,6 +50,9 @@ class TaskRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         return [

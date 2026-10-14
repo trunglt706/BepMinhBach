@@ -1,11 +1,15 @@
 {
     "private": true,
     "scripts": {
-        "assets": "node scripts/copy-assets.mjs"
+        "assets": "node scripts/copy-assets.mjs && node scripts/build-icons.mjs",
+        "icons": "node scripts/build-icons.mjs"
     },
     "devDependencies": {
         "@fontsource/be-vietnam-pro": "5.3.0",
         "bootstrap": "5.3.8",
-        "bootstrap-icons": "1.13.1"
+        "bootstrap-icons": "1.13.1",
+        "photoswipe": "5.4.4",
+        "subset-font": "2.9.0",
+        "trix": "2.1.15"
     }
 }

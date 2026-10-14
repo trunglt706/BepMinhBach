@@ -10,6 +10,12 @@ use Symfony\Component\HttpFoundation\Response;
 /** Đăng xuất ngay tài khoản đã bị khóa, kể cả khi phiên đăng nhập vẫn còn. */
 class EnsureUserIsActive
 {
+    /**
+     * Tài khoản bị khóa: hủy phiên và chuyển về trang đăng nhập kèm thông báo.
+     *
+     * @param  Request  $request  yêu cầu hiện tại
+     * @param  Closure(Request): Response  $next  middleware tiếp theo
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();

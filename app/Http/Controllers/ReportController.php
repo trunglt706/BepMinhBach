@@ -4,26 +4,33 @@ namespace App\Http\Controllers;
 
 use App\Enums\BatchStatus;
 use App\Enums\TaskStatus;
+use App\Http\Requests\BatchFilterRequest;
 use App\Models\CookingBatch;
 use App\Models\ExpenseItem;
 use App\Support\BatchFilter;
 use App\Support\Csv;
 use App\Support\Format;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/** Báo cáo nội bộ (người ghi nhận trở lên): tổng hợp theo bộ lọc, chi tiết từng đợt, xuất CSV. */
 class ReportController extends Controller
 {
+    /** Lưu ý hiển thị trên mọi báo cáo và file CSV. */
     public const DISCLAIMER = 'Số liệu do người dùng ghi nhận; cần đối chiếu thực tế. Đây không phải báo cáo kế toán hay kiểm toán độc lập.';
 
-    public function index(Request $request): View
+    /**
+     * Báo cáo theo bộ lọc: số liệu tổng hợp + bảng từng đợt (phân trang).
+     *
+     * @param  BatchFilterRequest  $request  bộ lọc đã chuẩn hóa
+     */
+    public function index(BatchFilterRequest $request): View
     {
         Gate::authorize('viewReports');
 
-        $filter = BatchFilter::fromRequest($request);
+        $filter = $request->filter();
 
         $batches = $this->reportQuery($filter)
             ->orderByDesc('starts_at')
@@ -38,11 +45,16 @@ class ReportController extends Controller
         ]);
     }
 
-    public function export(Request $request): StreamedResponse
+    /**
+     * Xuất CSV báo cáo theo bộ lọc (UTF-8 BOM, chống chèn công thức, xem AppSupportCsv).
+     *
+     * @param  BatchFilterRequest  $request  bộ lọc đã chuẩn hóa
+     */
+    public function export(BatchFilterRequest $request): StreamedResponse
     {
         Gate::authorize('viewReports');
 
-        $filter = BatchFilter::fromRequest($request);
+        $filter = $request->filter();
         $generatedAt = now();
         $summary = $this->summary($filter);
 
@@ -89,6 +101,11 @@ class ReportController extends Controller
         });
     }
 
+    /**
+     * Báo cáo chi tiết một đợt (bản xem/in).
+     *
+     * @param  CookingBatch  $batch  đợt nấu
+     */
     public function show(CookingBatch $batch): View
     {
         Gate::authorize('viewReports');
@@ -98,6 +115,11 @@ class ReportController extends Controller
         return view('reports.show', ['batch' => $batch, 'generatedAt' => now()]);
     }
 
+    /**
+     * Xuất CSV chi tiết một đợt.
+     *
+     * @param  CookingBatch  $batch  đợt nấu
+     */
     public function exportBatch(CookingBatch $batch): StreamedResponse
     {
         Gate::authorize('viewReports');
@@ -155,6 +177,12 @@ class ReportController extends Controller
         });
     }
 
+    /**
+     * Truy vấn đợt nấu của báo cáo kèm tiến độ công việc và tổng chi phí.
+     *
+     * @param  BatchFilter  $filter  bộ lọc
+     * @return Builder<CookingBatch>
+     */
     private function reportQuery(BatchFilter $filter): Builder
     {
         return $filter->apply(CookingBatch::query())
@@ -164,7 +192,12 @@ class ReportController extends Controller
             ->withSum('expenseItems', 'amount_vnd');
     }
 
-    /** Tổng hợp trên toàn bộ phạm vi lọc (không chỉ trang hiện tại). */
+    /**
+     * Tổng hợp trên toàn bộ phạm vi lọc (không chỉ trang hiện tại). Ô "chưa nhập" không tính là 0.
+     *
+     * @param  BatchFilter  $filter  bộ lọc
+     * @return array<string, int> số đợt, số suất, chi phí và số đợt đã nhập từng loại
+     */
     private function summary(BatchFilter $filter): array
     {
         $base = fn () => $filter->apply(CookingBatch::query());
@@ -183,6 +216,11 @@ class ReportController extends Controller
         ];
     }
 
+    /**
+     * Nạp dữ liệu cần cho báo cáo chi tiết một đợt.
+     *
+     * @param  CookingBatch  $batch  đợt nấu (được nạp quan hệ tại chỗ)
+     */
     private function loadBatchDetails(CookingBatch $batch): void
     {
         $batch->load([

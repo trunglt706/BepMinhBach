@@ -7,6 +7,15 @@ const copies = [
     ['node_modules/bootstrap/dist/js/bootstrap.bundle.min.js', 'public/vendor/bootstrap/bootstrap.bundle.min.js'],
     ['node_modules/bootstrap-icons/font/bootstrap-icons.min.css', 'public/vendor/bootstrap-icons/bootstrap-icons.min.css'],
     ['node_modules/bootstrap-icons/font/fonts', 'public/vendor/bootstrap-icons/fonts'],
+    // Trình soạn thảo bài viết (MIT) — chỉ tải khi mở form bài viết (app.js nạp khi cần).
+    ['node_modules/trix/dist/trix.umd.min.js', 'public/vendor/trix/trix.umd.min.js'],
+    ['node_modules/trix/dist/trix.css', 'public/vendor/trix/trix.css'],
+    ['node_modules/trix/LICENSE', 'public/vendor/trix/LICENSE'],
+    // Xem ảnh album phóng to, vuốt trên điện thoại (MIT) — chỉ tải ở trang chi tiết bài viết có album.
+    ['node_modules/photoswipe/dist/umd/photoswipe.umd.min.js', 'public/vendor/photoswipe/photoswipe.umd.min.js'],
+    ['node_modules/photoswipe/dist/umd/photoswipe-lightbox.umd.min.js', 'public/vendor/photoswipe/photoswipe-lightbox.umd.min.js'],
+    ['node_modules/photoswipe/dist/photoswipe.css', 'public/vendor/photoswipe/photoswipe.css'],
+    ['node_modules/photoswipe/LICENSE', 'public/vendor/photoswipe/LICENSE'],
 ];
 
 for (const [from, to] of copies) {

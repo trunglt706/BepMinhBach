@@ -47,6 +47,12 @@ Cập nhật lần cuối: 2026-10-14. Bộ test: `php artisan test` → 83 test
 - [-] BM-053 Hoàn thiện README, hướng dẫn backup/restore và triển khai. *(Đã có cài đặt local, backup/restore cơ bản; hướng dẫn deploy cụ thể chờ biết hosting — OQ-12.)*
 - [ ] BM-054 Báo cáo nghiệm thu: đã làm, test, hạn chế và việc còn lại — sau khi xong BM-050 và thử với MySQL.
 
+## Bổ sung theo yêu cầu (2026-10-14)
+- [x] BM-060 Giới hạn tần suất theo từng tài khoản (ghi/đọc) và theo IP cho trang công khai. *(`RateLimitTest`)*
+- [x] BM-061 Bài viết công khai: quản lý (điều phối viên), danh sách + chi tiết cho khách, tìm theo từ khóa/thẻ/đợt nấu, thông tin đợt nấu dạng tổng hợp. *(`PostTest`)*
+- [x] BM-062 Ảnh bài viết: ảnh đại diện + album (WebP nhiều kích thước, giới hạn số ảnh, kiểm tra kiểu theo nội dung), trình soạn thảo, ô nhập thẻ, SEO, xem ảnh lớn, lượt xem, bộ nhớ đệm trang công khai. *(`PostMediaTest`, `PublicPostCacheTest`)*
+- [x] BM-063 Rà soát mã: PHPDoc đầy đủ, mọi validation trong FormRequest, activity log không chứa dữ liệu nhạy cảm, so sánh dùng Enum/hằng số. *(`RequestNormalizationTest`)*
+
 ## Ý tưởng sau MVP (chưa làm, không thuộc phạm vi)
 - Thông báo (email/Zalo) khi được giao việc hoặc báo thiếu nguyên liệu.
 - Sao chép một đợt cũ thành đợt mới (mẫu nguyên liệu/công việc).

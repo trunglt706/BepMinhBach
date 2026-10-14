@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
+/** Lớp cha của mọi controller: phản hồi thống nhất cho form thường và AJAX. */
 abstract class Controller
 {
     /**
@@ -17,7 +18,10 @@ abstract class Controller
      *   thông báo được flash để trang đích vẫn hiển thị.
      * - $extra['refresh'] = false: không cần tải lại vùng dữ liệu (thao tác không đổi dữ liệu đang hiển thị).
      *
-     * @param  array{keepOpen?: bool, redirect?: string, refresh?: bool}  $extra
+     * @param  Request  $request  yêu cầu hiện tại
+     * @param  RedirectResponse  $redirect  nơi chuyển tới khi không dùng AJAX
+     * @param  string  $message  thông báo thành công (toast hoặc flash)
+     * @param  array{keepOpen?: bool, redirect?: string, refresh?: bool}  $extra  tùy chọn cho giao diện AJAX
      */
     protected function done(Request $request, RedirectResponse $redirect, string $message, array $extra = []): JsonResponse|RedirectResponse
     {

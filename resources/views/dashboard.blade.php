@@ -30,41 +30,6 @@
         </div>
     @endunless
 
-    {{-- Số liệu nhanh --}}
-    <section class="mb-4" aria-labelledby="stats-title">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-            <h2 id="stats-title" class="h6 text-body-secondary text-uppercase small fw-bold mb-0" style="letter-spacing: .05em">Số liệu nhanh</h2>
-            <nav class="segmented" aria-label="Khoảng thời gian cho số suất đã phân phát">
-                @foreach($periods as $value => $label)
-                    <a href="{{ route('dashboard', ['days' => $value]) }}" @class(['active' => $days === $value]) @if($days === $value) aria-current="true" @endif>{{ $label }}</a>
-                @endforeach
-            </nav>
-        </div>
-        <div class="row g-2 g-md-3">
-            <div class="col-6 col-xl-3">
-                <x-stat label="Đợt sắp tới" icon="bi-calendar-check" tone="blue" :value="$upcomingCount"
-                        hint="Nháp hoặc đã lên kế hoạch" :href="route('batches.index')" />
-            </div>
-            <div class="col-6 col-xl-3">
-                <x-stat label="Đang diễn ra" icon="bi-fire" tone="amber" :value="$inProgressCount"
-                        hint="Đợt đang nấu" :href="route('batches.index', ['status' => 'in_progress'])" />
-            </div>
-            <div class="col-6 col-xl-3">
-                <x-stat :label="$isCoordinator ? 'Việc chưa xong' : 'Việc của tôi chưa xong'" icon="bi-list-check" tone="green" :value="$openTasksCount"
-                        :hint="$isCoordinator ? 'Trong các đợt đang mở' : 'Bấm để xem và cập nhật'" :href="$isCoordinator ? null : route('my-tasks')" />
-            </div>
-            <div class="col-6 col-xl-3">
-                @if($distributedBatchCount > 0)
-                    <x-stat label="Suất đã phân phát" icon="bi-box2-heart" tone="green" :value="Format::number((int) $distributedTotal)"
-                            :hint="$distributedBatchCount.' đợt có số liệu · '.mb_strtolower($periods[$days])" />
-                @else
-                    <x-stat label="Suất đã phân phát" icon="bi-box2-heart" tone="gray" value="—" empty
-                            :hint="'Chưa có số liệu · '.mb_strtolower($periods[$days])" />
-                @endif
-            </div>
-        </div>
-    </section>
-
     {{-- Cảnh báo --}}
     @if($shortages->isNotEmpty() || $blockedTasks->isNotEmpty())
         <section class="card mb-4 border-danger-subtle" aria-labelledby="alerts-title">
@@ -96,6 +61,103 @@
             </div>
         </section>
     @endif
+
+    {{-- Số liệu nhanh --}}
+    <section class="mb-4" aria-labelledby="stats-title">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <h2 id="stats-title" class="h6 text-body-secondary text-uppercase small fw-bold mb-0" style="letter-spacing: .05em">Số liệu nhanh</h2>
+            <nav class="segmented" aria-label="Khoảng thời gian cho số liệu và biểu đồ">
+                @foreach($periods as $value => $label)
+                    <a href="{{ route('dashboard', ['days' => $value]) }}" @class(['active' => $days === $value]) @if($days === $value) aria-current="true" @endif>{{ $label }}</a>
+                @endforeach
+            </nav>
+        </div>
+        <div class="row g-2 g-md-3">
+            <div class="col-6 col-xl-3">
+                <x-stat label="Đợt sắp tới" icon="bi-calendar-check" tone="blue" :value="$upcomingCount"
+                        hint="Nháp hoặc đã lên kế hoạch" :href="route('batches.index')" />
+            </div>
+            <div class="col-6 col-xl-3">
+                <x-stat label="Đang diễn ra" icon="bi-fire" tone="amber" :value="$inProgressCount"
+                        hint="Đợt đang nấu" :href="route('batches.index', ['status' => App\Enums\BatchStatus::InProgress->value])" />
+            </div>
+            <div class="col-6 col-xl-3">
+                <x-stat :label="$isCoordinator ? 'Việc chưa xong' : 'Việc của tôi chưa xong'" icon="bi-list-check" tone="green" :value="$openTasksCount"
+                        :hint="$isCoordinator ? 'Trong các đợt đang mở' : 'Bấm để xem và cập nhật'" :href="$isCoordinator ? null : route('my-tasks')" />
+            </div>
+            <div class="col-6 col-xl-3">
+                @if($distributedBatchCount > 0)
+                    <x-stat label="Suất đã phân phát" icon="bi-box2-heart" tone="green" :value="Format::number((int) $distributedTotal)"
+                            :hint="$distributedBatchCount.' đợt có số liệu · '.mb_strtolower($periods[$days])" />
+                @else
+                    <x-stat label="Suất đã phân phát" icon="bi-box2-heart" tone="gray" value="—" empty
+                            :hint="'Chưa có số liệu · '.mb_strtolower($periods[$days])" />
+                @endif
+            </div>
+        </div>
+    </section>
+
+    {{-- Biểu đồ: cùng khoảng thời gian với bộ chọn ở trên --}}
+    <section class="mb-4" aria-label="Biểu đồ">
+        <div class="row g-3">
+            <div class="col-xl-8">
+                <section class="card h-100" aria-labelledby="chart-servings-title">
+                    <div class="panel-header">
+                        <h2 id="chart-servings-title" class="panel-title"><i class="bi bi-bar-chart-line" aria-hidden="true"></i> Số suất: dự kiến và đã phân phát</h2>
+                        <span class="small text-body-secondary">{{ $servingsChart['batchCount'] }} đợt đã nhập số liệu</span>
+                    </div>
+                    <div class="card-body">
+                        @if($servingsChart['batchCount'] === 0)
+                            <x-empty-state icon="bi-bar-chart" title="Chưa có số liệu phân phát" compact>
+                                Biểu đồ hiện khi có đợt trong {{ mb_strtolower($periods[$days]) }} đã nhập số suất phân phát.
+                            </x-empty-state>
+                        @else
+                            <x-chart.columns :groups="$servingsChart['groups']" caption="Số suất dự kiến và đã phân phát theo thời gian"
+                                             :series="['expected' => ['label' => 'Dự kiến', 'tone' => 'plan'], 'distributed' => ['label' => 'Đã phân phát', 'tone' => 'primary']]" />
+                            <p class="small text-body-secondary mb-0 mt-2">Chỉ tính các đợt đã nhập số suất phân phát (không gồm đợt đã hủy).</p>
+                        @endif
+                    </div>
+                </section>
+            </div>
+            <div class="col-xl-4">
+                <section class="card h-100" aria-labelledby="chart-status-title">
+                    <div class="panel-header">
+                        <h2 id="chart-status-title" class="panel-title"><i class="bi bi-calendar3" aria-hidden="true"></i> Đợt nấu theo trạng thái</h2>
+                    </div>
+                    <div class="card-body">
+                        @if(collect($statusChart)->sum('value') === 0)
+                            <x-empty-state icon="bi-calendar" title="Chưa có đợt nấu nào" compact />
+                        @else
+                            <x-chart.bars :rows="$statusChart" caption="Số đợt nấu theo trạng thái" />
+                            <p class="small text-body-secondary mb-0 mt-3">Các đợt bắt đầu từ {{ Format::date(now()->subDays($days)) }}, gồm cả đợt sắp tới.</p>
+                        @endif
+                    </div>
+                </section>
+            </div>
+            @if($expenseChart)
+                <div class="col-12">
+                    <section class="card" aria-labelledby="chart-expense-title">
+                        <div class="panel-header">
+                            <h2 id="chart-expense-title" class="panel-title"><i class="bi bi-cash-coin" aria-hidden="true"></i> Chi phí thực tế theo thời gian</h2>
+                            <a href="{{ route('reports.index') }}" class="small fw-semibold">Xem báo cáo <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                        <div class="card-body">
+                            @if($expenseChart['batchCount'] === 0)
+                                <x-empty-state icon="bi-receipt" title="Chưa nhập chi phí" compact>
+                                    Chưa có đợt nào trong {{ mb_strtolower($periods[$days]) }} được nhập khoản chi.
+                                </x-empty-state>
+                            @else
+                                <x-chart.columns :groups="$expenseChart['groups']" format="vnd" :height="150" caption="Chi phí thực tế theo thời gian"
+                                                 :series="['amount' => ['label' => 'Chi phí', 'tone' => 'money']]" />
+                                <p class="small text-body-secondary mb-0 mt-2">Tổng các khoản chi đã nhập, theo ngày bắt đầu của đợt. Ghi nhận nội bộ, không phải sổ sách kế toán.</p>
+                            @endif
+                        </div>
+                    </section>
+                </div>
+            @endif
+        </div>
+    </section>
+
 
     <div class="row g-3 g-lg-4">
         <div class="col-lg-7 col-xl-8">

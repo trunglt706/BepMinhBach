@@ -3,11 +3,14 @@
 namespace Database\Seeders;
 
 use App\Enums\BatchStatus;
+use App\Enums\PostStatus;
 use App\Enums\Role;
 use App\Enums\TaskStatus;
 use App\Models\CookingBatch;
 use App\Models\ExpenseItem;
 use App\Models\Ingredient;
+use App\Models\Post;
+use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -40,6 +43,7 @@ class DemoSeeder extends Seeder
 
         if (CookingBatch::exists()) {
             $this->command?->info('Đã có đợt nấu — chỉ cập nhật tài khoản demo.');
+            $this->seedPosts($users['coordinator']);
 
             return;
         }
@@ -135,6 +139,43 @@ class DemoSeeder extends Seeder
             'expected_servings' => 100,
         ], BatchStatus::Draft);
 
+        $this->seedPosts($coordinator);
+
         $this->command?->info('Đã tạo dữ liệu demo. Mật khẩu các tài khoản demo lấy từ DEMO_PASSWORD (mặc định chỉ dùng ở local).');
+    }
+
+    /** Bài viết demo (nội dung hư cấu, không có thông tin người nhận). Chỉ tạo khi chưa có bài nào. */
+    private function seedPosts(User $author): void
+    {
+        if (Post::exists()) {
+            return;
+        }
+
+        $completed = CookingBatch::where('status', BatchStatus::Completed->value)->orderByDesc('starts_at')->first();
+        $planned = CookingBatch::where('status', BatchStatus::Planned->value)->orderBy('starts_at')->first();
+
+        $rows = [
+            ['Nhìn lại đợt nấu tuần trước (demo)', $completed, ['nhìn lại', 'cơm chay'], now()->subDays(5),
+                "Cảm ơn các bạn tình nguyện viên đã có mặt từ sáng sớm để sơ chế và nấu.\n\nSố suất đã chuẩn bị và phân phát được ghi trong thông tin đợt nấu bên cạnh."],
+            ['Cảm ơn các nhà hảo tâm (demo)', $completed, ['cảm ơn'], now()->subDays(3),
+                "Bếp đã nhận thêm gạo và rau củ cho các đợt tiếp theo.\n\nMọi khoản đóng góp được đội bếp ghi nhận nội bộ."],
+            ['Thông báo đợt bánh mì sáng thứ bảy (demo)', $planned, ['thông báo', 'bánh mì'], now()->subDay(),
+                "Đội bếp cần thêm 4 bạn hỗ trợ chia bánh từ 5 giờ 30 sáng.\n\nVui lòng liên hệ điều phối viên nếu bạn có thể tham gia."],
+            ['Mẹo sơ chế rau củ nhanh cho bếp đông người (demo)', null, ['kinh nghiệm', 'sơ chế'], now()->subHours(6),
+                "Chia việc theo từng loại rau, rửa trước rồi mới cắt.\n\nGhi chú này chỉ là kinh nghiệm của đội bếp, không thay thế hướng dẫn an toàn thực phẩm chính thức."],
+        ];
+
+        foreach ($rows as [$title, $batch, $tags, $publishedAt, $body]) {
+            $post = new Post(['title' => $title, 'body' => $body, 'cooking_batch_id' => $batch?->id]);
+            $post->author_id = $author->id;
+            $post->status = PostStatus::Published;
+            $post->published_at = $publishedAt;
+            $post->save();
+            $post->tags()->sync(Tag::findOrCreateMany($tags)->pluck('id'));
+        }
+
+        $draft = new Post(['title' => 'Bản nháp chưa đăng (demo)', 'body' => 'Khách không thấy bài này.']);
+        $draft->author_id = $author->id;
+        $draft->save();
     }
 }

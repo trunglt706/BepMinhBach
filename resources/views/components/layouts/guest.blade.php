@@ -6,10 +6,7 @@
     <meta name="theme-color" content="#1b6343">
     <title>{{ isset($title) ? $title.' · ' : '' }}BếpMinhBạch</title>
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ asset('vendor/be-vietnam-pro/font.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
+    @include('partials.head-assets')
 </head>
 <body>
 <div class="auth-shell">

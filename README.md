@@ -49,6 +49,17 @@ Tài khoản demo (mật khẩu = `DEMO_PASSWORD` trong `.env`, mặc định `d
 
 Trên môi trường thật **không chạy seed demo**; tạo quản trị viên đầu tiên bằng `php artisan bmb:create-admin` (mật khẩu nhập ẩn).
 
+**Ảnh bài viết:** cần extension PHP `gd` có hỗ trợ WebP (và `exif` để xoay đúng ảnh chụp điện thoại). Ảnh lưu ở `public/uploads/` (không cần `storage:link`, đã có `.htaccess` chặn chạy mã); thư mục này không vào git — **cần sao lưu cùng database**. Nên đặt `upload_max_filesize`/`post_max_size` ≥ 12M trong php.ini.
+
+**Tài nguyên giao diện** (chỉ cần khi nâng cấp thư viện hoặc thêm icon mới):
+```bash
+npm install
+npm run assets   # chép Bootstrap, Bootstrap Icons, Trix, PhotoSwipe, font vào public/vendor + tạo bộ icon rút gọn
+npm run icons    # chỉ tạo lại bộ icon rút gọn (chạy khi dùng icon bi-* mới; test sẽ báo nếu quên)
+```
+
+Cấu hình thêm trong `.env` (xem `config/bmb.php`): `BMB_RATE_WRITES`, `BMB_RATE_READS`, `BMB_RATE_PUBLIC` (chống spam), `BMB_POST_MAX_IMAGES`, `BMB_POST_MAX_UPLOAD_KB`, `BMB_POST_VIEW_WINDOW`.
+
 ### Kiểm thử
 ```bash
 php artisan test        # PHPUnit, SQLite in-memory

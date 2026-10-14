@@ -3,27 +3,49 @@
 namespace App\Support;
 
 use Carbon\CarbonImmutable;
+use DateTimeInterface;
 
 /** Định dạng hiển thị kiểu Việt Nam. */
 class Format
 {
+    /** Chữ hiển thị khi chưa có giá trị (khác với 0). */
+    public const NOT_ENTERED = 'Chưa nhập';
+
+    /** Chữ hiển thị cho ngày/số lượng trống. */
+    public const EMPTY = '—';
+
     private const WEEKDAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
 
+    /**
+     * Số tiền VND: 1500000 → "1.500.000 đ"; null → "Chưa nhập".
+     *
+     * @param  int|null  $amount  số tiền (đồng)
+     */
     public static function vnd(?int $amount): string
     {
-        return $amount === null ? 'Chưa nhập' : number_format($amount, 0, ',', '.').' đ';
+        return $amount === null ? self::NOT_ENTERED : number_format($amount, 0, ',', '.').' đ';
     }
 
-    public static function number(?int $value, string $empty = 'Chưa nhập'): string
+    /**
+     * Số nguyên có dấu chấm hàng nghìn: 1500 → "1.500".
+     *
+     * @param  int|null  $value  giá trị
+     * @param  string  $empty  chữ hiển thị khi null
+     */
+    public static function number(?int $value, string $empty = self::NOT_ENTERED): string
     {
         return $value === null ? $empty : number_format($value, 0, ',', '.');
     }
 
-    /** Bỏ số 0 thừa ở phần thập phân: "2.500" → "2,5". */
+    /**
+     * Số lượng nguyên liệu, bỏ số 0 thừa ở phần thập phân: "2.500" → "2,5".
+     *
+     * @param  mixed  $value  số (chuỗi decimal từ DB hoặc số)
+     */
     public static function quantity(mixed $value): string
     {
         if ($value === null || $value === '') {
-            return '—';
+            return self::EMPTY;
         }
 
         $formatted = number_format((float) $value, 3, ',', '.');
@@ -31,7 +53,11 @@ class Format
         return rtrim(rtrim($formatted, '0'), ',');
     }
 
-    /** Giá trị cho input số trong form (dấu chấm thập phân, không thừa số 0). */
+    /**
+     * Giá trị cho ô nhập số lượng trong form (dấu chấm thập phân, không thừa số 0).
+     *
+     * @param  mixed  $value  số (chuỗi decimal từ DB hoặc số)
+     */
     public static function quantityInput(mixed $value): string
     {
         if ($value === null || $value === '') {
@@ -41,27 +67,45 @@ class Format
         return rtrim(rtrim(number_format((float) $value, 3, '.', ''), '0'), '.');
     }
 
-    public static function dateTime(?\DateTimeInterface $value): string
+    /**
+     * Ngày giờ: "09:30 14/10/2026".
+     *
+     * @param  DateTimeInterface|null  $value  thời điểm
+     */
+    public static function dateTime(?DateTimeInterface $value): string
     {
-        return $value ? $value->format('H:i d/m/Y') : '—';
+        return $value ? $value->format('H:i d/m/Y') : self::EMPTY;
     }
 
-    public static function date(?\DateTimeInterface $value): string
+    /**
+     * Ngày: "14/10/2026".
+     *
+     * @param  DateTimeInterface|null  $value  thời điểm
+     */
+    public static function date(?DateTimeInterface $value): string
     {
-        return $value ? $value->format('d/m/Y') : '—';
+        return $value ? $value->format('d/m/Y') : self::EMPTY;
     }
 
-    /** "Thứ ba, 14/10/2026" */
-    public static function longDate(\DateTimeInterface $value): string
+    /**
+     * Ngày kèm thứ: "Thứ ba, 14/10/2026".
+     *
+     * @param  DateTimeInterface  $value  thời điểm
+     */
+    public static function longDate(DateTimeInterface $value): string
     {
         return self::WEEKDAYS[(int) $value->format('w')].', '.$value->format('d/m/Y');
     }
 
-    /** Thời gian tương đối thân thiện cho hạn công việc: "Hôm nay 09:00", "Ngày mai 07:00", "07:00 16/10/2026". */
-    public static function relative(?\DateTimeInterface $value): string
+    /**
+     * Thời gian tương đối cho hạn công việc: "Hôm nay 09:00", "Ngày mai 07:00", "07:00 16/10/2026".
+     *
+     * @param  DateTimeInterface|null  $value  thời điểm
+     */
+    public static function relative(?DateTimeInterface $value): string
     {
         if (! $value) {
-            return '—';
+            return self::EMPTY;
         }
 
         $date = CarbonImmutable::instance($value);
