@@ -1,0 +1,11 @@
+{
+    "private": true,
+    "scripts": {
+        "assets": "node scripts/copy-assets.mjs"
+    },
+    "devDependencies": {
+        "@fontsource/be-vietnam-pro": "5.3.0",
+        "bootstrap": "5.3.8",
+        "bootstrap-icons": "1.13.1"
+    }
+}
