@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\BatchResultController;
+use App\Http\Controllers\BatchSponsorController;
 use App\Http\Controllers\BatchStatusController;
 use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\CookingBatchController;
@@ -15,7 +16,9 @@ use App\Http\Controllers\NotificationChannelController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\PublicContactController;
 use App\Http\Controllers\PublicPostController;
+use App\Http\Controllers\PublicSponsorController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SponsorController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserDetailController;
@@ -48,6 +51,9 @@ Route::middleware(['throttle:public', 'cache.headers:private;max_age=0;must_reva
     Route::get('/dot-nau/{publicId}', fn (Request $request, string $publicId) => redirect()->to(
         url('/chuong-trinh/'.$publicId).($request->getQueryString() ? '?'.$request->getQueryString() : ''), 301,
     ))->where('publicId', '[0-9a-f]{16}')->name('blog.batch.legacy');
+    // Đơn vị tài trợ / hỗ trợ: danh sách theo phân loại và trang riêng từng đơn vị.
+    Route::get('/don-vi-dong-hanh', [PublicSponsorController::class, 'index'])->name('sponsors.public.index');
+    Route::get('/don-vi-dong-hanh/{sponsor:slug}', [PublicSponsorController::class, 'show'])->name('sponsors.public.show');
     Route::get('/sitemap.xml', [PublicPostController::class, 'sitemap'])->name('sitemap');
 });
 
@@ -127,6 +133,12 @@ Route::prefix('admin')->middleware(['auth', 'auth.session', 'active', 'throttle:
         ->where('device', '[0-9a-f]{64}')->name('users.devices.destroy-one');
 
     // Bài viết công khai (điều phối viên trở lên)
+    // Đơn vị tài trợ / hỗ trợ (danh bạ) và gắn vào chương trình
+    Route::resource('sponsors', SponsorController::class)->except('show');
+    Route::get('/batches/{batch}/sponsors/create', [BatchSponsorController::class, 'create'])->name('batches.sponsors.create');
+    Route::post('/batches/{batch}/sponsors', [BatchSponsorController::class, 'store'])->name('batches.sponsors.store');
+    Route::delete('/batches/{batch}/sponsors/{sponsor:id}', [BatchSponsorController::class, 'destroy'])->name('batches.sponsors.destroy');
+
     Route::resource('posts', PostController::class)->except('show');
     // Quy trình duyệt: tác giả gửi/rút yêu cầu; quản trị viên duyệt (đăng) hoặc từ chối; tác giả/quản trị gỡ bài.
     Route::post('/posts/{post}/submit', [PostController::class, 'submit'])->name('posts.submit');

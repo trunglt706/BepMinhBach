@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -249,6 +250,16 @@ class CookingBatch extends Model
     public function expenseItems(): HasMany
     {
         return $this->hasMany(ExpenseItem::class);
+    }
+
+    /**
+     * Đơn vị tài trợ / hỗ trợ tham gia chương trình (kèm ghi chú đóng góp).
+     *
+     * @return BelongsToMany<Sponsor, $this>
+     */
+    public function sponsors(): BelongsToMany
+    {
+        return $this->belongsToMany(Sponsor::class, 'batch_sponsor')->withPivot('contribution')->withTimestamps();
     }
 
     /**

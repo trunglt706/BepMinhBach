@@ -66,6 +66,20 @@ Cập nhật lần cuối: 2026-10-14. Bộ test: `php artisan test` → 188 tes
 - [x] BM-074 Slug trang quản lý sang tiếng Anh (`/admin/my-tasks`, `/admin/account/password`, `/admin/contacts`; đường dẫn cũ chuyển 301); badge "việc của tôi hôm nay" và "đợt đang diễn ra" trên menu; chọn ngày bằng flatpickr; ô lịch cao vừa nội dung; xác nhận khi đăng xuất; bỏ cảnh báo "thay đổi chưa lưu". *(`PublicHomeTest`, `UiLayoutTest`, `AjaxFlowTest`, kiểm tra Chrome)*
 - [-] BM-070 Triển khai VPS một lệnh `deploy/deploy.sh`. *(Viết xong, `bash -n` + test tĩnh; **chưa chạy trên VPS/container thật**.)*
 
+## Bổ sung theo yêu cầu (2026-10-15)
+- [x] BM-075 Tinh chỉnh giao diện: lịch chọn ngày chỉ đọc + nút "Hôm nay"; ẩn thanh cuộn ngang ở menu/tab; bộ lọc thu gọn trên điện thoại (báo cáo, liên hệ, tài khoản, bài viết); "—" cho số liệu chưa có; "Cần xử lý" thu gọn; nút lên đầu trang (công khai). *(`UiLayoutTest`, `DashboardTest`, `ReportTest`)*
+- [x] BM-076 Đơn giá nguyên liệu (tùy chọn), thành tiền và tổng tiền nguyên liệu; định dạng số lượng/số suất; đã phân phát ≤ đã chuẩn bị; biểu đồ báo cáo chi tiết chương trình. *(`IngredientTest`, `ResultsAndExpensesTest`, `ReportTest`)*
+- [x] BM-077 Thông báo kênh cho mọi hoạt động chương trình, gửi nền qua queue (worker + cron trong `deploy.sh`). *(`NotificationChannelTest`)*
+- [x] BM-078 Quên/đặt lại mật khẩu qua email; kiểm tra "Ghi nhớ đăng nhập"; đăng xuất phiên khác khi đổi mật khẩu (`auth.session`); mật khẩu tối thiểu 8. *(`PasswordResetTest`, `RememberMeTest`)*
+- [x] BM-079 Phạm vi xem theo vai trò: điều phối viên/ghi nhận/tình nguyện viên chỉ thấy chương trình được phân công (danh sách, chi tiết, thống kê, báo cáo). *(`BatchVisibilityTest`)*
+- [x] BM-080 Trang chi tiết tài khoản (quản trị viên): thông tin, nhật ký hoạt động, thông báo đã nhận, thiết bị đăng nhập + đăng xuất thiết bị. *(`UserDetailTest`)*
+- [x] BM-081 Đổi thuật ngữ "Đợt nấu ăn" → "Chương trình" (link `/dot-nau` → `/chuong-trinh`, 301); đổi thương hiệu BếpMinhBạch → Góp Gió. *(`PublicBatchTest`, `SeoTest`)*
+- [x] BM-082 SEO trang công khai (OG/Twitter mọi trang, JSON-LD trang chủ) và chặn lập chỉ mục khu quản lý/đăng nhập/trang lỗi. *(`SeoTest`)*
+- [x] BM-083 Duyệt bài viết: điều phối viên quản lý bài của mình + gửi duyệt; quản trị viên duyệt/từ chối (kèm lý do)/gỡ. *(`PostReviewTest`, `PostTest`)*
+- [x] BM-084 Liên hệ: che email/số điện thoại (công khai và quản lý), nút "Hiện" có ghi nhật ký. *(`ContactTest`)*
+- [x] BM-085 Đơn vị tài trợ / hỗ trợ: danh bạ (phân loại, logo, tên, giới thiệu, website, ẩn/hiện), gắn vào chương trình kèm đóng góp; trang công khai `/don-vi-dong-hanh` (theo phân loại) và trang riêng từng đơn vị (các chương trình đã tham gia); khối "Đơn vị tham gia" theo phân loại trên trang chương trình công khai; sitemap. *(`SponsorTest`)*
+- [x] BM-086 Rà soát QA/bảo mật/hiệu năng trước production: sửa N+1 "Công việc của tôi", lộ email ở quên mật khẩu, log xoay vòng, lịch dọn dẹp; giới hạn số truy vấn trang chính. *(`QueryBudgetTest`)*
+
 ## Ý tưởng sau MVP (chưa làm, không thuộc phạm vi)
 - Thông báo qua email/Zalo (Slack/Telegram/Chatwork đã có — BM-073).
 - Sao chép một đợt cũ thành đợt mới (mẫu nguyên liệu/công việc).

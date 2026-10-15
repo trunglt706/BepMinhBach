@@ -228,6 +228,18 @@ class CookingBatchPolicy
     }
 
     /**
+     * Gắn / gỡ đơn vị tài trợ, hỗ trợ: điều phối viên trở lên (trong phạm vi xem — before()), kể cả chương trình
+     * đã khóa (thường bổ sung đơn vị để cảm ơn sau khi chương trình kết thúc).
+     *
+     * @param  User  $user  người đăng nhập
+     * @param  CookingBatch  $batch  chương trình
+     */
+    public function manageSponsors(User $user, CookingBatch $batch): bool
+    {
+        return $user->isCoordinator();
+    }
+
+    /**
      * Điều kiện chung: điều phối viên trở lên và chương trình chưa khóa.
      *
      * @param  User  $user  người đăng nhập

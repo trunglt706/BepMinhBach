@@ -121,6 +121,7 @@ class CookingBatchController extends Controller
             'resultsUpdater:id,name',
             'ingredients' => fn ($q) => $q->orderByDesc('needs_restock')->orderBy('name'),
             'ingredients.restockReporter:id,name',
+            'sponsors' => fn ($q) => $q->orderBy('name'),
             'tasks' => fn ($q) => $q->orderByRaw('due_at is null')->orderBy('due_at')->orderBy('id'),
             'tasks.assignee:id,name',
             'tasks.completer:id,name',

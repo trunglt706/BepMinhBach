@@ -271,6 +271,7 @@
         {{-- Cột phụ --}}
         <div class="col-lg-5 col-xl-4 d-flex flex-column gap-3 gap-lg-4">
             @include('batches._channels')
+            @include('batches._sponsors')
 
             {{-- Kết quả --}}
             <section id="ket-qua" class="card scroll-mt" aria-labelledby="h-ket-qua">

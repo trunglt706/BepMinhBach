@@ -3606,3 +3606,79 @@ input.form-control.input {
         display: none !important;
     }
 }
+
+/* =========================================================================
+   Đơn vị tài trợ / hỗ trợ: logo giữ nguyên tỉ lệ (không cắt), chữ viết tắt khi chưa có logo
+   ========================================================================= */
+.sponsor-logo {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid var(--bmb-border);
+    border-radius: 10px;
+}
+.sponsor-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 4px;
+}
+.sponsor-logo.is-empty {
+    background: var(--bmb-green-50);
+    color: var(--bmb-green-800);
+    font-weight: 700;
+}
+.sponsor-logo-sm { width: 44px; height: 44px; font-size: .85rem; }
+.sponsor-logo-md { width: 64px; height: 64px; font-size: 1.1rem; }
+.sponsor-logo-lg { width: 112px; height: 112px; font-size: 1.6rem; border-radius: 14px; }
+.sponsor-logo-preview img {
+    object-fit: contain;
+    background: #fff;
+}
+
+/* Trang công khai: thẻ đơn vị trong danh sách */
+.sponsor-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    color: inherit;
+    text-decoration: none;
+    transition: box-shadow .15s ease, transform .15s ease;
+}
+.sponsor-card:hover,
+.sponsor-card:focus-visible {
+    box-shadow: var(--bmb-shadow-sm);
+    transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+    .sponsor-card { transition: none; }
+    .sponsor-card:hover, .sponsor-card:focus-visible { transform: none; }
+}
+.sponsor-card-body {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* Trang chương trình công khai: danh sách đơn vị tham gia */
+.sponsor-chips {
+    display: grid;
+    gap: .5rem;
+}
+.sponsor-chip {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .4rem;
+    border-radius: 10px;
+    color: inherit;
+    text-decoration: none;
+}
+.sponsor-chip:hover,
+.sponsor-chip:focus-visible {
+    background: var(--bmb-green-50);
+}

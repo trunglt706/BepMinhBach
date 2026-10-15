@@ -6,6 +6,7 @@ use App\Enums\BatchStatus;
 use App\Http\Requests\PublicPostIndexRequest;
 use App\Models\CookingBatch;
 use App\Models\Post;
+use App\Models\Sponsor;
 use App\Support\PostViewCounter;
 use App\Support\PublicPostCache;
 use Illuminate\Database\Eloquent\Collection;
@@ -101,9 +102,14 @@ class PublicPostController extends Controller
             ->paginate(self::PER_PAGE, ['*'], 'page', $page))
             ->withPath(route('blog.batch', $model));
 
+        // Đơn vị tham gia, nhóm theo phân loại (chỉ đơn vị đang hiển thị công khai).
+        $sponsors = PublicPostCache::remember('batch-sponsors:'.$model->id, fn () => $model->sponsors()->active()
+            ->orderBy('name')->get())->groupBy(fn (Sponsor $s) => $s->type->value);
+
         return view('public.batches.show', [
             'batch' => $model,
             'posts' => $posts,
+            'sponsorGroups' => $sponsors,
             'canonical' => $posts->currentPage() > 1 ? $posts->url($posts->currentPage()) : route('blog.batch', $model),
         ]);
     }
@@ -169,10 +175,11 @@ class PublicPostController extends Controller
     {
         $posts = Post::published()->orderByDesc('published_at')->get(['slug', 'updated_at', 'published_at']);
         $batches = CookingBatch::publiclyVisible()->orderByDesc('starts_on')->get(['id', 'public_id', 'updated_at']);
+        $sponsors = Sponsor::active()->orderBy('name')->get(['slug', 'updated_at']);
         $contact = route('contact.create');
 
         return response()
-            ->view('public.sitemap', compact('posts', 'batches', 'contact'))
+            ->view('public.sitemap', compact('posts', 'batches', 'sponsors', 'contact'))
             ->header('Content-Type', 'application/xml; charset=UTF-8');
     }
 }

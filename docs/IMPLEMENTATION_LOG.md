@@ -283,3 +283,11 @@ Claude cập nhật file này sau mỗi lát cắt có ý nghĩa. Không ghi sec
 - **Mật khẩu tối thiểu 8 ký tự** ở mọi nơi (lệnh `bmb:create-admin` trước đây yêu cầu 10).
 - **Tên `gopgio` trong tài liệu và deploy:** `deploy.sh` dùng biến `SLUG` cho thư mục, bí mật, sao lưu, nginx, php.ini, khóa, cron, dịch vụ queue: máy đã cài trước (có `/root/.bepminhbach`) giữ `bepminhbach`, máy cài mới dùng `gopgio`. Sửa 2 chỗ `printf` nháy đơn để `SLUG` được bung đúng trong cron. Tài liệu (`README`, `docs/`, `tasks/`) đổi `bepminhbach` → `gopgio` (giữ URL repo GitHub và các câu nói về tên cũ).
 - **Kiểm thử:** `php artisan test` **239 passed**; thêm `PostReviewTest` (4), test che/hiện liên hệ; cập nhật test bài viết/ảnh/cache/kênh theo quy trình duyệt. Pint sạch; `node --check`; `bash -n deploy/deploy.sh`.
+
+### 2026-10-15 — BM-085 Đơn vị tài trợ / hỗ trợ
+- Bảng `sponsors` (tên, `slug` cố định theo tên lúc tạo, `type`, giới thiệu, website, logo WebP nhiều cỡ giữ nền trong suốt, `is_active`) và `batch_sponsor` (chương trình ↔ đơn vị, `contribution` — ghi chú đóng góp công khai, ví dụ "500 phần quà"). Không lưu người liên hệ/số tiền.
+- Phân loại `SponsorType`: Nhà tài trợ, Đơn vị đồng hành, Hỗ trợ hiện vật, Truyền thông (thứ tự hiển thị cố định).
+- Quyền: điều phối viên trở lên thêm/sửa đơn vị và gắn/gỡ đơn vị cho chương trình trong phạm vi xem (kể cả chương trình đã hoàn tất — để cảm ơn sau chương trình); chỉ quản trị viên xóa đơn vị. Gắn/gỡ ghi nhật ký (và báo kênh như sửa thông tin chương trình).
+- Khu quản lý: menu "Đơn vị đồng hành" (danh sách, lọc theo tên/phân loại, form modal có logo); khối "Đơn vị tham gia" ở trang chi tiết chương trình.
+- Công khai: menu "Đồng hành"; `/don-vi-dong-hanh` (theo phân loại, số chương trình công khai đã tham gia); `/don-vi-dong-hanh/{slug}` (phân loại, logo, tên, giới thiệu, website, chương trình đã tham gia — chỉ chương trình công khai); khối "Đơn vị tham gia" theo phân loại trên trang chương trình công khai; sitemap; đơn vị đang ẩn trả 404. Website chỉ nhận http/https (chặn `javascript:`). Bộ nhớ đệm công khai tự làm mới khi đơn vị hoặc liên kết thay đổi.
+- Kiểm thử: `SponsorTest` (4 test, 55 assertion).

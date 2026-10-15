@@ -43,6 +43,7 @@
         </a>
         <nav class="public-nav me-auto" aria-label="Điều hướng công khai">
             <a href="{{ route('blog.index') }}" @class(['active' => request()->routeIs('blog.*')]) @if(request()->routeIs('blog.index')) aria-current="page" @endif>Bài viết</a>
+            <a href="{{ route('sponsors.public.index') }}" @class(['active' => request()->routeIs('sponsors.public.*')]) @if(request()->routeIs('sponsors.public.index')) aria-current="page" @endif>Đồng hành</a>
             <a href="{{ route('contact.create') }}" @class(['active' => request()->routeIs('contact.*')]) @if(request()->routeIs('contact.*')) aria-current="page" @endif>Liên hệ</a>
         </nav>
         {{-- Tìm bài viết: máy tính hiện sẵn ô tìm; điện thoại bấm biểu tượng kính lúp để mở (details: không cần JS). --}}

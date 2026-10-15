@@ -51,6 +51,11 @@
                 @endif
             </a>
         @endcan
+        @can('viewAny', App\Models\Sponsor::class)
+            <a href="{{ route('sponsors.index') }}" @class(['active' => request()->routeIs('sponsors.*') && ! request()->routeIs('sponsors.public.*')]) @if(request()->routeIs('sponsors.index')) aria-current="page" @endif>
+                <i class="bi bi-award" aria-hidden="true"></i> Đơn vị đồng hành
+            </a>
+        @endcan
         @can('viewAny', App\Models\ContactMessage::class)
             <a href="{{ route('contacts.index') }}" @class(['active' => request()->routeIs('contacts.*')]) @if(request()->routeIs('contacts.*')) aria-current="page" @endif>
                 <i class="bi bi-envelope" aria-hidden="true"></i> Liên hệ
@@ -109,6 +114,9 @@
                 <li><hr class="dropdown-divider"></li>
                 @can('viewAny', App\Models\Post::class)
                     <li><a class="dropdown-item" href="{{ route('posts.index') }}"><i class="bi bi-newspaper" aria-hidden="true"></i> Bài viết @if(($navPendingPosts ?? 0) > 0)<span class="badge rounded-pill text-bg-warning ms-1">{{ $navPendingPosts }}</span>@endif</a></li>
+                @endcan
+                @can('viewAny', App\Models\Sponsor::class)
+                    <li><a class="dropdown-item" href="{{ route('sponsors.index') }}"><i class="bi bi-award" aria-hidden="true"></i> Đơn vị đồng hành</a></li>
                 @endcan
                 @can('viewAny', App\Models\ContactMessage::class)
                     <li><a class="dropdown-item" href="{{ route('contacts.index') }}"><i class="bi bi-envelope" aria-hidden="true"></i> Liên hệ

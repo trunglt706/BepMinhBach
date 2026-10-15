@@ -9,6 +9,7 @@ use App\Models\ContactMessage;
 use App\Models\CookingBatch;
 use App\Models\Post;
 use App\Models\PostImage;
+use App\Models\Sponsor;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
@@ -90,7 +91,7 @@ class AppServiceProvider extends ServiceProvider
      */
     private function configurePublicCache(): void
     {
-        foreach ([Post::class, PostImage::class, Tag::class, CookingBatch::class] as $model) {
+        foreach ([Post::class, PostImage::class, Tag::class, CookingBatch::class, Sponsor::class] as $model) {
             $model::saved(fn () => PublicPostCache::invalidate());
             $model::deleted(fn () => PublicPostCache::invalidate());
         }
