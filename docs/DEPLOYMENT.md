@@ -143,28 +143,22 @@ Sau mỗi lần sửa `.env`: chạy lại `php artisan config:cache`.
 - Chọn PHP 8.2+ trong *MultiPHP Manager*, bật các extension ở mục 1.
 
 ## 5b. VPS (Ubuntu, Nginx + PHP-FPM)
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name ten-mien-cua-ban;
-    root /var/www/gopgio/public;
-    index index.php;
-    client_max_body_size 64m;
-
-    location / { try_files $uri $uri/ /index.php?$query_string; }
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-    }
-    # Thư mục ảnh tải lên: không bao giờ chạy mã
-    location ^~ /uploads/ { location ~ \.(php|phtml|phar|html?|svg|js)$ { deny all; } add_header X-Content-Type-Options nosniff; }
-    location ~* \.(woff2?|ttf)$ { expires 1y; add_header Cache-Control "public, immutable"; }
-    location ~* \.(css|js|svg|ico)$ { expires 7d; }
-    location ~ /\.(?!well-known) { deny all; }
-}
-server { listen 80; server_name ten-mien-cua-ban; return 301 https://$host$request_uri; }
+Cấu hình mẫu đầy đủ: **`deploy/nginx/gopgio.conf.example`** (đã kiểm `nginx -t` và chạy thử các quy tắc chặn trên nginx 1.28).
+```bash
+sudo cp /var/www/gopgio/deploy/nginx/gopgio.conf.example /etc/nginx/sites-available/gopgio   # sửa server_name, root, socket PHP nếu khác
+sudo ln -sf /etc/nginx/sites-available/gopgio /etc/nginx/sites-enabled/gopgio
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d ten-mien-cua-ban                                                          # nếu chưa có chứng chỉ
 ```
-Quyền thư mục: chủ sở hữu là user deploy, nhóm `www-data`; `storage/`, `bootstrap/cache/`, `public/uploads/` cho nhóm ghi (`chmod -R g+w`). Các file khác chỉ đọc với `www-data`.
+Những điểm bắt buộc (cấu hình tự viết phải có):
+- `root` trỏ vào `public/` (không trỏ vào thư mục mã nguồn — lộ `.env`).
+- Chỉ chạy **đúng `index.php`**; mọi file `.php` khác trả 404.
+- `/uploads/`: chặn `.php`, `.html`, `.svg`, `.js`… — Nginx **không đọc** `public/uploads/.htaccess` (chỉ Apache dùng).
+- Chặn file ẩn (`.env`, `.git`), trừ `/.well-known` cho Certbot.
+- `client_max_body_size` ≥ `post_max_size` của PHP (64M), nếu không bài viết nhiều ảnh bị lỗi 413.
+- `include fastcgi_params` (có `HTTPS=on`) để Laravel biết đang chạy HTTPS (cookie Secure, HSTS).
+
+Quyền thư mục (`deploy.sh` tự cấp lại mỗi lần cập nhật): mã nguồn root sở hữu, chỉ đọc với `www-data`; `storage/`, `bootstrap/cache/`, `public/uploads/` thuộc `www-data`.
 
 ## 6. Bảo mật đã có sẵn trong ứng dụng
 - Header: `Content-Security-Policy` (chỉ chạy JS của chính site), `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`; `Strict-Transport-Security` tự gửi khi truy cập qua HTTPS (middleware `SecurityHeaders`).

@@ -1,0 +1,102 @@
+# Góp Gió — cấu hình Nginx (mẫu). Chép vào /etc/nginx/sites-available/gopgio, kiểm tra `nginx -t`, rồi `systemctl reload nginx`.
+# Mã nguồn ở /var/www/gopgio (web root = public/). PHP 8.3-FPM. Chứng chỉ do Certbot quản lý.
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;                          # Nginx < 1.25.1: bỏ dòng này, dùng "listen 443 ssl http2;"
+    server_name gopgio.ittour.xyz;
+    root /var/www/gopgio/public;
+
+    index index.php;
+    charset utf-8;
+    server_tokens off;
+    # Phải ≥ post_max_size của PHP (64M): bài viết gửi nhiều ảnh trong một lần lưu.
+    client_max_body_size 64M;
+
+    ssl_certificate /etc/letsencrypt/live/gopgio.ittour.xyz/fullchain.pem;       # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/gopgio.ittour.xyz/privkey.pem;     # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf;                             # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;                               # managed by Certbot
+
+    # ---------------------------------------------------------------- nén gzip
+    # text/html luôn được nén, không cần khai báo. Không nén ảnh (jpg/png/webp) và woff2 — đã nén sẵn.
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types
+        text/plain text/css text/xml text/javascript
+        application/javascript application/json application/ld+json application/manifest+json
+        application/xml application/rss+xml application/atom+xml
+        font/ttf font/otf image/svg+xml image/x-icon;
+
+    # ---------------------------------------------------------------- Laravel
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+    error_page 404 /index.php;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    # Chỉ chạy đúng front controller của Laravel. Mọi file .php khác trong public/ đều 404
+    # (kể cả nếu lọt được một file .php vào public/uploads).
+    location = /index.php {
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        include fastcgi_params;                      # có HTTPS=on → Laravel biết đang chạy HTTPS (cookie Secure, HSTS)
+        fastcgi_hide_header X-Powered-By;
+        fastcgi_buffer_size 16k;
+        fastcgi_buffers 4 16k;
+        fastcgi_read_timeout 60s;                    # = max_execution_time của PHP
+    }
+    location ~ \.php$ {
+        return 404;
+    }
+
+    # ---------------------------------------------------------------- ảnh tải lên
+    # Nginx KHÔNG đọc public/uploads/.htaccess (chỉ Apache), nên phải chặn ở đây: thư mục ảnh không bao giờ
+    # phục vụ/chạy script, HTML, SVG, JS. Ảnh có tên ngẫu nhiên và không bao giờ đổi nội dung → cache dài.
+    location ^~ /uploads/ {
+        location ~* \.(php\d?|phtml|phar|pl|py|cgi|sh|html?|svg|js)$ { deny all; }
+        add_header Cache-Control "public, max-age=2592000, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+        try_files $uri =404;
+    }
+
+    # ---------------------------------------------------------------- tài nguyên tĩnh
+    # Font: không đổi nội dung (font icon đổi thì có ?v= mới) → cache 1 năm.
+    location ~* \.(woff2?|ttf|otf)$ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        access_log off;
+        try_files $uri =404;
+    }
+    # CSS/JS/ảnh giao diện: css/app.css và js/app.js có ?v=<thời điểm sửa>; thư viện trong /vendor không có
+    # phiên bản trong tên → giữ 30 ngày để bản cập nhật thư viện vẫn tới người dùng.
+    location ~* \.(css|js|jpg|jpeg|png|gif|ico|svg|webp)$ {
+        add_header Cache-Control "public, max-age=2592000, no-transform";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+        try_files $uri =404;
+    }
+
+    # Không lộ file ẩn (.env, .git…), trừ /.well-known (Certbot).
+    location ~ /\.(?!well-known) {
+        deny all;
+    }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name gopgio.ittour.xyz;
+
+    if ($host = gopgio.ittour.xyz) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+    return 404; # managed by Certbot
+}
