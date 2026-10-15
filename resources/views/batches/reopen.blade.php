@@ -12,7 +12,7 @@
     <x-textarea name="reason" label="Lý do mở lại" rows="3" maxlength="500" required
                 help="Ví dụ: nhập sai số suất phân phát, cần sửa lại." />
     <div class="form-check mb-3">
-        <input class="form-check-input @error('confirm') is-invalid @enderror" type="checkbox" name="confirm" id="confirm" value="1" required>
+        <input class="form-check-input @error('confirm') is-invalid @enderror" type="checkbox" name="confirm" id="confirm" value="1" required data-confirm-gate>
         <label class="form-check-label fw-semibold" for="confirm">Tôi xác nhận muốn mở lại chương trình này.</label>
         @error('confirm')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>

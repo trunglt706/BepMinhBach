@@ -51,8 +51,7 @@ Route::middleware(['throttle:public', 'cache.headers:private;max_age=0;must_reva
     Route::get('/dot-nau/{publicId}', fn (Request $request, string $publicId) => redirect()->to(
         url('/chuong-trinh/'.$publicId).($request->getQueryString() ? '?'.$request->getQueryString() : ''), 301,
     ))->where('publicId', '[0-9a-f]{16}')->name('blog.batch.legacy');
-    // Đơn vị tài trợ / hỗ trợ: danh sách theo phân loại và trang riêng từng đơn vị.
-    Route::get('/don-vi-dong-hanh', [PublicSponsorController::class, 'index'])->name('sponsors.public.index');
+    // Đơn vị tài trợ / hỗ trợ: chỉ có trang riêng từng đơn vị (không có trang danh sách công khai).
     Route::get('/don-vi-dong-hanh/{sponsor:slug}', [PublicSponsorController::class, 'show'])->name('sponsors.public.show');
     Route::get('/sitemap.xml', [PublicPostController::class, 'sitemap'])->name('sitemap');
 });

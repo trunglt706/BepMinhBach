@@ -17,12 +17,6 @@
             <lastmod>{{ $batch->updated_at->toAtomString() }}</lastmod>
         </url>
     @endforeach
-    @if($sponsors->isNotEmpty())
-        <url>
-            <loc>{{ route('sponsors.public.index') }}</loc>
-            <lastmod>{{ $sponsors->max('updated_at')->toAtomString() }}</lastmod>
-        </url>
-    @endif
     @foreach($sponsors as $sponsor)
         <url>
             <loc>{{ route('sponsors.public.show', $sponsor) }}</loc>

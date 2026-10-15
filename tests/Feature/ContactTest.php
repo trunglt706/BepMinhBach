@@ -104,7 +104,7 @@ class ContactTest extends TestCase
     {
         $guest = $this->get('/')->assertOk()
             ->assertSee(route('contact.create'))
-            ->assertSee('Đăng nhập')
+            ->assertDontSee(route('login')) // trang công khai không có nút đăng nhập
             ->assertSee('© '.now()->year.' Góp Gió');
         $footer = str($guest->getContent())->after('<footer')->before('</footer>');
         $this->assertStringNotContainsString('kiểm toán', (string) $footer);

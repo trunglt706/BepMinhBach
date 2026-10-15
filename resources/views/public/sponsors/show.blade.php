@@ -9,7 +9,7 @@
 <x-layouts.public :title="$sponsor->name" :description="$description" :canonical="route('sponsors.public.show', $sponsor)" :image="$logo?->url()">
     <nav aria-label="Đường dẫn" class="mb-3">
         <ol class="breadcrumb small mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('sponsors.public.index') }}">Đơn vị đồng hành</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('blog.index') }}">Trang chủ</a></li>
             <li class="breadcrumb-item active text-truncate" aria-current="page">{{ $sponsor->name }}</li>
         </ol>
     </nav>

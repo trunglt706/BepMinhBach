@@ -1,5 +1,5 @@
 /* Bootstrap Icons v1.13.1 (MIT) — bản rút gọn, sinh tự động bởi scripts/build-icons.mjs. Không sửa tay. */
-@font-face{font-display:block;font-family:bootstrap-icons;src:url("fonts/bootstrap-icons-subset.woff2?v=7fdbf4f7b7") format("woff2")}
+@font-face{font-display:block;font-family:bootstrap-icons;src:url("fonts/bootstrap-icons-subset.woff2?v=85f63b728e") format("woff2")}
 .bi::before,[class*=" bi-"]::before,[class^=bi-]::before{display:inline-block;width:1em;text-align:center;font-family:bootstrap-icons!important;font-style:normal;font-weight:400!important;font-variant:normal;text-transform:none;line-height:1;vertical-align:-.125em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 .bi-alarm::before{content:"\f102"}
 .bi-arrow-counterclockwise::before{content:"\f117"}
@@ -13,7 +13,6 @@
 .bi-bar-chart-line::before{content:"\f17c"}
 .bi-basket::before{content:"\f180"}
 .bi-bell::before{content:"\f18a"}
-.bi-box-arrow-in-right::before{content:"\f1be"}
 .bi-box-arrow-right::before{content:"\f1c3"}
 .bi-box-arrow-up-right::before{content:"\f1c5"}
 .bi-box-seam::before{content:"\f1c7"}
@@ -60,7 +59,6 @@
 .bi-gift::before{content:"\f3ec"}
 .bi-globe2::before{content:"\f3ef"}
 .bi-hand-index-thumb::before{content:"\f402"}
-.bi-heart::before{content:"\f417"}
 .bi-hourglass::before{content:"\f421"}
 .bi-hourglass-split::before{content:"\f41f"}
 .bi-house-door::before{content:"\f423"}

@@ -165,4 +165,25 @@ class UiLayoutTest extends TestCase
             ->assertSee('class="d-flex gap-2 flex-shrink-0 row-actions"', false)
             ->assertSee('user-pills', false);
     }
+
+    public function test_batch_page_print_goes_into_menu_on_mobile_and_confirm_gates_submit(): void
+    {
+        $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
+        $html = $this->actingAs($batch->coordinator)->get("/admin/batches/{$batch->id}")->assertOk()->getContent();
+        // Có menu "⋮": nút In ẩn trên điện thoại, có mục In trong menu (chỉ hiện trên điện thoại)
+        $this->assertStringContainsString('class="btn btn-outline-secondary d-none d-md-inline-flex" style="flex-grow: 0" aria-label="In checklist"', $html);
+        $this->assertMatchesRegularExpression('#<li class="d-md-none"><a class="dropdown-item" href="[^"]+/print">#', $html);
+
+        // Hủy / mở lại: ô xác nhận khóa nút gửi
+        $this->actingAs($batch->coordinator)->get("/admin/batches/{$batch->id}/cancel?modal=1")->assertSee('data-confirm-gate', false);
+        $completed = CookingBatch::factory()->status(BatchStatus::Completed)->create(['coordinator_id' => $batch->coordinator_id]);
+        $this->actingAs($batch->coordinator)->get("/admin/batches/{$completed->id}/reopen?modal=1")->assertSee('data-confirm-gate', false);
+
+        // Số suất dự kiến: ô chỉ xem có kiểu riêng
+        $this->actingAs($batch->coordinator)->get("/admin/batches/{$batch->id}/results")->assertOk()
+            ->assertSee('readonly-field', false)->assertSee('bi-lock-fill', false);
+
+        // Trang quản lý đơn vị đồng hành không còn nút "Trang công khai"
+        $this->actingAs($batch->coordinator)->get('/admin/sponsors')->assertOk()->assertDontSee('Trang công khai');
+    }
 }

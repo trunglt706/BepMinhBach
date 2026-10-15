@@ -8,7 +8,6 @@
             @can('create', App\Models\Sponsor::class)
                 <a href="{{ route('sponsors.create') }}" data-modal class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Thêm đơn vị</a>
             @endcan
-            <a href="{{ route('sponsors.public.index') }}" class="btn btn-outline-secondary" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Trang công khai</a>
             <x-filter-toggle target="sponsor-filter" :active="$filtered" />
         </x-slot:actions>
     </x-page-header>

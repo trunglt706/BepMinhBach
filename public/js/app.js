@@ -418,6 +418,10 @@
             button.disabled = false;
             button.removeAttribute('data-loading-disabled');
         });
+        // Form có ô xác nhận: chưa tích thì khóa lại nút gửi
+        root.querySelectorAll('input[type="checkbox"][data-confirm-gate]').forEach(function (checkbox) {
+            syncConfirmGate(checkbox);
+        });
     }
 
     function restoreForm(form) {
@@ -1723,12 +1727,33 @@
         });
     }
 
+    // --- Ô xác nhận (data-confirm-gate): nút gửi của form bị khóa tới khi tích ô (hủy / mở lại chương trình) ---
+    // Không JS thì nút vẫn bấm được; máy chủ vẫn bắt buộc ô xác nhận.
+    function syncConfirmGate(checkbox) {
+        var form = checkbox.form;
+        if (!form) {
+            return;
+        }
+        form.querySelectorAll('button[type="submit"]').forEach(function (button) {
+            button.disabled = !checkbox.checked;
+        });
+    }
+    function initConfirmGates(root) {
+        (root || document).querySelectorAll('input[type="checkbox"][data-confirm-gate]').forEach(syncConfirmGate);
+    }
+    document.addEventListener('change', function (event) {
+        if (event.target.matches && event.target.matches('input[type="checkbox"][data-confirm-gate]')) {
+            syncConfirmGate(event.target);
+        }
+    });
+
     function initPostForms(root) {
         syncChannelForm(root);
         initDatePickers(root);
         initRichEditors(root);
         initTagInputs(root);
         initExistingImageRemovers(root);
+        initConfirmGates(root);
     }
 
     // --- Album công khai: bấm ảnh để xem lớn, vuốt qua lại (PhotoSwipe, MIT) ---
@@ -1984,6 +2009,32 @@
             button.disabled = false;
             toast('Không lấy được thông tin liên lạc. Vui lòng thử lại.', 'error');
         });
+    });
+
+    // Băng trượt ngang (data-carousel, ví dụ "Đơn vị tham gia"): nút trước/sau cuộn gần một khung; chỉ hiện nút khi
+    // nội dung tràn; nút bị mờ ở đầu/cuối. Không tự chạy. Không JS thì vẫn vuốt/cuộn ngang được.
+    document.querySelectorAll('[data-carousel]').forEach(function (carousel) {
+        var track = carousel.querySelector('[data-carousel-track]');
+        var nav = carousel.querySelector('[data-carousel-nav]');
+        var prev = carousel.querySelector('[data-carousel-prev]');
+        var next = carousel.querySelector('[data-carousel-next]');
+        if (!track || !nav) {
+            return;
+        }
+        function sync() {
+            var max = track.scrollWidth - track.clientWidth;
+            nav.hidden = max <= 2;
+            prev.disabled = track.scrollLeft <= 2;
+            next.disabled = track.scrollLeft >= max - 2;
+        }
+        function move(direction) {
+            track.scrollBy({ left: direction * track.clientWidth * 0.85 });
+        }
+        prev.addEventListener('click', function () { move(-1); });
+        next.addEventListener('click', function () { move(1); });
+        track.addEventListener('scroll', sync, { passive: true });
+        window.addEventListener('resize', sync);
+        sync();
     });
 
     // Nút "Lên đầu trang" (trang công khai): hiện khi đã cuộn quá ~1,5 màn hình; bấm thì cuộn lên và đưa focus về nội dung.

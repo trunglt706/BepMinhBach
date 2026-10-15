@@ -93,11 +93,8 @@ class SponsorTest extends TestCase
         }
         $hidden->sponsors()->attach($sponsor->id);
 
-        // Danh sách theo phân loại
-        $this->get('/don-vi-dong-hanh')->assertOk()
-            ->assertSeeInOrder(['Đơn vị đồng hành', 'Nhà sách Bình Minh', 'Truyền thông', 'Báo Tuổi Xanh'])
-            ->assertDontSee('Đơn vị đang ẩn')
-            ->assertSee('1 chương trình'); // không đếm chương trình chưa công khai
+        // Không có trang danh sách công khai — chỉ trang riêng từng đơn vị
+        $this->get('/don-vi-dong-hanh')->assertNotFound();
 
         // Trang riêng: chỉ chương trình công khai
         $this->get("/don-vi-dong-hanh/{$sponsor->slug}")->assertOk()
@@ -106,16 +103,16 @@ class SponsorTest extends TestCase
             ->assertDontSee('Chương trình nội bộ');
         $this->get("/don-vi-dong-hanh/{$inactive->slug}")->assertNotFound();
 
-        // Trang chương trình: đơn vị tham gia theo phân loại, có link tới trang đơn vị
+        // Trang chương trình: băng trượt đơn vị tham gia (thứ tự theo phân loại), có link tới trang đơn vị
         $this->get("/chuong-trinh/{$public->public_id}")->assertOk()
-            ->assertSee('Đơn vị tham gia')
+            ->assertSee('Đơn vị tham gia')->assertSee('data-carousel-track', false)
             ->assertSeeInOrder(['Đơn vị đồng hành', 'Nhà sách Bình Minh', 'Truyền thông', 'Báo Tuổi Xanh'])
             ->assertSee(route('sponsors.public.show', $sponsor), false)
             ->assertDontSee('Đơn vị đang ẩn');
 
         $this->get('/sitemap.xml')->assertSee(route('sponsors.public.show', $sponsor), false)
             ->assertDontSee(route('sponsors.public.show', $inactive), false);
-        $this->get('/')->assertSee(route('sponsors.public.index'), false); // menu công khai
+        $this->get('/')->assertDontSee('/don-vi-dong-hanh', false); // menu công khai không còn mục danh sách
     }
 
     public function test_public_program_page_refreshes_after_linking_sponsor(): void

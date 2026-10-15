@@ -37,6 +37,8 @@
         </div>
     </header>
 
+    @include('public.batches._sponsors', ['groups' => $sponsorGroups])
+
     <div class="row g-4">
         <div class="col-lg-8 order-2 order-lg-1">
             <h2 class="h5 fw-bold mb-3"><i class="bi bi-newspaper" aria-hidden="true"></i> Bài viết về chương trình này</h2>
@@ -71,33 +73,6 @@
                     <p class="small text-body-secondary mt-3 mb-0">Số liệu do đội Góp Gió tự ghi nhận, không phải kiểm toán độc lập.</p>
                 </div>
             </section>
-
-            @if($sponsorGroups->isNotEmpty())
-                {{-- Đơn vị tham gia, nhóm theo phân loại; mỗi đơn vị dẫn tới trang riêng --}}
-                <section class="card mt-3" aria-labelledby="batch-sponsors-title">
-                    <div class="panel-header"><h2 id="batch-sponsors-title" class="panel-title"><i class="bi bi-award" aria-hidden="true"></i> Đơn vị tham gia</h2></div>
-                    <div class="card-body pt-2">
-                        @foreach(App\Enums\SponsorType::cases() as $type)
-                            @continue(! $sponsorGroups->has($type->value))
-                            <h3 class="small fw-bold text-body-secondary mt-2 mb-2"><i class="bi {{ $type->icon() }}" aria-hidden="true"></i> {{ $type->label() }}</h3>
-                            <ul class="sponsor-chips list-unstyled mb-2">
-                                @foreach($sponsorGroups[$type->value] as $s)
-                                    <li>
-                                        <a href="{{ route('sponsors.public.show', $s) }}" class="sponsor-chip">
-                                            <x-sponsor-logo :sponsor="$s" size="sm" />
-                                            <span class="min-w-0">
-                                                <span class="d-block fw-semibold text-truncate">{{ $s->name }}</span>
-                                                @if($s->pivot->contribution)<span class="d-block small text-body-secondary">{{ $s->pivot->contribution }}</span>@endif
-                                            </span>
-                                        </a>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @endforeach
-                        <a href="{{ route('sponsors.public.index') }}" class="small fw-semibold">Tất cả đơn vị đồng hành</a>
-                    </div>
-                </section>
-            @endif
         </aside>
     </div>
 </x-layouts.public>

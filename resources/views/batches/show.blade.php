@@ -99,7 +99,8 @@
                             <a href="{{ $primary['url'] }}" data-modal class="btn {{ $primary['class'] ?? 'btn-primary' }}"><i class="bi {{ $primary['icon'] }}" aria-hidden="true"></i> {{ $primary['label'] }}</a>
                         @endif
                     @endif
-                    <a href="{{ route('batches.print', $batch) }}" class="btn btn-outline-secondary" style="flex-grow: 0" aria-label="In checklist">
+                    {{-- Điện thoại: "In checklist" nằm trong menu "⋮" (nếu có menu) --}}
+                    <a href="{{ route('batches.print', $batch) }}" @class(['btn btn-outline-secondary', 'd-none d-md-inline-flex' => $hasMenu]) style="flex-grow: 0" aria-label="In checklist">
                         <i class="bi bi-printer" aria-hidden="true"></i> <span @class(['d-none d-sm-inline' => $primary]) aria-hidden="true">In checklist</span>
                     </a>
                     @if($hasMenu)
@@ -108,6 +109,7 @@
                                 <i class="bi bi-three-dots" aria-hidden="true"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
+                                <li class="d-md-none"><a class="dropdown-item" href="{{ route('batches.print', $batch) }}"><i class="bi bi-printer" aria-hidden="true"></i> In checklist</a></li>
                                 @if($canEdit)
                                     <li><a class="dropdown-item" href="{{ route('batches.edit', $batch) }}" data-modal><i class="bi bi-pencil" aria-hidden="true"></i> Sửa thông tin</a></li>
                                 @endif

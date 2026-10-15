@@ -42,7 +42,7 @@ class SeoTest extends TestCase
             ->assertSee('<meta property="og:url" content="'.route('blog.index').'">', false)
             ->assertSee('<meta name="twitter:card" content="summary">', false)
             ->assertSee('"@type":"WebSite"', false)
-            ->assertSee('rel="nofollow"', false); // link đăng nhập
+            ->assertDontSee(route('login'), false); // trang công khai không có nút đăng nhập
 
         $this->get('/lien-he')->assertOk()->assertHeaderMissing('X-Robots-Tag')
             ->assertSee('<meta property="og:title" content="Liên hệ">', false)

@@ -43,7 +43,6 @@
         </a>
         <nav class="public-nav me-auto" aria-label="Điều hướng công khai">
             <a href="{{ route('blog.index') }}" @class(['active' => request()->routeIs('blog.*')]) @if(request()->routeIs('blog.index')) aria-current="page" @endif>Bài viết</a>
-            <a href="{{ route('sponsors.public.index') }}" @class(['active' => request()->routeIs('sponsors.public.*')]) @if(request()->routeIs('sponsors.public.index')) aria-current="page" @endif>Đồng hành</a>
             <a href="{{ route('contact.create') }}" @class(['active' => request()->routeIs('contact.*')]) @if(request()->routeIs('contact.*')) aria-current="page" @endif>Liên hệ</a>
         </nav>
         {{-- Tìm bài viết: máy tính hiện sẵn ô tìm; điện thoại bấm biểu tượng kính lúp để mở (details: không cần JS). --}}
@@ -61,11 +60,6 @@
                 <button type="submit" class="btn btn-primary" data-loading-text="Đang tìm…">Tìm</button>
             </form>
         </details>
-        {{-- Màn rất hẹp (< 400px): nút chỉ còn biểu tượng, tên đọc qua aria-label/title. --}}
-        @guest
-            <a href="{{ route('login') }}" rel="nofollow" class="btn btn-sm btn-outline-primary public-header-action" aria-label="Đăng nhập" title="Đăng nhập">
-                <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> <span class="public-header-action-text" aria-hidden="true">Đăng nhập</span></a>
-        @endguest
     </div>
 </header>
 

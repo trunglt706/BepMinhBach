@@ -12,7 +12,7 @@
     </ul>
     <x-textarea name="cancellation_reason" label="Lý do hủy" rows="3" maxlength="1000" help="Không bắt buộc nhưng nên ghi để mọi người hiểu." />
     <div class="form-check mb-3">
-        <input class="form-check-input @error('confirm') is-invalid @enderror" type="checkbox" name="confirm" id="confirm" value="1" required>
+        <input class="form-check-input @error('confirm') is-invalid @enderror" type="checkbox" name="confirm" id="confirm" value="1" required data-confirm-gate>
         <label class="form-check-label fw-semibold" for="confirm">Tôi xác nhận muốn hủy chương trình này.</label>
         @error('confirm')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>

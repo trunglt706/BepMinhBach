@@ -8,9 +8,13 @@
     </div>
     <div class="row g-3">
         <div class="col-12 col-md-4">
-            <div class="form-label">Số suất dự kiến</div>
-            <div class="form-control form-control-lg bg-body-tertiary text-center tabular" aria-readonly="true">{{ App\Support\Format::number($batch->expected_servings) }}</div>
-            <div class="form-text">Theo kế hoạch, không sửa ở đây.</div>
+            <div class="form-label" id="expected_label">Số suất dự kiến</div>
+            {{-- Chỉ xem: nền sọc + khóa để phân biệt với ô nhập bên cạnh --}}
+            <div class="form-control form-control-lg text-center tabular readonly-field" role="textbox" aria-readonly="true"
+                 aria-labelledby="expected_label" aria-describedby="expected_help">
+                <i class="bi bi-lock-fill readonly-field-icon" aria-hidden="true"></i>{{ App\Support\Format::number($batch->expected_servings) }}
+            </div>
+            <div class="form-text" id="expected_help">Theo kế hoạch, không sửa ở đây (sửa ở “Sửa thông tin” chương trình).</div>
         </div>
         <div class="col-6 col-md-4">
             <x-input name="prepared_servings" label="Đã chuẩn bị" integer maxlength="7"

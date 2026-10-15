@@ -3693,3 +3693,58 @@ input.form-control.input {
     cursor: pointer;
     color: var(--bmb-green-700);
 }
+
+/* Trang chương trình công khai: băng trượt "Đơn vị tham gia" (cuộn ngang, dừng đúng từng thẻ, ẩn thanh cuộn) */
+.sponsor-carousel-track {
+    display: flex;
+    gap: .75rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding: 2px 2px 6px;              /* chừa chỗ cho bóng/viền focus */
+}
+.sponsor-carousel-track::-webkit-scrollbar {
+    display: none;
+}
+.sponsor-carousel-item {
+    flex: 0 0 calc((100% - 1.5rem) / 2.3);   /* điện thoại: ~2 thẻ, thẻ thứ 3 ló ra để gợi ý vuốt */
+    scroll-snap-align: start;
+}
+@media (min-width: 768px) {
+    .sponsor-carousel-item { flex-basis: calc((100% - 3rem) / 4.3); }
+}
+@media (min-width: 1200px) {
+    .sponsor-carousel-item { flex-basis: calc((100% - 4.5rem) / 6); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .sponsor-carousel-track { scroll-behavior: auto; }
+}
+.sponsor-carousel-nav {
+    display: flex;
+    gap: .35rem;
+}
+.sponsor-carousel-nav[hidden] {
+    display: none;
+}
+
+/* Ô chỉ xem trong form (ví dụ "Số suất dự kiến" khi nhập số suất): nền sọc + viền đứt + khóa, khác hẳn ô nhập */
+.readonly-field {
+    position: relative;
+    color: var(--bmb-muted);
+    background-color: var(--bmb-surface-2);
+    background-image: repeating-linear-gradient(-45deg, transparent 0 8px, rgba(0, 0, 0, .035) 8px 16px);
+    border-style: dashed;
+    cursor: not-allowed;
+    user-select: text;
+}
+.readonly-field-icon {
+    position: absolute;
+    left: .75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: .9rem;
+    opacity: .7;
+}

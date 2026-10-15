@@ -77,7 +77,7 @@ Cập nhật lần cuối: 2026-10-14. Bộ test: `php artisan test` → 188 tes
 - [x] BM-082 SEO trang công khai (OG/Twitter mọi trang, JSON-LD trang chủ) và chặn lập chỉ mục khu quản lý/đăng nhập/trang lỗi. *(`SeoTest`)*
 - [x] BM-083 Duyệt bài viết: điều phối viên quản lý bài của mình + gửi duyệt; quản trị viên duyệt/từ chối (kèm lý do)/gỡ. *(`PostReviewTest`, `PostTest`)*
 - [x] BM-084 Liên hệ: che email/số điện thoại (công khai và quản lý), nút "Hiện" có ghi nhật ký. *(`ContactTest`)*
-- [x] BM-085 Đơn vị tài trợ / hỗ trợ: danh bạ (phân loại, logo, tên, giới thiệu, website, ẩn/hiện), gắn vào chương trình kèm đóng góp; trang công khai `/don-vi-dong-hanh` (theo phân loại) và trang riêng từng đơn vị (các chương trình đã tham gia); khối "Đơn vị tham gia" theo phân loại trên trang chương trình công khai; sitemap. *(`SponsorTest`)*
+- [x] BM-085 Đơn vị tài trợ / hỗ trợ: danh bạ (phân loại, logo, tên, giới thiệu, website, ẩn/hiện), gắn vào chương trình kèm đóng góp; trang công khai riêng từng đơn vị `/don-vi-dong-hanh/{slug}` (các chương trình đã tham gia); băng trượt "Đơn vị tham gia" trên trang chương trình công khai; sitemap. (Trang danh sách công khai đã bỏ 15/10/2026.) *(`SponsorTest`)*
 - [x] BM-086 Rà soát QA/bảo mật/hiệu năng trước production: sửa N+1 "Công việc của tôi", lộ email ở quên mật khẩu, log xoay vòng, lịch dọn dẹp; giới hạn số truy vấn trang chính. *(`QueryBudgetTest`)*
 
 ## Ý tưởng sau MVP (chưa làm — chờ duyệt, đề xuất 15/10/2026)

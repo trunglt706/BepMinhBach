@@ -123,7 +123,14 @@ class ProductionHardeningTest extends TestCase
         $this->assertStringContainsString('set -Eeuo pipefail', $script);
         // Không bao giờ chạy seeder demo trên máy chủ thật
         $this->assertStringNotContainsString('db:seed', $script);
-        $this->assertStringContainsString('set_env APP_DEBUG false', $script);
+        // Chỉ cập nhật code: không cài gói, không sửa .env / cấu hình hệ thống
+        foreach (['apt-get', 'set_env', 'certbot', 'ufw', '/etc/nginx', 'key:generate'] as $systemStep) {
+            $this->assertStringNotContainsString($systemStep, $script, "deploy.sh không được chứa bước hệ thống: {$systemStep}");
+        }
+        // Các bước cập nhật theo đúng thứ tự; lỗi thì tắt bảo trì
+        $this->assertMatchesRegularExpression('/artisan down.*git -C "\$APP_DIR" fetch.*pull --ff-only.*composer install --no-dev'
+            .'.*npm ci.*chown -R.*migrate --force.*config:cache.*artisan up.*systemctl reload.*queue:restart.*bmb:check-production/s', $script);
+        $this->assertStringContainsString("trap 'on_error \$LINENO' ERR", $script);
     }
 
     public function test_check_production_passes_with_safe_configuration(): void

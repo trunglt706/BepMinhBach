@@ -318,3 +318,13 @@ Claude cập nhật file này sau mỗi lát cắt có ý nghĩa. Không ghi sec
   - Viết lại chú thích bị lỗi mã hóa, bỏ chú thích không liên quan.
 - Kiểm tra: `nginx -t` trên nginx 1.28.2 (bản tạm không có chứng chỉ); chạy thử: `/uploads/*.php|.html` → 403, ảnh `.webp` → 200 + cache, `/.env` → 403, `.php` lạ không bị chạy (chuyển cho Laravel 404), HTTP → 301 HTTPS.
 - `docs/DEPLOYMENT.md`: đường dẫn theo bố cục thật `/var/www/gopgio` (unit worker, cron, sao lưu); mục 5b trỏ tới file mẫu + các điểm bắt buộc.
+
+### 2026-10-15 — Tinh chỉnh trang công khai, chi tiết chương trình (điện thoại), xác nhận hủy/mở lại
+- **Đơn vị đồng hành (công khai):** bỏ trang danh sách `/don-vi-dong-hanh` (404) và mục "Đồng hành" trên menu; chỉ giữ trang riêng từng đơn vị (breadcrumb về "Trang chủ"); bỏ mục danh sách khỏi sitemap. Trang chương trình: "Đơn vị tham gia" thành **băng trượt ngang** toàn trang ngay dưới ảnh đầu trang (`public/batches/_sponsors.blade.php`, thứ tự theo phân loại; thẻ có logo, phân loại, tên, đóng góp). JS `data-carousel`: nút trước/sau (ẩn khi không tràn, mờ ở đầu/cuối), không tự chạy; không JS vẫn vuốt được.
+- **Trang công khai không còn nút "Đăng nhập"** (vào `/login` trực tiếp).
+- **Chi tiết chương trình (quản lý):** điện thoại — "In checklist" nằm trong menu "⋮" (khi có menu; không có menu thì vẫn để ngoài).
+- **Hủy / mở lại chương trình:** nút gửi bị khóa tới khi tích ô xác nhận (`data-confirm-gate`; khôi phục đúng trạng thái sau khi gửi lỗi). Không JS: nút vẫn bấm được, máy chủ vẫn bắt buộc xác nhận.
+- **Modal nhập số suất:** "Số suất dự kiến" là ô chỉ xem có nền sọc, viền đứt, biểu tượng khóa.
+- **Quản lý đơn vị đồng hành:** bỏ nút "Trang công khai".
+- **Sửa test sót:** lượt viết lại `deploy.sh` trước đã đẩy lên kèm `ProductionHardeningTest` còn kiểm tra script cũ (chỉ chạy `bash -n`, không chạy bộ test). Test mới kiểm tra script không chứa bước hệ thống và các bước cập nhật đúng thứ tự.
+- **Kiểm thử:** `php artisan test` **247 passed**; `view:cache`; `node --check`. Chưa xem băng trượt trên trình duyệt thật.
