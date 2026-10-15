@@ -17,14 +17,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
-/** Vòng đời đợt nấu: chuyển trạng thái, hoàn tất (khóa), hủy, mở lại. */
+/** Vòng đời chương trình: chuyển trạng thái, hoàn tất (khóa), hủy, mở lại. */
 class BatchStatusController extends Controller
 {
     /**
      * Chuyển trạng thái đơn giản: Nháp ↔ Đã lên kế hoạch → Đang diễn ra.
      *
      * @param  BatchStatusRequest  $request  trạng thái đích hợp lệ từ trạng thái hiện tại
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function change(BatchStatusRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
@@ -37,13 +37,13 @@ class BatchStatusController extends Controller
                 'Chuyển trạng thái: '.$from->label().' → '.$batch->status->label().'.');
         });
 
-        return $this->done($request, redirect()->route('batches.show', $batch), 'Đợt nấu đã chuyển sang “'.$batch->status->label().'”.');
+        return $this->done($request, redirect()->route('batches.show', $batch), 'Chương trình đã chuyển sang “'.$batch->status->label().'”.');
     }
 
     /**
      * Màn hình xác nhận hoàn tất, kèm danh sách mục còn thiếu.
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function confirmComplete(CookingBatch $batch): View
     {
@@ -56,10 +56,10 @@ class BatchStatusController extends Controller
     }
 
     /**
-     * Hoàn tất và khóa đợt nấu.
+     * Hoàn tất và khóa chương trình.
      *
      * @param  BatchCompleteRequest  $request  có tick xác nhận
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function complete(BatchCompleteRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
@@ -69,16 +69,16 @@ class BatchStatusController extends Controller
             $batch->completion_notes = $request->validated('completion_notes');
             $batch->save();
 
-            ActivityLog::record($batch, $request->user(), ActivityAction::BatchCompleted, 'Hoàn tất đợt nấu.');
+            ActivityLog::record($batch, $request->user(), ActivityAction::BatchCompleted, 'Hoàn tất chương trình.');
         });
 
-        return $this->done($request, redirect()->route('batches.show', $batch), 'Đã hoàn tất đợt nấu.');
+        return $this->done($request, redirect()->route('batches.show', $batch), 'Đã hoàn tất chương trình.');
     }
 
     /**
-     * Màn hình xác nhận hủy đợt.
+     * Màn hình xác nhận hủy chương trình.
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function confirmCancel(CookingBatch $batch): View
     {
@@ -90,10 +90,10 @@ class BatchStatusController extends Controller
     }
 
     /**
-     * Hủy đợt nấu, giữ nguyên dữ liệu. Lý do hủy lưu ở đợt nấu, không đưa vào log.
+     * Hủy chương trình, giữ nguyên dữ liệu. Lý do hủy lưu ở chương trình, không đưa vào log.
      *
      * @param  BatchCancelRequest  $request  có tick xác nhận
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function cancel(BatchCancelRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
@@ -106,16 +106,16 @@ class BatchStatusController extends Controller
             $batch->save();
 
             ActivityLog::record($batch, $request->user(), ActivityAction::BatchCancelled,
-                "Hủy đợt nấu. {$openTasks} công việc chưa xong được giữ nguyên và khóa thao tác.");
+                "Hủy chương trình. {$openTasks} công việc chưa xong được giữ nguyên và khóa thao tác.");
         });
 
-        return $this->done($request, redirect()->route('batches.show', $batch), 'Đã hủy đợt nấu. Dữ liệu vẫn được giữ lại.');
+        return $this->done($request, redirect()->route('batches.show', $batch), 'Đã hủy chương trình. Dữ liệu vẫn được giữ lại.');
     }
 
     /**
-     * Màn hình xác nhận mở lại đợt.
+     * Màn hình xác nhận mở lại chương trình.
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function confirmReopen(CookingBatch $batch): View
     {
@@ -126,10 +126,10 @@ class BatchStatusController extends Controller
 
     /**
      * Mở lại: đã hoàn tất → Đang diễn ra; đã hủy → Nháp.
-     * Lý do (chữ tự do) lưu ở đợt nấu (reopen_reason); log chỉ ghi việc mở lại, không chép lý do.
+     * Lý do (chữ tự do) lưu ở chương trình (reopen_reason); log chỉ ghi việc mở lại, không chép lý do.
      *
      * @param  BatchReopenRequest  $request  lý do + tick xác nhận
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function reopen(BatchReopenRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
@@ -143,16 +143,16 @@ class BatchStatusController extends Controller
             $batch->save();
 
             ActivityLog::record($batch, $request->user(), ActivityAction::BatchReopened,
-                'Mở lại đợt ('.$from->label().' → '.$batch->status->label().'), có ghi lý do.');
+                'Mở lại chương trình ('.$from->label().' → '.$batch->status->label().'), có ghi lý do.');
         });
 
-        return $this->done($request, redirect()->route('batches.show', $batch), 'Đã mở lại đợt nấu. Trạng thái hiện tại: “'.$batch->status->label().'”.');
+        return $this->done($request, redirect()->route('batches.show', $batch), 'Đã mở lại chương trình. Trạng thái hiện tại: “'.$batch->status->label().'”.');
     }
 
     /**
      * Các mục còn thiếu trước khi hoàn tất (chỉ nhắc, không tự điền số liệu).
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      * @return list<string> câu nhắc hiển thị
      */
     private function completionReminders(CookingBatch $batch): array

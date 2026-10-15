@@ -1,6 +1,6 @@
 <x-form-shell title="Thêm khoản chi" :subtitle="$batch->name"
               :action="route('batches.expenses.store', $batch)"
-              :back="route('batches.show', $batch).'#chi-phi'" back-label="Quay lại đợt nấu">
+              :back="route('batches.show', $batch).'#chi-phi'" back-label="Quay lại chương trình">
     @include('expenses._form')
     <x-slot:actions>
         <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> Lưu khoản chi</button>

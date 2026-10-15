@@ -37,8 +37,8 @@ enum ContactTopic: string
             self::Volunteer => 'Bạn có thể tham gia vào ngày/giờ nào, việc bạn muốn làm (sơ chế, nấu, chia suất, dọn dẹp…).',
             self::Donation => 'Bạn muốn ủng hộ gì, số lượng khoảng bao nhiêu, thời gian có thể gửi.',
             self::Partnership => 'Đơn vị của bạn và nội dung muốn hợp tác.',
-            self::Feedback => 'Góp ý của bạn để đội bếp làm tốt hơn.',
-            self::Other => 'Nội dung bạn muốn trao đổi với đội bếp.',
+            self::Feedback => 'Góp ý của bạn để đội Góp Gió làm tốt hơn.',
+            self::Other => 'Nội dung bạn muốn trao đổi với đội Góp Gió.',
         };
     }
 

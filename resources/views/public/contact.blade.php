@@ -1,6 +1,6 @@
-<x-layouts.public title="Liên hệ" description="Gửi lời nhắn cho đội bếp BếpMinhBạch: đăng ký tình nguyện, ủng hộ nguyên liệu, hợp tác hoặc góp ý."
+<x-layouts.public title="Liên hệ" description="Gửi lời nhắn cho đội Góp Gió: đăng ký tình nguyện, ủng hộ nguyên liệu, hợp tác hoặc góp ý."
                   :canonical="route('contact.create')">
-    <x-page-header title="Liên hệ" subtitle="Gửi lời nhắn cho đội bếp — chúng tôi sẽ liên lạc lại qua email hoặc số điện thoại bạn để lại." />
+    <x-page-header title="Liên hệ" subtitle="Gửi lời nhắn cho đội Góp Gió — chúng tôi sẽ liên lạc lại qua email hoặc số điện thoại bạn để lại." />
 
     <div class="row g-4">
         <div class="col-lg-8">
@@ -21,7 +21,7 @@
                 {{-- Đã gửi hôm nay: không hiện form (máy chủ vẫn chặn nếu cố gửi lại). --}}
                 <div class="card">
                     <x-empty-state icon="bi-envelope-check" title="Bạn đã gửi liên hệ hôm nay">
-                        Mỗi người có thể gửi một lời nhắn mỗi ngày để đội bếp kịp đọc và phản hồi. Bạn có thể gửi thêm vào ngày mai.
+                        Mỗi người có thể gửi một lời nhắn mỗi ngày để đội Góp Gió kịp đọc và phản hồi. Bạn có thể gửi thêm vào ngày mai.
                         <x-slot:action><a href="{{ route('blog.index') }}" class="btn btn-outline-primary">Xem bài viết</a></x-slot:action>
                     </x-empty-state>
                 </div>
@@ -56,7 +56,7 @@
                         </div>
                         <div class="col-md-6">
                             <x-input name="contact" label="Email hoặc số điện thoại" required maxlength="150" autocomplete="email" data-validate="email-or-phone"
-                                     help="Chỉ dùng để đội bếp liên lạc lại, không công khai." />
+                                     help="Chỉ dùng để đội Góp Gió liên lạc lại, không công khai." />
                         </div>
                     </div>
 

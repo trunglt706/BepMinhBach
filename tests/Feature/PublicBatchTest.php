@@ -11,7 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-/** Ảnh nền đợt nấu, slider đợt đang diễn ra trên trang chủ, trang đợt nấu công khai. */
+/** Ảnh nền chương trình, slider chương trình đang diễn ra trên trang chủ, trang chương trình công khai. */
 class PublicBatchTest extends TestCase
 {
     use RefreshDatabase;
@@ -23,7 +23,7 @@ class PublicBatchTest extends TestCase
     }
 
     /**
-     * Dữ liệu form đợt nấu hợp lệ.
+     * Dữ liệu form chương trình hợp lệ.
      *
      * @param  User  $coordinator  người điều phối
      * @param  array<string, mixed>  $overrides
@@ -40,7 +40,7 @@ class PublicBatchTest extends TestCase
     }
 
     /**
-     * Đợt có ảnh nền (chỉ bản ghi; file không cần cho trang HTML).
+     * Chương trình có ảnh nền (chỉ bản ghi; file không cần cho trang HTML).
      *
      * @param  array<string, mixed>  $attributes
      */
@@ -97,7 +97,9 @@ class PublicBatchTest extends TestCase
         ]))->assertStatus(422)->assertJsonValidationErrors('cover');
 
         $batch = CookingBatch::factory()->create();
-        $this->actingAs(User::factory()->volunteer()->create())->put("/admin/batches/{$batch->id}", $this->form($coordinator, [
+        $volunteer = User::factory()->volunteer()->create();
+        $this->assignToBatch($batch, $volunteer);
+        $this->actingAs($volunteer)->put("/admin/batches/{$batch->id}", $this->form($coordinator, [
             'cover' => UploadedFile::fake()->image('nen.jpg', 600, 400),
         ]))->assertForbidden();
         $this->assertSame([], Storage::disk('uploads')->allFiles());
@@ -105,15 +107,15 @@ class PublicBatchTest extends TestCase
 
     public function test_home_slider_shows_only_in_progress_batches_with_date_and_link(): void
     {
-        $live = $this->batchWithCover(BatchStatus::InProgress, ['name' => 'Đợt đang nấu', 'starts_on' => '2026-10-14 06:30:00']);
-        $other = CookingBatch::factory()->status(BatchStatus::InProgress)->create(['name' => 'Đợt thứ hai không ảnh']);
-        CookingBatch::factory()->status(BatchStatus::Planned)->create(['name' => 'Đợt kế hoạch']);
-        CookingBatch::factory()->status(BatchStatus::Completed)->create(['name' => 'Đợt đã xong']);
+        $live = $this->batchWithCover(BatchStatus::InProgress, ['name' => 'Chương trình đang nấu', 'starts_on' => '2026-10-14 06:30:00']);
+        $other = CookingBatch::factory()->status(BatchStatus::InProgress)->create(['name' => 'Chương trình thứ hai không ảnh']);
+        CookingBatch::factory()->status(BatchStatus::Planned)->create(['name' => 'Chương trình kế hoạch']);
+        CookingBatch::factory()->status(BatchStatus::Completed)->create(['name' => 'Chương trình đã xong']);
 
         $html = $this->get('/')->assertOk()
             ->assertSee('data-slider', false)
-            ->assertSee('Đợt đang nấu')->assertSee('Đợt thứ hai không ảnh')
-            ->assertDontSee('Đợt kế hoạch')->assertDontSee('Đợt đã xong')
+            ->assertSee('Chương trình đang nấu')->assertSee('Chương trình thứ hai không ảnh')
+            ->assertDontSee('Chương trình kế hoạch')->assertDontSee('Chương trình đã xong')
             ->assertSee(route('blog.batch', $live))
             ->assertSee('14/10/2026')
             ->getContent();
@@ -121,7 +123,7 @@ class PublicBatchTest extends TestCase
         $slider = (string) str($html)->after('data-slider')->before('</section>');
         $this->assertStringNotContainsString('06:30', $slider); // chỉ ngày, không giờ
         $this->assertStringContainsString('fetchpriority="high"', $slider); // ảnh slide đầu tải ngay
-        $this->assertStringContainsString('batch-slide-media is-placeholder', $slider); // đợt không ảnh: nền thay thế
+        $this->assertStringContainsString('batch-slide-media is-placeholder', $slider); // chương trình không ảnh: nền thay thế
         $this->assertStringContainsString('data-slider-next', $slider);
 
         // Không lặp lại ở trang lọc / trang 2
@@ -145,17 +147,17 @@ class PublicBatchTest extends TestCase
             Post::factory()->published()->create(['cooking_batch_id' => $batch->id, 'title' => "Tin số {$i}", 'published_at' => now()->subHours($i)]);
         }
         Post::factory()->create(['cooking_batch_id' => $batch->id, 'title' => 'Bản nháp ẩn']);
-        Post::factory()->published()->create(['title' => 'Bài của đợt khác']);
+        Post::factory()->published()->create(['title' => 'Bài của chương trình khác']);
 
-        $this->get("/dot-nau/{$batch->public_id}")->assertOk()
+        $this->get("/chuong-trinh/{$batch->public_id}")->assertOk()
             ->assertSee('Cháo thứ năm')->assertSee('15/10/2026')->assertSee('Đang diễn ra')
             ->assertSee('11 bài viết')
             ->assertSee('Tin số 1')->assertDontSee('Tin số 11')
-            ->assertDontSee('Bản nháp ẩn')->assertDontSee('Bài của đợt khác')
+            ->assertDontSee('Bản nháp ẩn')->assertDontSee('Bài của chương trình khác')
             ->assertDontSee('Bếp bí mật')->assertDontSee('Ghi chú nội bộ')->assertDontSee($batch->coordinator->name)
             ->assertSee('<link rel="canonical" href="'.route('blog.batch', $batch).'">', false);
 
-        $this->get("/dot-nau/{$batch->public_id}?page=2")->assertOk()->assertSee('Tin số 11')->assertDontSee('Tin số 2<', false);
+        $this->get("/chuong-trinh/{$batch->public_id}?page=2")->assertOk()->assertSee('Tin số 11')->assertDontSee('Tin số 2<', false);
     }
 
     public function test_public_batch_page_hidden_for_unpublished_batches(): void
@@ -163,30 +165,52 @@ class PublicBatchTest extends TestCase
         $draft = CookingBatch::factory()->status(BatchStatus::Draft)->create();
         $planned = CookingBatch::factory()->status(BatchStatus::Planned)->create();
         Post::factory()->create(['cooking_batch_id' => $planned->id]); // chỉ có bản nháp
-        $completed = CookingBatch::factory()->status(BatchStatus::Completed)->create(['name' => 'Đợt cũ có bài']);
-        Post::factory()->published()->create(['cooking_batch_id' => $completed->id, 'title' => 'Nhìn lại đợt cũ']);
+        $completed = CookingBatch::factory()->status(BatchStatus::Completed)->create(['name' => 'Chương trình cũ có bài']);
+        Post::factory()->published()->create(['cooking_batch_id' => $completed->id, 'title' => 'Nhìn lại chương trình cũ']);
 
-        $this->get("/dot-nau/{$draft->public_id}")->assertNotFound();
-        $this->get("/dot-nau/{$planned->public_id}")->assertNotFound();
-        $this->get('/dot-nau/999999')->assertNotFound();
-        $this->get("/dot-nau/{$completed->id}")->assertNotFound(); // không dùng ID tăng dần trong URL
-        $this->get('/dot-nau/'.str_repeat('0', 16))->assertNotFound();
+        $this->get("/chuong-trinh/{$draft->public_id}")->assertNotFound();
+        $this->get("/chuong-trinh/{$planned->public_id}")->assertNotFound();
+        $this->get('/chuong-trinh/999999')->assertNotFound();
+        $this->get("/chuong-trinh/{$completed->id}")->assertNotFound(); // không dùng ID tăng dần trong URL
+        $this->get('/chuong-trinh/'.str_repeat('0', 16))->assertNotFound();
         $this->assertMatchesRegularExpression('/^[0-9a-f]{16}$/', $completed->public_id);
         $this->assertNotSame($draft->public_id, $planned->public_id);
-        $this->assertSame(url('/dot-nau/'.$completed->public_id), route('blog.batch', $completed));
-        $this->get('/dot-nau/abc')->assertNotFound();
-        $this->get("/dot-nau/{$completed->public_id}")->assertOk()->assertSee('Đợt cũ có bài')->assertSee('Nhìn lại đợt cũ');
+        $this->assertSame(url('/chuong-trinh/'.$completed->public_id), route('blog.batch', $completed));
+        $this->get('/chuong-trinh/abc')->assertNotFound();
+        $this->get("/chuong-trinh/{$completed->public_id}")->assertOk()->assertSee('Chương trình cũ có bài')->assertSee('Nhìn lại chương trình cũ');
 
-        // Thẻ bài viết và trang chi tiết dẫn tới trang đợt
-        $post = Post::where('title', 'Nhìn lại đợt cũ')->sole();
+        // Thẻ bài viết và trang chi tiết dẫn tới trang chương trình
+        $post = Post::where('title', 'Nhìn lại chương trình cũ')->sole();
         $this->get('/')->assertSee(route('blog.batch', $completed));
         $this->get("/bai-viet/{$post->slug}")->assertSee(route('blog.batch', $completed));
 
-        // Sitemap: chỉ đợt công khai được + trang liên hệ
+        // Sitemap: chỉ chương trình công khai được + trang liên hệ
         $this->get('/sitemap.xml')->assertOk()
             ->assertSee('<loc>'.route('blog.batch', $completed).'</loc>', false)
             ->assertDontSee('<loc>'.route('blog.batch', $draft).'</loc>', false)
             ->assertDontSee('<loc>'.route('blog.batch', $planned).'</loc>', false)
             ->assertSee('<loc>'.route('contact.create').'</loc>', false);
+    }
+
+    public function test_old_batch_url_redirects_permanently_to_program_url(): void
+    {
+        $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
+
+        $this->get("/dot-nau/{$batch->public_id}?page=2")
+            ->assertStatus(301)->assertRedirect(url("/chuong-trinh/{$batch->public_id}?page=2"));
+        $this->get('/dot-nau/khong-hop-le')->assertNotFound();
+    }
+
+    public function test_ui_uses_program_wording_instead_of_cooking_batch(): void
+    {
+        $coordinator = User::factory()->coordinator()->create();
+        $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create(['coordinator_id' => $coordinator->id, 'created_by' => $coordinator->id]);
+
+        foreach (['/admin', '/admin/batches', "/admin/batches/{$batch->id}", '/admin/reports', "/admin/reports/batches/{$batch->id}"] as $url) {
+            $html = $this->actingAs($coordinator)->get($url)->assertOk()->getContent();
+            $this->assertDoesNotMatchRegularExpression('/đợt nấu|Đợt nấu/u', $html, $url);
+        }
+        $this->get('/admin/batches')->assertSee('Chương trình');
+        $this->get("/chuong-trinh/{$batch->public_id}")->assertOk();
     }
 }

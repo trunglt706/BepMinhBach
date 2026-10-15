@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -113,6 +114,11 @@ class UserController extends Controller
             }
             ActivityLog::record(null, $request->user(), ActivityAction::UserUpdated, $summary);
         });
+
+        // Đặt lại mật khẩu: các phiên của người đó bị đăng xuất (auth.session). Tự sửa mật khẩu của mình thì giữ phiên này.
+        if (isset($data['password']) && $user->is($request->user())) {
+            Auth::login($user, $request->cookies->has(Auth::guard()->getRecallerName()));
+        }
 
         return $this->done($request, redirect()->route('users.index'), 'Đã lưu tài khoản '.$user->name.'.');
     }

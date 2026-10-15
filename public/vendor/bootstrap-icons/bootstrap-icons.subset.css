@@ -1,5 +1,5 @@
 /* Bootstrap Icons v1.13.1 (MIT) — bản rút gọn, sinh tự động bởi scripts/build-icons.mjs. Không sửa tay. */
-@font-face{font-display:block;font-family:bootstrap-icons;src:url("fonts/bootstrap-icons-subset.woff2?v=6f44935e70") format("woff2")}
+@font-face{font-display:block;font-family:bootstrap-icons;src:url("fonts/bootstrap-icons-subset.woff2?v=2769f12163") format("woff2")}
 .bi::before,[class*=" bi-"]::before,[class^=bi-]::before{display:inline-block;width:1em;text-align:center;font-family:bootstrap-icons!important;font-style:normal;font-weight:400!important;font-variant:normal;text-transform:none;line-height:1;vertical-align:-.125em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 .bi-alarm::before{content:"\f102"}
 .bi-arrow-counterclockwise::before{content:"\f117"}
@@ -7,6 +7,7 @@
 .bi-arrow-left-right::before{content:"\f12b"}
 .bi-arrow-repeat::before{content:"\f130"}
 .bi-arrow-right::before{content:"\f138"}
+.bi-arrow-up::before{content:"\f148"}
 .bi-bar-chart::before{content:"\f17e"}
 .bi-bar-chart-line::before{content:"\f17c"}
 .bi-basket::before{content:"\f180"}
@@ -41,7 +42,6 @@
 .bi-clock::before{content:"\f293"}
 .bi-clock-history::before{content:"\f292"}
 .bi-download::before{content:"\f30a"}
-.bi-egg-fried::before{content:"\f312"}
 .bi-emoji-smile::before{content:"\f327"}
 .bi-envelope::before{content:"\f32f"}
 .bi-envelope-check::before{content:"\f68c"}
@@ -67,6 +67,7 @@
 .bi-info-circle::before{content:"\f431"}
 .bi-journal-text::before{content:"\f444"}
 .bi-key::before{content:"\f44f"}
+.bi-laptop::before{content:"\f456"}
 .bi-lightbulb::before{content:"\f46b"}
 .bi-link-45deg::before{content:"\f470"}
 .bi-list-check::before{content:"\f473"}
@@ -83,6 +84,9 @@
 .bi-person-check::before{content:"\f4d6"}
 .bi-person-dash::before{content:"\f4d9"}
 .bi-person-plus::before{content:"\f4dd"}
+.bi-person-vcard::before{content:"\f8c9"}
+.bi-phone::before{content:"\f4e7"}
+.bi-pie-chart::before{content:"\f4e9"}
 .bi-play-fill::before{content:"\f4f4"}
 .bi-plus-lg::before{content:"\f64d"}
 .bi-printer::before{content:"\f501"}
@@ -102,6 +106,7 @@
 .bi-toggle-on::before{content:"\f5d6"}
 .bi-trash::before{content:"\f5de"}
 .bi-unlock::before{content:"\f600"}
+.bi-wind::before{content:"\f61d"}
 .bi-x-circle::before{content:"\f623"}
 .bi-x-lg::before{content:"\f659"}
 .bi-zoom-in::before{content:"\f62c"}

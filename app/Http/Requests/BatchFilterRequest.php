@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Throwable;
 
 /**
- * Bộ lọc đợt nấu (danh sách đợt + báo cáo): từ khóa, trạng thái, khoảng ngày.
+ * Bộ lọc chương trình (danh sách chương trình + báo cáo): từ khóa, trạng thái, khoảng ngày.
  * Giá trị không hợp lệ bị bỏ qua thay vì báo lỗi, để người dùng luôn thấy được trang;
  * "từ ngày" sau "đến ngày" thì tự đổi chỗ.
  */

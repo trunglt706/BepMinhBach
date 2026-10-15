@@ -6,7 +6,7 @@ use App\Support\Input;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
-/** Thêm/sửa khoản chi của đợt nấu (số tiền VND nguyên, không âm). */
+/** Thêm/sửa khoản chi của chương trình (số tiền VND nguyên, không âm). */
 class ExpenseItemRequest extends FormRequest
 {
     /**

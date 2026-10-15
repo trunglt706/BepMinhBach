@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
- * Khoản chi nguyên liệu của đợt nấu (ghi nhận nội bộ, không phải sổ sách kế toán).
+ * Khoản chi nguyên liệu của chương trình (ghi nhận nội bộ, không phải sổ sách kế toán).
  * Log ghi tên khoản + số tiền để đối chiếu; ghi chú của khoản chi (chữ tự do) không đưa vào log.
  */
 class ExpenseItemController extends Controller
@@ -24,7 +24,7 @@ class ExpenseItemController extends Controller
     /**
      * Form thêm khoản chi.
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function create(CookingBatch $batch): View
     {
@@ -37,7 +37,7 @@ class ExpenseItemController extends Controller
      * Thêm khoản chi; "Lưu và thêm tiếp" giữ modal mở.
      *
      * @param  ExpenseItemRequest  $request  dữ liệu đã kiểm tra (số tiền đã bỏ dấu phân cách)
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function store(ExpenseItemRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {

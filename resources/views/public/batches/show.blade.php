@@ -1,20 +1,13 @@
 @php use App\Support\Format; @endphp
 {{--
-    Trang đợt nấu công khai: thông tin tổng hợp ở trên, bài viết về đợt ở dưới (phân trang).
+    Trang chương trình công khai: thông tin tổng hợp ở trên, bài viết về chương trình ở dưới (phân trang).
     Chỉ hiện tên, ngày, trạng thái, số suất — không hiện người điều phối, địa điểm, công việc, nguyên liệu, chi phí.
 --}}
 @php
     $cover = $batch->coverImage();
-    $description = 'Đợt nấu “'.$batch->name.'” ngày '.Format::date($batch->starts_on).' — '.$batch->status->label().'. Bài viết và số suất do đội bếp ghi nhận.';
+    $description = 'Chương trình “'.$batch->name.'” ngày '.Format::date($batch->starts_on).' — '.$batch->status->label().'. Bài viết và số suất do đội Góp Gió ghi nhận.';
 @endphp
-<x-layouts.public :title="$batch->name" :description="$description" :canonical="$canonical">
-    <x-slot:head>
-        <meta property="og:type" content="website">
-        <meta property="og:title" content="{{ $batch->name }}">
-        <meta property="og:description" content="{{ $description }}">
-        <meta property="og:url" content="{{ $canonical }}">
-        @if($cover)<meta property="og:image" content="{{ $cover->url() }}">@endif
-    </x-slot:head>
+<x-layouts.public :title="$batch->name" :description="$description" :canonical="$canonical" :image="$cover?->url()">
 
     <nav aria-label="Đường dẫn" class="mb-3">
         <ol class="breadcrumb small mb-0">
@@ -46,11 +39,11 @@
 
     <div class="row g-4">
         <div class="col-lg-8 order-2 order-lg-1">
-            <h2 class="h5 fw-bold mb-3"><i class="bi bi-newspaper" aria-hidden="true"></i> Bài viết về đợt này</h2>
+            <h2 class="h5 fw-bold mb-3"><i class="bi bi-newspaper" aria-hidden="true"></i> Bài viết về chương trình này</h2>
             @if($posts->isEmpty())
                 <div class="card">
-                    <x-empty-state icon="bi-newspaper" title="Chưa có bài viết về đợt này">
-                        Đội bếp sẽ cập nhật tin của đợt nấu tại đây.
+                    <x-empty-state icon="bi-newspaper" title="Chưa có bài viết về chương trình này">
+                        Đội Góp Gió sẽ cập nhật tin của chương trình tại đây.
                         <x-slot:action><a href="{{ route('blog.index') }}" class="btn btn-outline-primary">Xem bài viết khác</a></x-slot:action>
                     </x-empty-state>
                 </div>
@@ -70,12 +63,12 @@
             <section class="card" aria-labelledby="batch-servings-title">
                 <div class="panel-header"><h2 id="batch-servings-title" class="panel-title"><i class="bi bi-box-seam" aria-hidden="true"></i> Số suất</h2></div>
                 <div class="card-body">
-                    <x-chart.bars caption="Số suất của đợt nấu" empty="Chưa ghi nhận" :rows="[
+                    <x-chart.bars caption="Số suất của chương trình" :rows="[
                         ['label' => 'Dự kiến', 'value' => $batch->expected_servings, 'tone' => 'plan'],
                         ['label' => 'Đã chuẩn bị', 'value' => $batch->prepared_servings, 'tone' => 'primary'],
                         ['label' => 'Đã phân phát', 'value' => $batch->distributed_servings, 'tone' => 'primary'],
                     ]" />
-                    <p class="small text-body-secondary mt-3 mb-0">Số liệu do đội bếp tự ghi nhận, không phải kiểm toán độc lập.</p>
+                    <p class="small text-body-secondary mt-3 mb-0">Số liệu do đội Góp Gió tự ghi nhận, không phải kiểm toán độc lập.</p>
                 </div>
             </section>
         </aside>

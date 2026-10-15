@@ -30,6 +30,20 @@ class CookingBatchTest extends TestCase
         ], $overrides);
     }
 
+    public function test_expected_servings_accepts_thousand_separator_and_is_shown_formatted(): void
+    {
+        $coordinator = User::factory()->coordinator()->create();
+
+        $this->actingAs($coordinator)->post('/admin/batches', $this->validPayload($coordinator, ['expected_servings' => '1.200']))
+            ->assertRedirect();
+        $batch = CookingBatch::firstOrFail();
+        $this->assertSame(1200, $batch->expected_servings);
+
+        $this->actingAs($coordinator)->get("/admin/batches/{$batch->id}/edit")
+            ->assertSee('value="1.200"', false)
+            ->assertSee('data-money', false);
+    }
+
     /** T06 */
     public function test_coordinator_can_create_batch(): void
     {
@@ -118,7 +132,9 @@ class CookingBatchTest extends TestCase
     {
         $batch = CookingBatch::factory()->status(BatchStatus::Draft)->create();
 
-        foreach ([User::factory()->volunteer()->create(), User::factory()->recorder()->create()] as $user) {
+        $users = [User::factory()->volunteer()->create(), User::factory()->recorder()->create()];
+        $this->assignToBatch($batch, ...$users); // thành viên của chương trình: vẫn không có quyền quản lý
+        foreach ($users as $user) {
             $this->actingAs($user)->get('/admin/batches/create')->assertForbidden();
             $this->actingAs($user)->post('/admin/batches', $this->validPayload($batch->coordinator))->assertForbidden();
             $this->actingAs($user)->get("/admin/batches/{$batch->id}/edit")->assertForbidden();
@@ -135,6 +151,7 @@ class CookingBatchTest extends TestCase
     {
         $batch = CookingBatch::factory()->create();
         $volunteer = User::factory()->volunteer()->create();
+        $this->assignToBatch($batch, $volunteer);
 
         $this->actingAs($volunteer)->get("/admin/batches/{$batch->id}")
             ->assertOk()
@@ -245,7 +262,7 @@ class CookingBatchTest extends TestCase
 
         $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/reopen", ['reason' => 'Nhập sai số suất', 'confirm' => '1']);
         $this->assertSame(BatchStatus::InProgress, $batch->fresh()->status);
-        // Lý do (chữ tự do) lưu ở đợt nấu; lịch sử chỉ ghi việc mở lại, không chép lý do.
+        // Lý do (chữ tự do) lưu ở chương trình; lịch sử chỉ ghi việc mở lại, không chép lý do.
         $this->assertSame('Nhập sai số suất', $batch->fresh()->reopen_reason);
         $this->assertNotNull($batch->fresh()->reopened_at);
         $log = ActivityLog::where('action', ActivityAction::BatchReopened)->firstOrFail();
@@ -262,6 +279,8 @@ class CookingBatchTest extends TestCase
         $completed = CookingBatch::factory()->status(BatchStatus::Completed)->create();
         $planned = CookingBatch::factory()->create();
         $volunteer = User::factory()->volunteer()->create();
+        $this->assignToBatch($completed, $volunteer);
+        $this->assignToBatch($planned, $volunteer);
 
         $this->actingAs($volunteer)->post("/admin/batches/{$completed->id}/reopen", ['reason' => 'abc', 'confirm' => '1'])->assertForbidden();
         $this->actingAs($volunteer)->post("/admin/batches/{$planned->id}/cancel", ['confirm' => '1'])->assertForbidden();
@@ -291,7 +310,7 @@ class CookingBatchTest extends TestCase
 
     public function test_list_search_filter_and_pagination_keep_values(): void
     {
-        $user = User::factory()->volunteer()->create();
+        $user = User::factory()->admin()->create();
         $coordinator = User::factory()->coordinator()->create();
         CookingBatch::factory()->count(14)->create(['coordinator_id' => $coordinator->id, 'created_by' => $coordinator->id, 'name' => 'Bếp thứ bảy', 'starts_on' => '2026-11-07 07:00']);
         CookingBatch::factory()->status(BatchStatus::Cancelled)->create(['name' => 'Bếp bị hủy', 'starts_on' => '2026-11-08 07:00']);
@@ -301,7 +320,7 @@ class CookingBatchTest extends TestCase
         // Chip "Đã lên kế hoạch" đang được chọn
         $this->assertMatchesRegularExpression('/class="chip active"\s+aria-current="true"\s*>\s*<i class="bi bi-calendar-check"/', $response->getContent());
         $response->assertOk()
-            ->assertSee('Tìm thấy 14 đợt nấu.')
+            ->assertSee('Tìm thấy 14 chương trình.')
             ->assertDontSee('Bếp bị hủy')
             ->assertDontSee('Bếp tháng trước')
             ->assertSee('value="thứ bảy"', false)
@@ -317,9 +336,9 @@ class CookingBatchTest extends TestCase
     {
         $coordinator = User::factory()->coordinator()->create();
 
-        $this->actingAs($coordinator)->get('/admin/batches')->assertSee('Chưa có đợt nấu ăn nào')->assertSee('Tạo đợt nấu đầu tiên');
+        $this->actingAs($coordinator)->get('/admin/batches')->assertSee('Chưa có chương trình nào')->assertSee('Tạo chương trình đầu tiên');
         CookingBatch::factory()->create();
-        $this->actingAs($coordinator)->get('/admin/batches?q=khongcogi')->assertSee('Không tìm thấy đợt nấu phù hợp');
+        $this->actingAs($coordinator)->get('/admin/batches?q=khongcogi')->assertSee('Không tìm thấy chương trình phù hợp');
     }
 
     public function test_unknown_batch_returns_404(): void

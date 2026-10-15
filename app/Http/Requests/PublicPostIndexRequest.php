@@ -9,8 +9,8 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
 
 /**
- * Bộ lọc trang bài viết công khai (từ khóa, thẻ, đợt nấu).
- * Thẻ/đợt chỉ được chấp nhận khi có bài ĐÃ ĐĂNG — không dùng được để dò tên đợt nội bộ qua ?dot=ID.
+ * Bộ lọc trang bài viết công khai (từ khóa, thẻ, chương trình).
+ * Thẻ/chương trình chỉ được chấp nhận khi có bài ĐÃ ĐĂNG — không dùng được để dò tên chương trình nội bộ qua ?dot=ID.
  * Giá trị không hợp lệ bị bỏ qua (khách thường sửa URL tay), không trả lỗi.
  */
 class PublicPostIndexRequest extends FormRequest
@@ -27,7 +27,7 @@ class PublicPostIndexRequest extends FormRequest
     }
 
     /**
-     * Chuẩn hóa: cắt từ khóa, ép kiểu ID đợt.
+     * Chuẩn hóa: cắt từ khóa, ép kiểu ID chương trình.
      */
     protected function prepareForValidation(): void
     {
@@ -79,7 +79,7 @@ class PublicPostIndexRequest extends FormRequest
     }
 
     /**
-     * Đợt nấu đang lọc, chỉ khi đợt có bài đã đăng (chỉ lấy cột công khai).
+     * Chương trình đang lọc, chỉ khi chương trình có bài đã đăng (chỉ lấy cột công khai).
      */
     public function batch(): ?CookingBatch
     {

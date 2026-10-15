@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/** Ảnh nền đợt nấu (slider trang chủ, trang đợt công khai): các bản WebP giống ảnh bài viết. */
+/** Ảnh nền chương trình (slider trang chủ, trang chương trình công khai): các bản WebP giống ảnh bài viết. */
 return new class extends Migration
 {
     public function up(): void

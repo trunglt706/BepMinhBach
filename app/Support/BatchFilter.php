@@ -8,13 +8,13 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Bộ lọc đợt nấu đã chuẩn hóa (tạo từ App\Http\Requests\BatchFilterRequest::filter()),
- * dùng chung cho danh sách đợt và báo cáo.
+ * Bộ lọc chương trình đã chuẩn hóa (tạo từ App\Http\Requests\BatchFilterRequest::filter()),
+ * dùng chung cho danh sách chương trình và báo cáo.
  */
 class BatchFilter
 {
     /**
-     * @param  string|null  $q  từ khóa trong tên đợt
+     * @param  string|null  $q  từ khóa trong tên chương trình
      * @param  BatchStatus|null  $status  trạng thái cần lọc
      * @param  CarbonImmutable|null  $from  từ ngày (tính cả ngày)
      * @param  CarbonImmutable|null  $to  đến ngày (tính cả ngày)
@@ -27,7 +27,7 @@ class BatchFilter
     ) {}
 
     /**
-     * Áp bộ lọc vào truy vấn đợt nấu.
+     * Áp bộ lọc vào truy vấn chương trình.
      *
      * @param  Builder<CookingBatch>  $query
      * @return Builder<CookingBatch>

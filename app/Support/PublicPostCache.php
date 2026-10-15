@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Bộ nhớ đệm cho trang bài viết công khai (dữ liệu bài, danh sách, bộ lọc).
  *
- * Vô hiệu theo "phiên bản": mọi khóa có chứa số phiên bản hiện tại; khi bài viết, ảnh, thẻ hoặc đợt nấu
+ * Vô hiệu theo "phiên bản": mọi khóa có chứa số phiên bản hiện tại; khi bài viết, ảnh, thẻ hoặc chương trình
  * thay đổi thì tăng phiên bản (sau khi giao dịch DB thành công) → mọi khóa cũ tự bị bỏ qua và hết hạn theo TTL.
  * Lượt xem tăng bằng query builder nên không làm mất bộ nhớ đệm.
  */

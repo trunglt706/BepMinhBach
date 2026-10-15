@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Enums\BatchStatus;
+use App\Enums\PostStatus;
 use App\Enums\TaskStatus;
 use App\Models\ContactMessage;
 use App\Models\CookingBatch;
@@ -53,11 +54,11 @@ class AppServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
         $this->configurePublicCache();
 
-        // Badge trên menu: việc của tôi hôm nay, đợt đang diễn ra, liên hệ chưa xử lý.
+        // Badge trên menu: việc của tôi hôm nay, chương trình đang diễn ra, liên hệ chưa xử lý.
         View::composer('components.layouts.app', function ($view) {
             $user = auth()->user();
-            // Việc của tôi HÔM NAY: chưa xong, thuộc đợt chưa khóa, và có hạn trong hôm nay
-            // (hoặc không có hạn nhưng đợt diễn ra hôm nay).
+            // Việc của tôi HÔM NAY: chưa xong, thuộc chương trình chưa khóa, và có hạn trong hôm nay
+            // (hoặc không có hạn nhưng chương trình diễn ra hôm nay).
             $today = today();
             $view->with('navTodayTasks', $user
                 ? Task::where('assignee_id', $user->id)
@@ -68,19 +69,23 @@ class AppServiceProvider extends ServiceProvider
                             ->whereHas('batch', fn ($b) => $b->where('starts_on', $today->toDateString()))))
                     ->count()
                 : 0);
-            // Số đợt đang diễn ra (mọi người dùng nội bộ đều thấy).
+            // Số chương trình đang diễn ra trong phạm vi người dùng được xem.
             $view->with('navLiveBatches', $user
-                ? CookingBatch::where('status', BatchStatus::InProgress->value)->count()
+                ? CookingBatch::visibleTo($user)->where('status', BatchStatus::InProgress->value)->count()
                 : 0);
             // Số liên hệ chưa xử lý — chỉ đếm cho người được xem liên hệ.
             $view->with('navNewContacts', $user && $user->can('viewAny', ContactMessage::class)
                 ? ContactMessage::unhandled()->count()
                 : 0);
+            // Số bài chờ duyệt — chỉ quản trị viên (người duyệt) mới thấy.
+            $view->with('navPendingPosts', $user?->isAdmin()
+                ? Post::where('status', PostStatus::Pending->value)->count()
+                : 0);
         });
     }
 
     /**
-     * Mọi thay đổi ảnh hưởng trang công khai (bài viết, ảnh, thẻ, thông tin đợt nấu) làm mới bộ nhớ đệm bài viết.
+     * Mọi thay đổi ảnh hưởng trang công khai (bài viết, ảnh, thẻ, thông tin chương trình) làm mới bộ nhớ đệm bài viết.
      * Gắn thẻ dùng sync() (không có sự kiện riêng) nhưng luôn đi kèm lưu bài trong cùng giao dịch.
      */
     private function configurePublicCache(): void
@@ -92,7 +97,7 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Chống spam theo TỪNG tài khoản (không theo IP: nhiều tình nguyện viên có thể dùng chung wifi của bếp).
+     * Chống spam theo TỪNG tài khoản (không theo IP: nhiều tình nguyện viên có thể dùng chung wifi chung).
      * Thao tác ghi bị giới hạn chặt; mở trang thì rộng rãi. Trang công khai giới hạn theo IP.
      */
     private function configureRateLimiting(): void
@@ -112,6 +117,11 @@ class AppServiceProvider extends ServiceProvider
         // Gửi liên hệ: tính cả lần gửi lỗi (chống dò/spam form). Giới hạn 1 liên hệ / ngày nằm ở ContactRequest.
         RateLimiter::for('contact', fn (Request $request) => Limit::perMinutes(10, config('bmb.rate_limits.contact'))
             ->by('contact:'.$request->ip())
+            ->response($this->tooManyRequests(...)));
+
+        // Quên / đặt lại mật khẩu: chống dò email và spam hộp thư (broker còn giới hạn 1 email / 60 giây).
+        RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinutes(10, config('bmb.rate_limits.password_reset'))
+            ->by('password-reset:'.$request->ip())
             ->response($this->tooManyRequests(...)));
     }
 

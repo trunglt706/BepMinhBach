@@ -117,6 +117,7 @@ Khác biệt so với đề xuất ban đầu ở trên:
 - `users.role` (string: `volunteer` | `recorder` | `coordinator` | `admin`, phân cấp) và `users.is_active`.
 - `cooking_batches`: thêm `estimated_cost_vnd` (tùy chọn, OQ-03), `variance_note` (thay `result_notes`, giải thích chênh lệch), `completion_notes` (rút kinh nghiệm khi hoàn tất), `results_updated_by/at`, `results_version` (phát hiện hai người cùng sửa), `cancellation_reason`, `cancelled_at`. Không dùng soft delete: chỉ xóa cứng đợt nháp trống, còn lại dùng hủy.
 - `ingredients`: thêm `restock_note`, `restock_reported_by/at`; `unit` tối đa 30 ký tự.
+- `ingredients.unit_price_vnd` (15/10/2026, tùy chọn, unsigned bigint ≤ 999.999.999): đơn giá cho 1 đơn vị. Thành tiền = đơn giá × lượng thực tế (chưa có thì lượng dự kiến), làm tròn đồng; tổng tiền nguyên liệu của đợt chỉ cộng các dòng có đơn giá. Là ước tính tham khảo, **tách riêng** với `expense_items` (không cộng vào chi phí thực tế để tránh tính trùng). Chỉ hiện cho người ghi nhận trở lên (`viewFinancials`).
 - `tasks`: thêm `notes`, `status_updated_by/at`.
 - `expense_items.note` tối đa 500 ký tự.
 - `activity_logs` đã triển khai ở mức tối thiểu: `cooking_batch_id` (nullable — thao tác tài khoản không gắn đợt), `user_id`, `action`, `summary` (≤ 500 ký tự, không chứa mật khẩu), `created_at`.

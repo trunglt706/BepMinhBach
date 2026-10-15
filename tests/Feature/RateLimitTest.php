@@ -36,7 +36,7 @@ class RateLimitTest extends TestCase
         $this->assertSame('in_progress', $task->fresh()->status->value);
 
         // Tài khoản khác (dù cùng IP) không bị ảnh hưởng
-        $other = User::factory()->coordinator()->create();
+        $other = User::factory()->admin()->create();
         $this->actingAs($other)->postJson("/admin/tasks/{$task->id}/status", ['status' => 'done'])->assertOk();
 
         // Đọc trang có hạn mức riêng, không bị khóa vì đã hết lượt ghi

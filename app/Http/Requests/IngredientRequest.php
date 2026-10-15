@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
-/** Thêm/sửa nguyên liệu của đợt nấu. */
+/** Thêm/sửa nguyên liệu của chương trình. */
 class IngredientRequest extends FormRequest
 {
     /**
@@ -25,7 +25,7 @@ class IngredientRequest extends FormRequest
     }
 
     /**
-     * Đơn vị "Khác" lấy từ ô tự nhập; số lượng "2,5" → "2.5".
+     * Đơn vị "Khác" lấy từ ô tự nhập; số lượng "1.500,5" → "1500.5"; giá "25.000" → "25000".
      */
     protected function prepareForValidation(): void
     {
@@ -33,8 +33,9 @@ class IngredientRequest extends FormRequest
 
         $this->merge([
             'unit' => is_string($unit) ? trim($unit) : $unit,
-            'expected_quantity' => Input::decimal($this->input('expected_quantity')),
-            'actual_quantity' => Input::decimal($this->input('actual_quantity')),
+            'expected_quantity' => Input::quantity($this->input('expected_quantity')),
+            'actual_quantity' => Input::quantity($this->input('actual_quantity')),
+            'unit_price_vnd' => Input::money($this->input('unit_price_vnd')),
         ]);
     }
 
@@ -48,6 +49,7 @@ class IngredientRequest extends FormRequest
             'expected_quantity' => ['required', 'numeric', 'min:0', 'max:999999999', 'decimal:0,3'],
             'actual_quantity' => ['nullable', 'numeric', 'min:0', 'max:999999999', 'decimal:0,3'],
             'unit' => ['required', 'string', 'max:30', Rule::notIn([Ingredient::UNIT_OTHER])],
+            'unit_price_vnd' => ['nullable', 'integer', 'min:0', 'max:999999999'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -62,6 +64,7 @@ class IngredientRequest extends FormRequest
             'expected_quantity' => 'lượng dự kiến',
             'actual_quantity' => 'lượng thực tế đã dùng',
             'unit' => 'đơn vị',
+            'unit_price_vnd' => 'đơn giá',
             'notes' => 'ghi chú',
         ];
     }

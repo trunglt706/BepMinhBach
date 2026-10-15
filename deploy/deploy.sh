@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  BếpMinhBạch — triển khai MỘT LỆNH lên VPS Ubuntu (22.04 / 24.04) hoặc Debian 12.
+#  Góp Gió — triển khai MỘT LỆNH lên VPS Ubuntu (22.04 / 24.04) hoặc Debian 12.
 #
 #  Lần đầu: cài Nginx, PHP-FPM, MariaDB, Composer, Certbot; tạo CSDL + tài khoản CSDL riêng;
 #  lấy mã nguồn; tạo .env production; migrate; cấu hình Nginx + HTTPS; tường lửa; sao lưu hằng ngày;
@@ -17,8 +17,8 @@
 #    REPO_URL        mặc định https://github.com/trunglt706/BepMinhBach.git
 #    BRANCH          mặc định main
 #    SOURCE_DIR      dùng mã nguồn có sẵn trên máy (thư mục đã tải lên) thay cho git
-#    APP_DIR         mặc định /var/www/bepminhbach
-#    DB_NAME/DB_USER mặc định bepminhbach (mật khẩu CSDL tự sinh, lưu ở /root/.bepminhbach/db.env)
+#    APP_DIR         mặc định /var/www/gopgio (máy cài trước 15/10/2026: /var/www/bepminhbach)
+#    DB_NAME/DB_USER mặc định gopgio khi cài mới; máy đã cài giữ tên cũ trong db.env (mật khẩu CSDL tự sinh, lưu ở /root/.gopgio/db.env)
 #    PHP_VERSION     mặc định 8.3
 #    ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD   tạo quản trị viên không cần hỏi (bỏ trống: hỏi khi chạy)
 #    SKIP_FIREWALL=1 không cấu hình ufw (ví dụ VPS đã có tường lửa của nhà cung cấp)
@@ -29,7 +29,10 @@ set -Eeuo pipefail
 umask 027
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SECRETS_DIR=/root/.bepminhbach
+# Tên dùng cho thư mục, dịch vụ, cron, nginx, sao lưu. Máy đã cài trước khi đổi tên Góp Gió (15/10/2026) có
+# /root/.bepminhbach → giữ nguyên "bepminhbach" để cập nhật không làm hỏng máy đang chạy; máy cài mới dùng "gopgio".
+if [ -d /root/.bepminhbach ]; then SLUG=bepminhbach; else SLUG=gopgio; fi
+SECRETS_DIR=/root/.${SLUG}
 SAVED_CONF="$SECRETS_DIR/deploy.conf"
 # shellcheck disable=SC1091
 [ -f "$SCRIPT_DIR/deploy.env" ] && . "$SCRIPT_DIR/deploy.env"
@@ -42,9 +45,9 @@ LE_EMAIL="${LE_EMAIL:-${SAVED_LE_EMAIL:-}}"
 REPO_URL="${REPO_URL:-${SAVED_REPO_URL:-https://github.com/trunglt706/BepMinhBach.git}}"
 BRANCH="${BRANCH:-${SAVED_BRANCH:-main}}"
 SOURCE_DIR="${SOURCE_DIR:-}"
-APP_DIR="${APP_DIR:-${SAVED_APP_DIR:-/var/www/bepminhbach}}"
-DB_NAME="${DB_NAME:-bepminhbach}"
-DB_USER="${DB_USER:-bepminhbach}"
+APP_DIR="${APP_DIR:-${SAVED_APP_DIR:-/var/www/${SLUG}}}"
+DB_NAME="${DB_NAME:-gopgio}"
+DB_USER="${DB_USER:-gopgio}"
 PHP_VERSION="${PHP_VERSION:-${SAVED_PHP_VERSION:-8.3}}"
 ADMIN_NAME="${ADMIN_NAME:-}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-}"
@@ -53,7 +56,7 @@ SKIP_FIREWALL="${SKIP_FIREWALL:-${SAVED_SKIP_FIREWALL:-0}}"
 SKIP_CERTBOT="${SKIP_CERTBOT:-${SAVED_SKIP_CERTBOT:-0}}"
 TRUSTED_PROXIES="${TRUSTED_PROXIES:-${SAVED_TRUSTED_PROXIES:-}}"
 
-BACKUP_DIR=/var/backups/bepminhbach
+BACKUP_DIR=/var/backups/${SLUG}
 APP_USER=www-data
 export DEBIAN_FRONTEND=noninteractive COMPOSER_ALLOW_SUPERUSER=1
 
@@ -111,7 +114,7 @@ case "${ID}:${VERSION_ID}" in
     ubuntu:22.04|ubuntu:24.04|debian:12) ok "Hệ điều hành: $PRETTY_NAME" ;;
     *) warn "Chưa kiểm thử trên $PRETTY_NAME (hỗ trợ: Ubuntu 22.04/24.04, Debian 12). Vẫn tiếp tục." ;;
 esac
-exec 9>/var/lock/bepminhbach-deploy.lock
+exec 9>/var/lock/${SLUG}-deploy.lock
 flock -n 9 || die "Một lần triển khai khác đang chạy."
 if [ -n "$DOMAIN" ] && ! [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]]; then die "DOMAIN không hợp lệ: $DOMAIN"; fi
 FIRST_INSTALL=1; [ -f "$APP_DIR/.env" ] && FIRST_INSTALL=0
@@ -214,10 +217,13 @@ if [ -n "$DOMAIN" ] && { [ -d "/etc/letsencrypt/live/$DOMAIN" ] || [ -n "$LE_EMA
 fi
 HOST="${DOMAIN:-$(curl -fsS --max-time 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')}"
 [ -f "$APP_DIR/.env" ] || cp "$APP_DIR/.env.example" "$APP_DIR/.env"
+set_env APP_NAME "Góp Gió"
 set_env APP_ENV production
 set_env APP_DEBUG false
 set_env APP_URL "${SCHEME}://${HOST}"
 set_env LOG_LEVEL warning
+set_env LOG_STACK daily        # log theo ngày, tự xóa sau LOG_DAILY_DAYS (không để laravel.log phình đầy ổ đĩa)
+set_env LOG_DAILY_DAYS 14
 set_env DB_CONNECTION mysql
 set_env DB_HOST 127.0.0.1
 set_env DB_PORT 3306
@@ -248,8 +254,8 @@ ok "Mã nguồn chỉ đọc với web server; chỉ storage/, bootstrap/cache/,
 
 # ---------------------------------------------------------------------------- 6. PHP-FPM
 step "Cấu hình PHP-FPM"
-cat > "/etc/php/${PHP_VERSION}/fpm/conf.d/99-bepminhbach.ini" <<'INI'
-; BếpMinhBạch: ảnh bài viết (trình duyệt đã thu nhỏ trước khi gửi, máy chủ giới hạn 10 MB/ảnh)
+cat > "/etc/php/${PHP_VERSION}/fpm/conf.d/99-${SLUG}.ini" <<'INI'
+; Góp Gió: ảnh bài viết (trình duyệt đã thu nhỏ trước khi gửi, máy chủ giới hạn 10 MB/ảnh)
 upload_max_filesize = 12M
 post_max_size = 64M
 max_file_uploads = 20
@@ -272,12 +278,50 @@ artisan route:cache >/dev/null
 artisan view:cache >/dev/null
 ok "Đã migrate và cache config/route/view"
 
+# ---------------------------------------------------------------------------- 7b. Queue worker
+# Thông báo kênh của đợt (Slack/Telegram/Chatwork) gửi nền qua queue (bảng jobs) để thao tác không chờ mạng.
+step "Queue worker (gửi thông báo nền)"
+set_env QUEUE_CONNECTION database
+artisan config:cache >/dev/null
+WORKER_CMD="/usr/bin/php ${APP_DIR}/artisan queue:work database --sleep=3 --tries=3 --timeout=60 --max-time=3600"
+if pidof systemd >/dev/null 2>&1 && command -v systemctl >/dev/null; then
+    cat > /etc/systemd/system/${SLUG}-queue.service <<UNIT
+[Unit]
+Description=Gop Gio queue worker (thong bao kenh)
+After=network.target mariadb.service
+
+[Service]
+User=${APP_USER}
+Group=${APP_USER}
+WorkingDirectory=${APP_DIR}
+ExecStart=${WORKER_CMD}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+    rm -f /etc/cron.d/${SLUG}-queue
+    systemctl daemon-reload
+    systemctl enable --now ${SLUG}-queue >/dev/null
+    artisan queue:restart >/dev/null   # worker đang chạy nạp lại mã mới sau job hiện tại
+    systemctl restart ${SLUG}-queue
+    ok "Dịch vụ ${SLUG}-queue (systemd) đang chạy"
+else
+    # Không có systemd (container): cron mỗi phút chạy worker tới khi hết việc.
+    printf '# Góp Gió: gửi thông báo nền\n* * * * * %s %s --stop-when-empty --max-time=55 >/dev/null 2>&1\n' \
+        "$APP_USER" "${WORKER_CMD% --max-time=3600}" > /etc/cron.d/${SLUG}-queue
+    chmod 644 /etc/cron.d/${SLUG}-queue
+    ok "Không có systemd: worker chạy mỗi phút qua cron (/etc/cron.d/${SLUG}-queue)"
+fi
+
 # ---------------------------------------------------------------------------- 8. Nginx
 step "Cấu hình Nginx"
 SOCK="/run/php/php${PHP_VERSION}-fpm.sock"
 SERVER_NAME="${DOMAIN:-_}"
-cat > /etc/nginx/sites-available/bepminhbach <<NGINX
-# BếpMinhBạch — tạo bởi deploy/deploy.sh (chạy lại script sẽ ghi đè; Certbot tự thêm phần HTTPS)
+cat > /etc/nginx/sites-available/${SLUG} <<NGINX
+# Góp Gió — tạo bởi deploy/deploy.sh (chạy lại script sẽ ghi đè; Certbot tự thêm phần HTTPS)
 server {
     listen 80;
     listen [::]:80;
@@ -316,7 +360,7 @@ server {
     location ~ /\.(?!well-known) { deny all; }
 }
 NGINX
-ln -sf /etc/nginx/sites-available/bepminhbach /etc/nginx/sites-enabled/bepminhbach
+ln -sf /etc/nginx/sites-available/${SLUG} /etc/nginx/sites-enabled/${SLUG}
 rm -f /etc/nginx/sites-enabled/default
 nginx -t -q
 svc reload nginx
@@ -354,9 +398,9 @@ fi
 # ---------------------------------------------------------------------------- 11. sao lưu hằng ngày
 step "Sao lưu tự động"
 mkdir -p "$BACKUP_DIR"; chmod 700 "$BACKUP_DIR"
-cat > /usr/local/bin/bepminhbach-backup <<BACKUP
+cat > /usr/local/bin/${SLUG}-backup <<BACKUP
 #!/usr/bin/env bash
-# Sao lưu CSDL + ảnh tải lên của BếpMinhBạch, giữ 14 ngày. Tạo bởi deploy/deploy.sh.
+# Sao lưu CSDL + ảnh tải lên của Góp Gió, giữ 14 ngày. Tạo bởi deploy/deploy.sh.
 set -euo pipefail
 umask 077
 STAMP=\$(date +%F-%H%M)
@@ -364,10 +408,11 @@ mysqldump --defaults-extra-file=${SECRETS_DIR}/my.cnf --single-transaction --qui
 tar -czf ${BACKUP_DIR}/uploads-\$STAMP.tar.gz -C ${APP_DIR}/public uploads
 find ${BACKUP_DIR} -name '*.gz' -mtime +14 -delete
 BACKUP
-chmod 700 /usr/local/bin/bepminhbach-backup
-printf '# BếpMinhBạch: sao lưu 02:30 hằng ngày\n30 2 * * * root /usr/local/bin/bepminhbach-backup >/dev/null 2>&1\n' > /etc/cron.d/bepminhbach
-chmod 644 /etc/cron.d/bepminhbach
-/usr/local/bin/bepminhbach-backup
+chmod 700 /usr/local/bin/${SLUG}-backup
+printf '# Góp Gió: sao lưu 02:30 hằng ngày; lịch dọn dẹp của Laravel (routes/console.php) mỗi phút\n30 2 * * * root /usr/local/bin/%s-backup >/dev/null 2>&1\n* * * * * %s /usr/bin/php %s/artisan schedule:run >/dev/null 2>&1\n' \
+    "$SLUG" "$APP_USER" "$APP_DIR" > /etc/cron.d/${SLUG}
+chmod 644 /etc/cron.d/${SLUG}
+/usr/local/bin/${SLUG}-backup
 ok "02:30 hằng ngày → $BACKUP_DIR (giữ 14 ngày). Đã chạy thử 1 bản."
 
 # ---------------------------------------------------------------------------- 12. quản trị viên đầu tiên
@@ -402,10 +447,11 @@ artisan bmb:check-production || warn "Còn mục cần xử lý (xem bảng trê
 
 APP_URL_FINAL=$(get_env APP_URL)
 printf '\n%s============================================================%s\n' "$c_ok" "$c_off"
-printf '%s  BếpMinhBạch đã chạy: %s%s\n' "$c_ok" "$APP_URL_FINAL" "$c_off"
+printf '%s  Góp Gió đã chạy: %s%s\n' "$c_ok" "$APP_URL_FINAL" "$c_off"
 printf '  Trang quản trị:      %s/admin\n' "$APP_URL_FINAL"
 printf '  Mã nguồn:            %s\n' "$APP_DIR"
 printf '  Mật khẩu CSDL:       %s/db.env (chỉ root đọc được)\n' "$SECRETS_DIR"
 printf '  Sao lưu:             %s (02:30 hằng ngày)\n' "$BACKUP_DIR"
+printf '  Gửi thông báo nền:   dịch vụ %s-queue (xem log: journalctl -u %s-queue)\n' "$SLUG" "$SLUG"
 printf '  Cập nhật bản mới:    sudo bash %s/deploy/deploy.sh\n' "$APP_DIR"
 printf '%s============================================================%s\n' "$c_ok" "$c_off"

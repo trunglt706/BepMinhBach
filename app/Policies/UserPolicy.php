@@ -19,6 +19,28 @@ class UserPolicy
     }
 
     /**
+     * Xem chi tiết tài khoản (thông tin, nhật ký hoạt động, thông báo, thiết bị đăng nhập).
+     *
+     * @param  User  $user  người đăng nhập
+     * @param  User  $target  tài khoản cần xem
+     */
+    public function view(User $user, User $target): bool
+    {
+        return $user->isAdmin();
+    }
+
+    /**
+     * Đăng xuất tài khoản khỏi thiết bị (xóa phiên, vô hiệu "ghi nhớ đăng nhập").
+     *
+     * @param  User  $user  người đăng nhập
+     * @param  User  $target  tài khoản cần đăng xuất
+     */
+    public function manageSessions(User $user, User $target): bool
+    {
+        return $user->isAdmin();
+    }
+
+    /**
      * Tạo tài khoản.
      *
      * @param  User  $user  người đăng nhập

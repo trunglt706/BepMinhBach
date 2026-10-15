@@ -13,9 +13,14 @@ use Symfony\Component\HttpFoundation\Response;
  *   không cho site khác nhúng trang vào iframe, form chỉ gửi về chính site.
  *   style 'unsafe-inline' vì view dùng thuộc tính style cho biểu đồ/thanh tiến độ (không chạy được mã).
  * - HSTS chỉ gửi khi yêu cầu đi qua HTTPS (bật trên máy chạy HTTP thì trình duyệt sẽ không vào được).
+ * - X-Robots-Tag "noindex, nofollow" cho trang nội bộ (/admin), đăng nhập và trang lỗi: không cho công cụ tìm kiếm
+ *   lập chỉ mục (kể cả phản hồi chuyển hướng về /login). Trang công khai tự đặt meta robots.
  */
 class SecurityHeaders
 {
+    /** Đường dẫn không cho công cụ tìm kiếm lập chỉ mục. */
+    public const NOINDEX_PATHS = ['admin', 'admin/*', 'login', 'forgot-password', 'reset-password', 'reset-password/*'];
+
     /** Chính sách nội dung: ảnh blob:/data: cho xem trước và thu nhỏ ảnh trước khi tải lên. */
     public const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
         ."img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self'; "
@@ -45,6 +50,10 @@ class SecurityHeaders
             if (! $headers->has($name)) {
                 $headers->set($name, $value);
             }
+        }
+
+        if (($request->is(...self::NOINDEX_PATHS) || $response->getStatusCode() >= 400) && ! $headers->has('X-Robots-Tag')) {
+            $headers->set('X-Robots-Tag', 'noindex, nofollow');
         }
 
         if ($request->isSecure() && ! $headers->has('Strict-Transport-Security')) {

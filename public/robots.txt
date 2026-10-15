@@ -1,2 +1,7 @@
+# Trang công khai (bài viết, đợt nấu, liên hệ) được lập chỉ mục; danh sách URL: /sitemap.xml
+# Khu quản lý và đăng nhập không cần thu thập (các trang này cũng gửi "X-Robots-Tag: noindex").
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /reset-password

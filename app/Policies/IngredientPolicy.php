@@ -6,9 +6,23 @@ use App\Models\Ingredient;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-/** Quyền trên nguyên liệu: sửa/xóa theo checklist của đợt; báo thiếu cho mọi thành viên. */
+/** Quyền trên nguyên liệu: sửa/xóa theo checklist của chương trình; báo thiếu cho mọi thành viên. */
 class IngredientPolicy
 {
+    /**
+     * Phạm vi dữ liệu: phải được xem chương trình chứa nguyên liệu (CookingBatch::isVisibleTo), không thì 404.
+     *
+     * @param  User  $user  người đăng nhập
+     * @param  string  $ability  tên quyền
+     * @param  mixed  ...$arguments  đối số (nguyên liệu)
+     */
+    public function before(User $user, string $ability, mixed ...$arguments): ?Response
+    {
+        $ingredient = $arguments[0] ?? null;
+
+        return $ingredient instanceof Ingredient && ! $ingredient->batch->isVisibleTo($user) ? Response::denyAsNotFound() : null;
+    }
+
     /**
      * Sửa nguyên liệu (xem CookingBatchPolicy::manageChecklist).
      *
@@ -32,7 +46,7 @@ class IngredientPolicy
     }
 
     /**
-     * Báo thiếu nguyên liệu: mọi tài khoản đang hoạt động khi đợt còn mở.
+     * Báo thiếu nguyên liệu: mọi tài khoản đang hoạt động khi chương trình còn mở.
      *
      * @param  User  $user  người đăng nhập
      * @param  Ingredient  $ingredient  nguyên liệu
@@ -43,7 +57,7 @@ class IngredientPolicy
     }
 
     /**
-     * Gỡ cảnh báo thiếu: điều phối viên hoặc chính người đã báo, khi đợt còn mở.
+     * Gỡ cảnh báo thiếu: điều phối viên hoặc chính người đã báo, khi chương trình còn mở.
      *
      * @param  User  $user  người đăng nhập
      * @param  Ingredient  $ingredient  nguyên liệu

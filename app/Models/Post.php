@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 /**
- * Bài viết công khai (tin hoạt động, lời cảm ơn…). Có thể gắn với một đợt nấu hoặc không.
+ * Bài viết công khai (tin hoạt động, lời cảm ơn…). Có thể gắn với một chương trình hoặc không.
  *
  * @property PostStatus $status
  * @property string $body HTML đã lọc
@@ -50,6 +50,8 @@ class Post extends Model
         return [
             'status' => PostStatus::class,
             'published_at' => 'datetime',
+            'submitted_at' => 'datetime',
+            'reviewed_at' => 'datetime',
             'view_count' => 'integer',
         ];
     }
@@ -103,7 +105,7 @@ class Post extends Model
     }
 
     /**
-     * Đợt nấu liên quan (nếu có).
+     * Chương trình liên quan (nếu có).
      *
      * @return BelongsTo<CookingBatch, $this>
      */
@@ -120,6 +122,36 @@ class Post extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    /**
+     * Quản trị viên duyệt/từ chối gần nhất.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    /**
+     * Bài của tài khoản này viết.
+     *
+     * @param  User  $user  người đăng nhập
+     */
+    public function isAuthoredBy(User $user): bool
+    {
+        return $this->author_id === $user->id;
+    }
+
+    /**
+     * Chuyển sang "Chờ duyệt" (gỡ khỏi trang công khai nếu đang đăng). Xóa ghi chú từ chối cũ.
+     */
+    public function markPending(): void
+    {
+        $this->status = PostStatus::Pending;
+        $this->submitted_at = now();
+        $this->review_note = null;
     }
 
     /**

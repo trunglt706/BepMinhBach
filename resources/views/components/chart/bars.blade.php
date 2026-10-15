@@ -4,7 +4,7 @@
       value = null nghĩa là "chưa nhập" (khác 0): không vẽ thanh, ghi rõ chữ.
     - max: đỉnh thang chung (mặc định = giá trị lớn nhất) để nhiều biểu đồ cùng thang khi cần.
 --}}
-@props(['rows', 'caption', 'format' => 'number', 'max' => null, 'empty' => 'Chưa nhập'])
+@props(['rows', 'caption', 'format' => 'number', 'max' => null, 'empty' => '—'])
 @php
     use App\Support\Format;
     $fmt = fn (int $v) => $format === 'vnd' ? Format::vnd($v) : Format::number($v);

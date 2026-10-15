@@ -71,6 +71,10 @@ class CheckProduction extends Command
         $r[] = $this->row(is_writable(storage_path('framework')) && is_writable(storage_path('logs')), 'storage/ ghi được', 'Cấp quyền ghi cho storage/ và bootstrap/cache/');
         $r[] = $this->row(is_writable(base_path('bootstrap/cache')), 'bootstrap/cache ghi được', 'Cấp quyền ghi');
         $r[] = $this->row(is_file(public_path('uploads/.htaccess')), 'public/uploads/.htaccess có mặt', 'Thiếu file chặn chạy mã trong thư mục ảnh tải lên');
+        $r[] = $this->row(! in_array(config('mail.default'), ['log', 'array'], true), 'Gửi email thật (MAIL_MAILER)',
+            'Đang là "'.config('mail.default').'": email "Quên mật khẩu" không tới người dùng — cấu hình MAIL_* (SMTP)', warnOnly: true);
+        $r[] = $this->row(! str_ends_with((string) config('mail.from.address'), '@example.com'), 'Địa chỉ gửi email (MAIL_FROM_ADDRESS)',
+            'Đặt địa chỉ thật thuộc tên miền của Góp Gió để email không vào Spam', warnOnly: true);
         $r[] = $this->row(app()->configurationIsCached(), 'Đã cache cấu hình', 'Chạy: php artisan config:cache (sau mỗi lần sửa .env)', warnOnly: true);
 
         try {
@@ -83,10 +87,21 @@ class CheckProduction extends Command
         }
 
         try {
-            $demo = User::where('email', 'like', '%@bepminhbach.test')->where('is_active', true)->count();
-            $r[] = $this->row($demo === 0, 'Không còn tài khoản demo', "{$demo} tài khoản @bepminhbach.test đang hoạt động — khóa hoặc xóa");
+            // Gồm cả tên miền demo cũ (trước khi đổi tên BếpMinhBạch → Góp Gió) trên các máy đã cài từ trước.
+            $demo = User::where(fn ($q) => $q->where('email', 'like', '%@gopgio.test')->orWhere('email', 'like', '%@bepminhbach.test'))
+                ->where('is_active', true)->count();
+            $r[] = $this->row($demo === 0, 'Không còn tài khoản demo', "{$demo} tài khoản @gopgio.test đang hoạt động — khóa hoặc xóa");
             $admins = User::where('role', Role::Admin->value)->where('is_active', true)->count();
             $r[] = $this->row($admins > 0, 'Có quản trị viên đang hoạt động', 'Chạy: php artisan bmb:create-admin');
+
+            // Thông báo kênh (Slack/Telegram/Chatwork) chạy nền qua queue: cần worker `php artisan queue:work`.
+            $r[] = $this->row(config('queue.default') !== 'sync', 'Queue chạy nền (QUEUE_CONNECTION khác sync)',
+                'Đặt QUEUE_CONNECTION=database để thông báo không làm chậm thao tác', warnOnly: true);
+            if (config('queue.default') === 'database') {
+                $stale = DB::table(config('queue.connections.database.table', 'jobs'))
+                    ->where('created_at', '<', now()->subMinutes(10)->getTimestamp())->count();
+                $r[] = $this->row($stale === 0, 'Queue worker đang chạy', "{$stale} việc chờ quá 10 phút — kiểm tra dịch vụ gopgio-queue (máy cài trước 15/10/2026: bepminhbach-queue)", warnOnly: true);
+            }
         } catch (Throwable) {
             $r[] = ['LỖI', 'Bảng dữ liệu', 'Chưa chạy migration: php artisan migrate --force'];
         }

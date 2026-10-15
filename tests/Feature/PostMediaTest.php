@@ -24,7 +24,7 @@ class PostMediaTest extends TestCase
     {
         parent::setUp();
         Storage::fake('uploads');
-        $this->coordinator = User::factory()->coordinator()->create();
+        $this->coordinator = User::factory()->admin()->create(); // quản trị viên: đăng bài ngay (test ảnh/SEO, không phải quy trình duyệt)
     }
 
     /**
@@ -253,7 +253,7 @@ class PostMediaTest extends TestCase
         $this->assertStringNotContainsString('class="post-cover"', $html); // ảnh đại diện chỉ dùng cho thẻ bài + chia sẻ link
         // Người viết hiện trên trang (OQ-16), nhưng dữ liệu có cấu trúc vẫn ghi tác giả là tổ chức
         $this->assertStringContainsString($this->coordinator->name, $html);
-        $this->assertStringContainsString('"author":{"@type":"Organization","name":'.json_encode('BếpMinhBạch').'}', $html);
+        $this->assertStringContainsString('"author":{"@type":"Organization","name":'.json_encode('Góp Gió').'}', $html);
 
         // Trang tìm kiếm/lọc: noindex; danh sách gốc: index + canonical
         $this->get('/?q=c%C6%A1m')->assertSee('<meta name="robots" content="noindex, follow">', false);

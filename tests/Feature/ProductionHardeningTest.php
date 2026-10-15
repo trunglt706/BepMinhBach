@@ -84,10 +84,10 @@ class ProductionHardeningTest extends TestCase
 
     public function test_check_production_flags_active_demo_accounts_and_missing_admin(): void
     {
-        User::factory()->create(['email' => 'tnv1@bepminhbach.test', 'is_active' => true]);
+        User::factory()->create(['email' => 'tnv1@gopgio.test', 'is_active' => true]);
 
         $this->artisan('bmb:check-production')
-            ->expectsOutputToContain('1 tài khoản @bepminhbach.test')
+            ->expectsOutputToContain('1 tài khoản @gopgio.test')
             ->expectsOutputToContain('bmb:create-admin')
             ->assertExitCode(1);
     }

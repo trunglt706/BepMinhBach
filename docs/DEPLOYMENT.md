@@ -1,4 +1,4 @@
-# Triển khai BếpMinhBạch
+# Triển khai Góp Gió
 
 > Máy chủ **không cần Node.js**: CSS/JS/font đã nằm sẵn trong `public/`.
 
@@ -27,8 +27,8 @@ sudo DOMAIN=bep.example.org LE_EMAIL=ban@example.org \
 | Bước | Nội dung |
 |---|---|
 | 1 | Cài Nginx, PHP 8.3-FPM (+ intl, gd/WebP, mbstring, mysql, zip, opcache…), MariaDB, Composer (kiểm chữ ký), Certbot, ufw. Thiếu PHP 8.3 trong kho mặc định thì tự thêm kho Ondřej Surý |
-| 2 | Tạo CSDL `bepminhbach` (utf8mb4) + tài khoản CSDL riêng, mật khẩu ngẫu nhiên lưu ở `/root/.bepminhbach/db.env` (chỉ root đọc) |
-| 3 | Lấy mã từ GitHub (`REPO_URL`, `BRANCH`) vào `/var/www/bepminhbach`; lần cập nhật bật chế độ bảo trì trước khi kéo mã |
+| 2 | Tạo CSDL `gopgio` (utf8mb4) + tài khoản CSDL riêng, mật khẩu ngẫu nhiên lưu ở `/root/.gopgio/db.env` (chỉ root đọc) |
+| 3 | Lấy mã từ GitHub (`REPO_URL`, `BRANCH`) vào `/var/www/gopgio`; lần cập nhật bật chế độ bảo trì trước khi kéo mã |
 | 4 | Tạo `.env` production: `APP_ENV=production`, `APP_DEBUG=false`, `LOG_LEVEL=warning`, cookie Secure khi HTTPS, `APP_KEY` mới. **Không** chạy seeder demo |
 | 5 | `composer install --no-dev`; mã nguồn chỉ đọc với web server, chỉ `storage/`, `bootstrap/cache/`, `public/uploads/` ghi được; `.env` quyền 640 |
 | 6 | PHP-FPM: upload 12 MB/ảnh, post 64 MB, memory 256 MB, tắt `expose_php`, bật opcache |
@@ -36,15 +36,15 @@ sudo DOMAIN=bep.example.org LE_EMAIL=ban@example.org \
 | 8 | Nginx: web root `public/`, chặn file ẩn (`.env`, `.git`), thư mục ảnh không chạy mã, cache file tĩnh |
 | 9 | HTTPS Let's Encrypt + chuyển hướng http→https (tự gia hạn). Cảnh báo nếu DNS chưa trỏ đúng; lỗi thì tạm chạy HTTP |
 | 10 | ufw: chỉ mở cổng SSH **đang dùng thật** (dò từ sshd, tránh tự khóa mình), 80, 443 |
-| 11 | Sao lưu 02:30 hằng ngày: CSDL (`mysqldump`) + ảnh → `/var/backups/bepminhbach`, giữ 14 ngày; chạy thử 1 bản ngay |
+| 11 | Sao lưu 02:30 hằng ngày: CSDL (`mysqldump`) + ảnh → `/var/backups/gopgio`, giữ 14 ngày; chạy thử 1 bản ngay |
 | 12 | Tạo quản trị viên đầu tiên nếu chưa có |
-| 13 | Tắt bảo trì, chạy `bmb:check-production`, in tóm tắt; lưu cấu hình vào `/root/.bepminhbach/deploy.conf` |
+| 13 | Tắt bảo trì, chạy `bmb:check-production`, in tóm tắt; lưu cấu hình vào `/root/.gopgio/deploy.conf` |
 
 **Kênh thông báo (Slack/Telegram/Chatwork):** máy chủ cần ra Internet qua HTTPS tới `hooks.slack.com`, `api.telegram.org`, `api.chatwork.com` (ufw mặc định không chặn chiều ra). Token được mã hóa bằng `APP_KEY` — **không đổi APP_KEY** sau khi đã cấu hình kênh (nếu đổi, nhập lại token ở từng kênh). Không cần queue worker.
 
 **Cập nhật phiên bản mới** (sau khi đẩy mã lên nhánh `main`):
 ```bash
-sudo bash /var/www/bepminhbach/deploy/deploy.sh
+sudo bash /var/www/gopgio/deploy/deploy.sh
 ```
 (không cần nhắc lại DOMAIN/LE_EMAIL — đã lưu ở lần đầu.)
 
@@ -66,7 +66,7 @@ Các mục dưới đây mô tả cách làm **thủ công** (hosting cPanel ho�
 ## 2. Chuẩn bị mã nguồn
 Trên máy có Composer (máy cá nhân hoặc máy chủ):
 ```bash
-git clone <repo> bepminhbach && cd bepminhbach
+git clone <repo> gopgio && cd gopgio
 composer install --no-dev --optimize-autoloader
 cp .env.example .env
 php artisan key:generate
@@ -82,8 +82,8 @@ LOG_LEVEL=warning
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
-DB_DATABASE=bepminhbach
-DB_USERNAME=bepminhbach      # tài khoản riêng, chỉ có quyền trên DB này — không dùng root
+DB_DATABASE=gopgio
+DB_USERNAME=gopgio      # tài khoản riêng, chỉ có quyền trên DB này — không dùng root
 DB_PASSWORD=...
 
 SESSION_SECURE_COOKIE=true   # mặc định đã bật khi APP_URL là https://
@@ -103,8 +103,8 @@ php artisan bmb:check-production      # phải không còn dòng "LỖI"
 Sau mỗi lần sửa `.env`: chạy lại `php artisan config:cache`.
 
 ## 5a. Hosting chia sẻ (cPanel, Apache)
-- Đặt mã nguồn **ngoài** `public_html` (ví dụ `~/bepminhbach`), rồi trỏ tên miền/subdomain về `~/bepminhbach/public` (mục *Domains → Document Root*).
-- Nếu hosting bắt buộc dùng `public_html`: chép nội dung `public/` vào `public_html`, sửa 2 đường dẫn trong `public_html/index.php` thành `__DIR__.'/../bepminhbach/vendor/autoload.php'` và `__DIR__.'/../bepminhbach/bootstrap/app.php'`. Khi đó ảnh tải lên nằm ở `public_html/uploads` — sao lưu thư mục này.
+- Đặt mã nguồn **ngoài** `public_html` (ví dụ `~/gopgio`), rồi trỏ tên miền/subdomain về `~/gopgio/public` (mục *Domains → Document Root*).
+- Nếu hosting bắt buộc dùng `public_html`: chép nội dung `public/` vào `public_html`, sửa 2 đường dẫn trong `public_html/index.php` thành `__DIR__.'/../gopgio/vendor/autoload.php'` và `__DIR__.'/../gopgio/bootstrap/app.php'`. Khi đó ảnh tải lên nằm ở `public_html/uploads` — sao lưu thư mục này.
 - `public/.htaccess` đã có rewrite + cache tĩnh; `public/uploads/.htaccess` chặn chạy mã trong thư mục ảnh. Kiểm tra hosting cho phép `.htaccess` (AllowOverride).
 - Chọn PHP 8.2+ trong *MultiPHP Manager*, bật các extension ở mục 1.
 
@@ -113,7 +113,7 @@ Sau mỗi lần sửa `.env`: chạy lại `php artisan config:cache`.
 server {
     listen 443 ssl http2;
     server_name ten-mien-cua-ban;
-    root /var/www/bepminhbach/public;
+    root /var/www/gopgio/public;
     index index.php;
     client_max_body_size 64m;
 
@@ -141,14 +141,14 @@ Quyền thư mục: chủ sở hữu là user deploy, nhóm `www-data`; `storage
 Cần sao lưu **2 thứ**: cơ sở dữ liệu và thư mục ảnh `public/uploads/` (cùng file `.env`, lưu riêng ở nơi an toàn).
 ```bash
 # Hằng ngày (cron của hosting hoặc VPS), giữ 14 bản gần nhất
-mysqldump --single-transaction --default-character-set=utf8mb4 -u bepminhbach -p bepminhbach | gzip > backup/db-$(date +%F).sql.gz
+mysqldump --single-transaction --default-character-set=utf8mb4 -u gopgio -p gopgio | gzip > backup/db-$(date +%F).sql.gz
 tar -czf backup/uploads-$(date +%F).tar.gz -C public uploads
 find backup -name '*.gz' -mtime +14 -delete
 ```
 Khôi phục:
 ```bash
 php artisan down
-gunzip < backup/db-YYYY-MM-DD.sql.gz | mysql -u bepminhbach -p bepminhbach
+gunzip < backup/db-YYYY-MM-DD.sql.gz | mysql -u gopgio -p gopgio
 tar -xzf backup/uploads-YYYY-MM-DD.tar.gz -C public
 php artisan cache:clear && php artisan up
 ```
@@ -162,9 +162,24 @@ composer install --no-dev --optimize-autoloader
 php artisan migrate --force
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 php artisan up
+php artisan queue:restart     # worker gửi thông báo nạp mã mới
 php artisan bmb:check-production
 ```
 Luôn sao lưu DB trước khi chạy migration.
+
+**Chạy nền (bắt buộc từ 15/10/2026)** — `deploy.sh` tự cấu hình; cài tay thì cần:
+- Worker queue (thông báo Slack/Telegram/Chatwork, email quên mật khẩu): dịch vụ luôn chạy
+  `php artisan queue:work database --tries=3 --timeout=60 --max-time=3600` (systemd/supervisor), `QUEUE_CONNECTION=database`.
+- Cron mỗi phút: `* * * * * www-data php /đường-dẫn/artisan schedule:run` (dọn token đặt lại mật khẩu hết hạn, job lỗi cũ).
+- Email thật: cấu hình `MAIL_*` (SMTP) và `MAIL_FROM_ADDRESS` thuộc tên miền của bạn — nếu để `MAIL_MAILER=log`, email "Quên mật khẩu" không tới người dùng.
+- Log: `LOG_STACK=daily`, `LOG_DAILY_DAYS=14` để `storage/logs` không phình đầy ổ đĩa.
+
+**Đổi tên thương hiệu Góp Gió (15/10/2026) trên máy đang chạy:** `deploy.sh` đặt `APP_NAME="Góp Gió"`. Tên cookie phiên sinh từ
+`APP_NAME`, nên sau lần cập nhật này **mọi người bị đăng xuất một lần** (ai bật "Ghi nhớ đăng nhập" vẫn tự đăng nhập lại).
+**Tên thư mục/dịch vụ:** tài liệu này dùng tên mới `gopgio` (`/var/www/gopgio`, `/root/.gopgio`, `/var/backups/gopgio`,
+dịch vụ `gopgio-queue`, cron `/etc/cron.d/gopgio`, CSDL `gopgio`). `deploy.sh` tự nhận diện: máy **đã cài trước 15/10/2026**
+(có `/root/.bepminhbach`) giữ nguyên mọi tên cũ `bepminhbach…` để cập nhật không làm hỏng máy đang chạy — khi đọc tài liệu
+trên máy đó, thay `gopgio` bằng `bepminhbach`.
 
 ## 9. Kiểm tra sau khi triển khai
 1. Mở `https://ten-mien-cua-ban/up` → trang "Application up".

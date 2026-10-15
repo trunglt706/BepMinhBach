@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Gate;
 class ShortageRequest extends FormRequest
 {
     /**
-     * Mọi thành viên khi đợt chưa khóa (xem IngredientPolicy::reportShortage).
+     * Mọi thành viên khi chương trình chưa khóa (xem IngredientPolicy::reportShortage).
      */
     public function authorize(): bool
     {

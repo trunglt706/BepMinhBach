@@ -1,4 +1,4 @@
-// BếpMinhBạch — JavaScript tăng cường (progressive enhancement).
+// Góp Gió — JavaScript tăng cường (progressive enhancement).
 // Khi JS tắt, mọi form vẫn gửi bình thường và trang redirect như trước; JS chỉ thêm:
 // modal + AJAX (ít chuyển trang), ô tiền tự định dạng, loader, skeleton, hộp xác nhận.
 (function () {
@@ -138,6 +138,138 @@
         }
         input.setSelectionRange(pos, pos);
     });
+
+    // =====================================================================
+    // Ô số lượng (data-quantity): kiểu Việt Nam "1.500,25" — tự thêm dấu chấm hàng nghìn,
+    // dấu phẩy là phần thập phân (tối đa 3 số). Phím "." được hiểu là dấu thập phân vì dấu
+    // chấm hàng nghìn do hệ thống tự thêm. Máy chủ chuẩn hóa lại (Input::quantity).
+    // =====================================================================
+    // pasted = true: chữ dán từ nơi khác, "2.5" có thể là số thập phân. Còn lại (đang gõ/xóa, giá trị
+    // máy chủ trả về) mọi dấu chấm đều là phân cách hàng nghìn, nên xóa 1 số của "1.500" → "150".
+    function splitQuantity(value, pasted) {
+        var s = String(value || '').replace(/[^\d.,]/g, '');
+        var comma = s.indexOf(',');
+        var intPart;
+        var decPart = null;
+        if (comma !== -1) {
+            intPart = s.slice(0, comma).replace(/\D/g, '');
+            decPart = s.slice(comma + 1).replace(/\D/g, '');
+        } else if (!pasted || /^\d{1,3}(\.\d{3})+$/.test(s)) {
+            intPart = s.replace(/\./g, '');
+        } else if (s.indexOf('.') !== -1) {
+            // Dán "2.5" từ nơi khác: dấu chấm cuối cùng là dấu thập phân.
+            var dot = s.lastIndexOf('.');
+            intPart = s.slice(0, dot).replace(/\D/g, '');
+            decPart = s.slice(dot + 1).replace(/\D/g, '');
+        } else {
+            intPart = s;
+        }
+        return { int: intPart, dec: decPart === null ? null : decPart.slice(0, 3) };
+    }
+
+    function formatQuantity(value, pasted) {
+        var parts = splitQuantity(value, pasted);
+        if (parts.int === '' && parts.dec === null) {
+            return '';
+        }
+        var intText = formatMoney(parts.int === '' ? '0' : parts.int);
+        return parts.dec === null ? intText : intText + ',' + parts.dec;
+    }
+
+    /** Giá trị số (dấu chấm thập phân) của ô số lượng; null nếu trống. */
+    function quantityValue(input) {
+        var parts = splitQuantity(input.value);
+        if (parts.int === '' && !parts.dec) {
+            return null;
+        }
+        return parseFloat((parts.int || '0') + (parts.dec ? '.' + parts.dec : ''));
+    }
+
+    document.addEventListener('beforeinput', function (event) {
+        var input = event.target;
+        if (!input.matches || !input.matches('[data-quantity]') || event.inputType !== 'insertText') {
+            return;
+        }
+        var data = event.data || '';
+        if (data === '.' || data === ',') {
+            event.preventDefault();
+            if (input.value.indexOf(',') === -1) {
+                input.setRangeText(',', input.selectionStart, input.selectionEnd, 'end');
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        } else if (/\D/.test(data)) {
+            event.preventDefault();
+        }
+    });
+
+    document.addEventListener('input', function (event) {
+        var input = event.target;
+        if (!input.matches || !input.matches('[data-quantity]')) {
+            return;
+        }
+        var caret = input.selectionStart || 0;
+        var before = input.value.slice(0, caret);
+        var digitsBeforeCaret = digitsOnly(before).length;
+        var commaBeforeCaret = before.indexOf(',') !== -1;
+        var formatted = formatQuantity(input.value, /^insertFrom(Paste|Drop)/.test(event.inputType || ''));
+        if (formatted === input.value) {
+            return;
+        }
+        input.value = formatted;
+        var pos = 0;
+        var seen = 0;
+        while (pos < formatted.length && (seen < digitsBeforeCaret || (commaBeforeCaret && formatted.slice(0, pos).indexOf(',') === -1))) {
+            if (/\d/.test(formatted[pos])) {
+                seen++;
+            }
+            pos++;
+        }
+        input.setSelectionRange(pos, pos);
+    });
+
+    // Xem trước thành tiền nguyên liệu = đơn giá × lượng (thực tế, chưa có thì dự kiến). Máy chủ tính lại khi lưu.
+    function updateIngredientCost(form) {
+        var output = form.querySelector('[data-ingredient-cost]');
+        var price = form.querySelector('[name="unit_price_vnd"]');
+        if (!output || !price) {
+            return;
+        }
+        var priceValue = digitsOnly(price.value);
+        var actual = quantityValue(form.querySelector('[name="actual_quantity"]'));
+        var quantity = actual !== null ? actual : quantityValue(form.querySelector('[name="expected_quantity"]'));
+        if (priceValue === '' || quantity === null) {
+            output.hidden = true;
+            output.textContent = '';
+            return;
+        }
+        var total = Math.round(parseInt(priceValue, 10) * quantity);
+        output.hidden = false;
+        output.innerHTML = '';
+        output.appendChild(document.createTextNode('Thành tiền: '));
+        var strong = document.createElement('strong');
+        strong.className = 'tabular';
+        strong.textContent = formatMoney(String(total)) + ' đ';
+        output.appendChild(strong);
+        output.appendChild(document.createTextNode(actual !== null ? ' (theo lượng thực tế)' : ' (theo lượng dự kiến)'));
+    }
+
+    document.addEventListener('input', function (event) {
+        var form = event.target.form;
+        if (form && form.querySelector('[data-ingredient-cost]')) {
+            updateIngredientCost(form);
+        }
+    });
+
+    function initQuantities(root) {
+        (root || document).querySelectorAll('[data-quantity]').forEach(function (input) {
+            input.value = formatQuantity(input.value);
+        });
+        (root || document).querySelectorAll('[data-ingredient-cost]').forEach(function (output) {
+            if (output.closest('form')) {
+                updateIngredientCost(output.closest('form'));
+            }
+        });
+    }
 
     function normalizeMoneyInputs(form) {
         form.querySelectorAll('[data-money]').forEach(function (input) {
@@ -395,6 +527,7 @@
             }
             modalDialog.replaceChildren(document.importNode(content, true));
             initMoney(modalDialog);
+            initQuantities(modalDialog);
             initUnitSelects(modalDialog);
             initPostForms(modalDialog);
             // Bootstrap tự focus vào khung modal khi hiệu ứng mở kết thúc; đợi xong rồi mới đặt focus vào ô đầu tiên.
@@ -418,7 +551,7 @@
         loadModal(href).catch(function (error) {
             if (error.message === 'forbidden') {
                 modal.hide();
-                toast('Bạn không có quyền thực hiện thao tác này, hoặc đợt nấu đã bị khóa.', 'error');
+                toast('Bạn không có quyền thực hiện thao tác này, hoặc chương trình đã bị khóa.', 'error');
                 return;
             }
             if (error.message === 'throttled') {
@@ -471,6 +604,7 @@
                 document.getElementById(focusedId).focus({ preventScroll: true });
             }
             initMoney(document);
+            initQuantities(document);
             initUnitSelects(document);
             initLazyImages(document);
         }).catch(function () {
@@ -607,6 +741,7 @@
                     restoreForm(form);
                     form.reset();
                     initMoney(form);
+                    initQuantities(form);
                     initUnitSelects(form);
                     focusFirstField(form);
                 } else {
@@ -1004,6 +1139,21 @@
                 field.classList.remove('d-none');
             });
             showDates.remove();
+            return;
+        }
+        var filterToggle = target.closest('[data-filter-toggle]');
+        if (filterToggle) {
+            var filterBox = document.getElementById(filterToggle.getAttribute('data-filter-toggle'));
+            if (filterBox) {
+                filterBox.classList.add('is-open');
+                filterToggle.setAttribute('aria-expanded', 'true');
+                filterToggle.hidden = true;
+                var firstField = filterBox.querySelector('input, select');
+                if (firstField) {
+                    firstField.focus({ preventScroll: true });
+                    filterBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            }
             return;
         }
 
@@ -1483,6 +1633,30 @@
     // Ô hiển thị dd/mm/yyyy (kèm giờ cho hạn công việc), giá trị gửi lên máy chủ giữ nguyên Y-m-d / Y-m-dTH:i.
     // Dùng cả trên điện thoại (disableMobile) để giao diện thống nhất, ô bấm lớn. Không JS / không tải được
     // thư viện: vẫn là ô ngày của trình duyệt.
+    // Ô hiển thị chỉ đọc (allowInput: false): bấm vào chỉ mở lịch, không bật bàn phím/con trỏ gõ chữ.
+    // Lịch có nút "Hôm nay" để quay nhanh về ngày hiện tại.
+    function addTodayButton(picker) {
+        var footer = document.createElement('div');
+        footer.className = 'flatpickr-footer';
+        var today = document.createElement('button');
+        today.type = 'button';
+        today.className = 'btn btn-sm btn-outline-primary';
+        today.innerHTML = '<i class="bi bi-calendar-check" aria-hidden="true"></i> Hôm nay';
+        today.addEventListener('click', function () {
+            var now = new Date();
+            if (!picker.config.enableTime) {
+                now.setHours(0, 0, 0, 0);
+            } else {
+                now.setMinutes(Math.ceil(now.getMinutes() / 5) * 5, 0, 0);
+            }
+            picker.setDate(now, true);
+            picker.jumpToDate(now);
+            picker.close();
+        });
+        footer.appendChild(today);
+        picker.calendarContainer.appendChild(footer);
+    }
+
     function initDatePickers(root) {
         var inputs = root.querySelectorAll('input[type="date"]:not([data-fp]), input[type="datetime-local"]:not([data-fp])');
         if (!inputs.length) {
@@ -1508,12 +1682,15 @@
                     dateFormat: withTime ? 'Y-m-d\\TH:i' : 'Y-m-d',
                     altInput: true,
                     altFormat: withTime ? 'd/m/Y H:i' : 'd/m/Y',
-                    allowInput: true,
+                    allowInput: false,
                     disableMobile: true,
                     enableTime: withTime,
                     time_24hr: true,
                     minuteIncrement: 5,
                     monthSelectorType: 'static',
+                    onReady: function (selected, str, instance) {
+                        addTodayButton(instance);
+                    },
                     onChange: function () {
                         input.dispatchEvent(new Event('change', { bubbles: true }));
                     }
@@ -1524,7 +1701,7 @@
                 }
                 // Nhãn, mô tả, lỗi trỏ sang ô hiển thị.
                 display.id = (input.id || input.name) + '_display';
-                display.setAttribute('inputmode', 'numeric');
+                display.setAttribute('inputmode', 'none');
                 display.setAttribute('autocomplete', 'off');
                 display.placeholder = withTime ? 'dd/mm/yyyy hh:mm' : 'dd/mm/yyyy';
                 ['aria-describedby', 'aria-invalid'].forEach(function (attr) {
@@ -1651,7 +1828,7 @@
         });
     }
 
-    // --- Slider đợt nấu đang diễn ra (trang chủ) ---
+    // --- Slider chương trình đang diễn ra (trang chủ) ---
     // Dải trượt ngang dùng scroll-snap (không JS vẫn vuốt được). JS thêm: nút trước/sau, chấm vị trí,
     // tự chuyển sau 6 giây; dừng khi rê chuột, focus bàn phím, chạm, tab ẩn hoặc người dùng chọn giảm chuyển động.
     // Ảnh của slide sắp hiện được tải trước để không thấy khung trống khi chuyển.
@@ -1770,7 +1947,75 @@
         }
     });
 
+    // Liên hệ: danh sách chỉ có email/số điện thoại đã che; "Hiện" gọi máy chủ (có ghi nhật ký) lấy bản đầy đủ
+    // rồi thay bằng link gửi mail/gọi điện. Không có JS thì nút không hiện.
+    document.querySelectorAll('[data-reveal-url]').forEach(function (button) {
+        button.hidden = false;
+    });
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest && event.target.closest('[data-reveal-url]');
+        if (!button) {
+            return;
+        }
+        button.disabled = true;
+        fetch(button.getAttribute('data-reveal-url'), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfMeta ? csrfMeta.content : ''
+            }
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error(String(response.status));
+            }
+            return response.json();
+        }).then(function (data) {
+            var target = button.closest('[data-reveal-target]');
+            var link = document.createElement('a');
+            link.href = data.href;
+            link.className = 'tabular';
+            link.textContent = data.contact; // textContent: không chèn HTML từ dữ liệu khách nhập
+            target.querySelector('[data-reveal-value]').replaceWith(link);
+            button.remove();
+            link.focus();
+        }).catch(function () {
+            button.disabled = false;
+            toast('Không lấy được thông tin liên lạc. Vui lòng thử lại.', 'error');
+        });
+    });
+
+    // Nút "Lên đầu trang" (trang công khai): hiện khi đã cuộn quá ~1,5 màn hình; bấm thì cuộn lên và đưa focus về nội dung.
+    var backToTop = document.querySelector('[data-back-to-top]');
+    if (backToTop) {
+        backToTop.hidden = false;
+        var syncBackToTop = function () {
+            backToTop.classList.toggle('is-visible', window.scrollY > window.innerHeight * 1.5);
+        };
+        window.addEventListener('scroll', syncBackToTop, { passive: true });
+        syncBackToTop();
+        backToTop.addEventListener('click', function () {
+            var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+            var main = document.getElementById('main');
+            if (main) {
+                main.focus({ preventScroll: true });
+            }
+        });
+    }
+
+    // Bộ lọc thu gọn trên điện thoại (trang báo cáo, liên hệ, tài khoản, bài viết): chỉ thu gọn khi có JS để mở lại.
+    document.querySelectorAll('[data-filter-toggle]').forEach(function (toggle) {
+        var filterBox = document.getElementById(toggle.getAttribute('data-filter-toggle'));
+        if (filterBox) {
+            filterBox.classList.add('is-collapsible');
+            toggle.hidden = false;
+        }
+    });
+
     initMoney(document);
+    initQuantities(document);
     initUnitSelects(document);
     initPostForms(document);
     initLazyImages(document);

@@ -15,7 +15,7 @@ use Illuminate\View\View;
 
 /**
  * Trang bài viết cho khách (không cần đăng nhập). Chỉ hiện bài đã đăng.
- * Thông tin đợt nấu đi kèm chỉ gồm số liệu tổng hợp (tên, thời gian, trạng thái, số suất);
+ * Thông tin chương trình đi kèm chỉ gồm số liệu tổng hợp (tên, thời gian, trạng thái, số suất);
  * không hiện người phụ trách, công việc, nguyên liệu hay chi phí (xem docs/SECURITY_PRIVACY.md).
  */
 class PublicPostController extends Controller
@@ -24,7 +24,7 @@ class PublicPostController extends Controller
     private const PER_PAGE = 6;
 
     /**
-     * Danh sách bài đã đăng, tìm theo từ khóa / thẻ / đợt nấu.
+     * Danh sách bài đã đăng, tìm theo từ khóa / thẻ / chương trình.
      * Trang kết quả tìm kiếm/lọc được đánh noindex (tránh trang trùng lặp trên công cụ tìm kiếm).
      *
      * @param  PublicPostIndexRequest  $request  bộ lọc đã chuẩn hóa
@@ -61,7 +61,7 @@ class PublicPostController extends Controller
 
         $filtered = $q !== '' || $tag || $batch;
 
-        // Slider đầu trang chủ: các đợt ĐANG DIỄN RA (chỉ trang 1, không lọc).
+        // Slider đầu trang chủ: các chương trình ĐANG DIỄN RA (chỉ trang 1, không lọc).
         $ongoing = ! $filtered && $posts->onFirstPage()
             ? PublicPostCache::remember('ongoing-batches', fn () => CookingBatch::where('status', BatchStatus::InProgress->value)
                 ->orderBy('starts_on')->orderBy('id')
@@ -81,14 +81,14 @@ class PublicPostController extends Controller
     }
 
     /**
-     * Trang đợt nấu công khai: thông tin tổng hợp ở trên, bài viết của đợt ở dưới (phân trang).
-     * Chỉ đợt đang diễn ra hoặc đã có bài đăng (CookingBatch::scopePubliclyVisible); còn lại 404.
+     * Trang chương trình công khai: thông tin tổng hợp ở trên, bài viết của chương trình ở dưới (phân trang).
+     * Chỉ chương trình đang diễn ra hoặc đã có bài đăng (CookingBatch::scopePubliclyVisible); còn lại 404.
      * Không hiện người điều phối, địa điểm, công việc, nguyên liệu, chi phí (docs/SECURITY_PRIVACY.md).
      *
      * URL dùng mã công khai ngẫu nhiên (public_id), không dùng ID tăng dần.
      *
      * @param  Request  $request  yêu cầu của người xem
-     * @param  CookingBatch  $batch  đợt nấu (tìm theo public_id)
+     * @param  CookingBatch  $batch  chương trình (tìm theo public_id)
      */
     public function batch(Request $request, CookingBatch $batch): View
     {
@@ -137,7 +137,7 @@ class PublicPostController extends Controller
     }
 
     /**
-     * Dữ liệu (lưu đệm được) của trang chi tiết: quan hệ của bài, bài liên quan (ưu tiên cùng đợt), số bài cùng đợt.
+     * Dữ liệu (lưu đệm được) của trang chi tiết: quan hệ của bài, bài liên quan (ưu tiên cùng chương trình), số bài cùng chương trình.
      *
      * @param  Post  $post  bài viết
      * @return array{relations: array<string, mixed>, related: Collection<int, Post>, batchPostCount: int}

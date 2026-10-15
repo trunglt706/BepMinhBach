@@ -9,6 +9,18 @@ MVP không cần tên, số điện thoại, địa chỉ nhà, chẩn đoán, d
 - Tình nguyện viên chỉ cập nhật các tác vụ được phép; không dựa vào việc ẩn nút trên UI.
 - Admin quản lý tài khoản; không xem/khôi phục mật khẩu dạng rõ.
 - Tài khoản bị khóa không thể tiếp tục sử dụng phiên theo cách vượt qua kiểm tra quyền.
+- **Phạm vi dữ liệu đợt nấu (15/10/2026)** — `CookingBatch::scopeVisibleTo` / `isVisibleTo`, áp cho danh sách, chi tiết,
+  bản in, trang tổng quan, badge menu, báo cáo (trang + CSV), ô chọn đợt khi viết bài:
+  - Quản trị viên: mọi đợt.
+  - Điều phối viên: chương trình mình là người điều phối (`coordinator_id`) hoặc có công việc giao cho mình.
+  - Người ghi nhận, tình nguyện viên: chỉ đợt có công việc giao cho mình.
+  - Ngoài phạm vi: trả **404** (không tiết lộ đợt tồn tại) — kiểm tra trong `before()` của policy đợt, công việc,
+    nguyên liệu, khoản chi. Điều phối viên giao đợt cho người khác thì mất quyền xem đợt đó.
+- **Mật khẩu & phiên:** đổi/đặt lại mật khẩu → các phiên khác bị đăng xuất (`auth.session`) và cookie
+  "ghi nhớ đăng nhập" cũ hết hiệu lực; khóa tài khoản / "Đăng xuất mọi thiết bị" xóa phiên + đổi remember token.
+  Quên mật khẩu: không tiết lộ email có tài khoản; tài khoản khóa không nhận link; link 1 lần, hết hạn 60 phút;
+  giới hạn theo IP và theo email. Bảng `notifications` không lưu token/link đặt lại mật khẩu.
+- Danh sách thiết bị đăng nhập (quản trị viên) không hiển thị mã phiên; thao tác đăng xuất dùng mã băm SHA-256.
 
 ## Bảo vệ ứng dụng
 - Validation server-side cho mọi input.
@@ -87,7 +99,7 @@ MVP không cần tên, số điện thoại, địa chỉ nhà, chẩn đoán, d
 - `app.js` kiểm tra `required`, độ dài, email, số, email/SĐT trước khi gửi để giảm yêu cầu thừa. **Không** thay thế kiểm tra máy chủ — mọi FormRequest vẫn kiểm tra lại toàn bộ.
 
 ## Triển khai (`deploy/deploy.sh`)
-- Mật khẩu CSDL ngẫu nhiên, lưu `/root/.bepminhbach/db.env` (600); `.env` quyền 640 `root:www-data`; mã nguồn không ghi được bởi web server.
+- Mật khẩu CSDL ngẫu nhiên, lưu `/root/.gopgio/db.env` (600); `.env` quyền 640 `root:www-data`; mã nguồn không ghi được bởi web server.
 - Mật khẩu quản trị không truyền qua tham số dòng lệnh (biến môi trường `BMB_ADMIN_PASSWORD` hoặc nhập ẩn).
 - Nginx chặn file ẩn và chạy mã trong `/uploads/`; ufw chỉ mở SSH (cổng thật), 80, 443; sao lưu hằng ngày quyền 700.
 

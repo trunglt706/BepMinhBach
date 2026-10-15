@@ -11,7 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/** Biểu đồ ở trang tổng quan, chi tiết đợt nấu; bộ icon rút gọn được preload. */
+/** Biểu đồ ở trang tổng quan, chi tiết chương trình; bộ icon rút gọn được preload. */
 class ChartAndAssetTest extends TestCase
 {
     use RefreshDatabase;
@@ -23,15 +23,17 @@ class ChartAndAssetTest extends TestCase
             'starts_on' => now()->subDays(3), 'expected_servings' => 200, 'distributed_servings' => 180,
         ]);
         ExpenseItem::factory()->for($batch, 'batch')->create(['amount_vnd' => 1_250_000]);
-        CookingBatch::factory()->status(BatchStatus::Planned)->create(['starts_on' => now()->addDays(2)]);
+        $planned = CookingBatch::factory()->status(BatchStatus::Planned)->create(['starts_on' => now()->addDays(2)]);
+        $this->assignToBatch($batch, $recorder);
+        $this->assignToBatch($planned, $recorder);
 
         $html = $this->actingAs($recorder)->get('/admin?days=7')->assertOk()->getContent();
-        $this->assertStringContainsString('1 đợt đã nhập số liệu', $html);
+        $this->assertStringContainsString('1 chương trình đã nhập số liệu', $html);
         $this->assertStringContainsString('class="col-group"', $html);
         $this->assertStringContainsString('Dự kiến 200; Đã phân phát 180', $html); // aria-label của nhóm cột
         $this->assertStringContainsString('chart-expense-title', $html);
         $this->assertStringContainsString('1.250.000 đ', $html);
-        // Trạng thái gồm cả đợt sắp tới
+        // Trạng thái gồm cả chương trình sắp tới
         $this->assertMatchesRegularExpression('#Đã lên kế hoạch\s*</span>\s*<span class="hbar-track">.*?hbar-value">1<#s', $html);
 
         $volunteer = User::factory()->volunteer()->create();
@@ -66,7 +68,7 @@ class ChartAndAssetTest extends TestCase
         $this->assertStringContainsString('aria-label="Hoàn thành: 2 việc (67%)"', $html);
         $this->assertStringContainsString('aria-label="Đang bị vướng: 1 việc (33%)"', $html);
         $this->assertStringContainsString('90% so với dự kiến', $html);
-        $this->assertMatchesRegularExpression('#Đã phân phát\s*</span>\s*<span class="hbar-track">\s*<span class="hbar-value is-empty">Chưa nhập<#', $html);
+        $this->assertMatchesRegularExpression('#Đã phân phát\s*</span>\s*<span class="hbar-track">\s*<span class="hbar-value is-empty">—<#', $html);
         $this->assertStringContainsString('70% so với dự kiến', $html); // 1.400.000 / 2.000.000
         $this->assertStringContainsString('Theo khoản chi', $html);
         // Tên khoản chi do người dùng nhập luôn được escape, kể cả trong data-tip
@@ -75,6 +77,7 @@ class ChartAndAssetTest extends TestCase
 
         // Tình nguyện viên không thấy biểu đồ chi phí
         $volunteer = User::factory()->volunteer()->create();
+        $batch->tasks()->first()->update(['assignee_id' => $volunteer->id]); // thành viên của chương trình
         $this->actingAs($volunteer)->get("/admin/batches/{$batch->id}")->assertOk()
             ->assertSee('Hoàn thành: 2 việc', false)
             ->assertDontSee('Theo khoản chi')

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** Khoản chi nguyên liệu của một đợt nấu (số tiền VND nguyên, ghi nhận nội bộ). */
+/** Khoản chi nguyên liệu của một chương trình (số tiền VND nguyên, ghi nhận nội bộ). */
 class ExpenseItem extends Model
 {
     use HasFactory;
@@ -28,7 +28,7 @@ class ExpenseItem extends Model
     }
 
     /**
-     * Đợt nấu của khoản chi.
+     * Chương trình của khoản chi.
      *
      * @return BelongsTo<CookingBatch, $this>
      */

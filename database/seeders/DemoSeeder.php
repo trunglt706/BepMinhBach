@@ -26,11 +26,11 @@ class DemoSeeder extends Seeder
         $password = env('DEMO_PASSWORD') ?: 'demo12345';
 
         $accounts = [
-            'admin' => ['Quản trị Demo', 'admin@bepminhbach.test', Role::Admin],
-            'coordinator' => ['Điều phối Demo', 'dieuphoi@bepminhbach.test', Role::Coordinator],
-            'recorder' => ['Ghi nhận Demo', 'ghinhan@bepminhbach.test', Role::Recorder],
-            'volunteer1' => ['Tình nguyện viên Demo 1', 'tnv1@bepminhbach.test', Role::Volunteer],
-            'volunteer2' => ['Tình nguyện viên Demo 2', 'tnv2@bepminhbach.test', Role::Volunteer],
+            'admin' => ['Quản trị Demo', 'admin@gopgio.test', Role::Admin],
+            'coordinator' => ['Điều phối Demo', 'dieuphoi@gopgio.test', Role::Coordinator],
+            'recorder' => ['Ghi nhận Demo', 'ghinhan@gopgio.test', Role::Recorder],
+            'volunteer1' => ['Tình nguyện viên Demo 1', 'tnv1@gopgio.test', Role::Volunteer],
+            'volunteer2' => ['Tình nguyện viên Demo 2', 'tnv2@gopgio.test', Role::Volunteer],
         ];
 
         $users = [];
@@ -42,7 +42,7 @@ class DemoSeeder extends Seeder
         }
 
         if (CookingBatch::exists()) {
-            $this->command?->info('Đã có đợt nấu — chỉ cập nhật tài khoản demo.');
+            $this->command?->info('Đã có chương trình — chỉ cập nhật tài khoản demo.');
             $this->seedPosts($users['coordinator']);
 
             return;
@@ -79,7 +79,7 @@ class DemoSeeder extends Seeder
             $batch->expenseItems()->save($expense);
         };
 
-        // 1. Đợt đã hoàn tất tuần trước
+        // 1. Chương trình đã hoàn tất tuần trước
         $done = $makeBatch([
             'name' => 'Cơm chay chủ nhật (demo)',
             'starts_on' => today()->subWeek()->toDateString(),
@@ -103,7 +103,7 @@ class DemoSeeder extends Seeder
             'completion_notes' => 'Lần sau cần thêm một người chia suất.',
         ])->save();
 
-        // 2. Đợt đang diễn ra hôm nay
+        // 2. Chương trình đang diễn ra hôm nay
         $today = $makeBatch([
             'name' => 'Cháo dinh dưỡng thứ năm (demo)',
             'starts_on' => today()->toDateString(),
@@ -122,7 +122,7 @@ class DemoSeeder extends Seeder
         $addTask($today, 'Dọn bếp', null, now()->setTime(13, 0), TaskStatus::Todo);
         $addExpense($today, 'Gạo nếp và nấm', 820_000);
 
-        // 3. Đợt đã lên kế hoạch tuần sau
+        // 3. Chương trình đã lên kế hoạch tuần sau
         $planned = $makeBatch([
             'name' => 'Bánh mì sáng thứ bảy (demo)',
             'starts_on' => today()->addDays(5)->toDateString(),
@@ -132,7 +132,7 @@ class DemoSeeder extends Seeder
         $addIngredients($planned, [['Bánh mì', 120, 'cái', null], ['Chả chay', 4, 'kg', null]]);
         $addTask($planned, 'Đặt bánh mì', $users['volunteer2'], now()->addDays(3)->setTime(18, 0), TaskStatus::Todo);
 
-        // 4. Đợt nháp
+        // 4. Chương trình nháp
         $makeBatch([
             'name' => 'Bữa trưa cuối tháng (nháp demo)',
             'starts_on' => today()->addDays(14)->toDateString(),
@@ -155,14 +155,14 @@ class DemoSeeder extends Seeder
         $planned = CookingBatch::where('status', BatchStatus::Planned->value)->orderBy('starts_on')->first();
 
         $rows = [
-            ['Nhìn lại đợt nấu tuần trước (demo)', $completed, ['nhìn lại', 'cơm chay'], now()->subDays(5),
-                "Cảm ơn các bạn tình nguyện viên đã có mặt từ sáng sớm để sơ chế và nấu.\n\nSố suất đã chuẩn bị và phân phát được ghi trong thông tin đợt nấu bên cạnh."],
+            ['Nhìn lại chương trình tuần trước (demo)', $completed, ['nhìn lại', 'cơm chay'], now()->subDays(5),
+                "Cảm ơn các bạn tình nguyện viên đã có mặt từ sáng sớm để sơ chế và nấu.\n\nSố suất đã chuẩn bị và phân phát được ghi trong thông tin chương trình bên cạnh."],
             ['Cảm ơn các nhà hảo tâm (demo)', $completed, ['cảm ơn'], now()->subDays(3),
-                "Bếp đã nhận thêm gạo và rau củ cho các đợt tiếp theo.\n\nMọi khoản đóng góp được đội bếp ghi nhận nội bộ."],
-            ['Thông báo đợt bánh mì sáng thứ bảy (demo)', $planned, ['thông báo', 'bánh mì'], now()->subDay(),
-                "Đội bếp cần thêm 4 bạn hỗ trợ chia bánh từ 5 giờ 30 sáng.\n\nVui lòng liên hệ điều phối viên nếu bạn có thể tham gia."],
+                "Bếp đã nhận thêm gạo và rau củ cho các chương trình tiếp theo.\n\nMọi khoản đóng góp được đội Góp Gió ghi nhận nội bộ."],
+            ['Thông báo chương trình bánh mì sáng thứ bảy (demo)', $planned, ['thông báo', 'bánh mì'], now()->subDay(),
+                "Đội Góp Gió cần thêm 4 bạn hỗ trợ chia bánh từ 5 giờ 30 sáng.\n\nVui lòng liên hệ điều phối viên nếu bạn có thể tham gia."],
             ['Mẹo sơ chế rau củ nhanh cho bếp đông người (demo)', null, ['kinh nghiệm', 'sơ chế'], now()->subHours(6),
-                "Chia việc theo từng loại rau, rửa trước rồi mới cắt.\n\nGhi chú này chỉ là kinh nghiệm của đội bếp, không thay thế hướng dẫn an toàn thực phẩm chính thức."],
+                "Chia việc theo từng loại rau, rửa trước rồi mới cắt.\n\nGhi chú này chỉ là kinh nghiệm của đội Góp Gió, không thay thế hướng dẫn an toàn thực phẩm chính thức."],
         ];
 
         foreach ($rows as [$title, $batch, $tags, $publishedAt, $body]) {

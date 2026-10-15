@@ -1,7 +1,7 @@
 <section class="card mb-3" aria-labelledby="sec-info">
-    <div class="panel-header"><h2 id="sec-info" class="panel-title"><span class="step-number">1</span> Thông tin đợt</h2></div>
+    <div class="panel-header"><h2 id="sec-info" class="panel-title"><span class="step-number">1</span> Thông tin chương trình</h2></div>
     <div class="card-body pb-1">
-        <x-input name="name" label="Tên đợt nấu" :value="$batch->name" required maxlength="150"
+        <x-input name="name" label="Tên chương trình" :value="$batch->name" required maxlength="150"
                  help="Ví dụ: Cơm chay chủ nhật 20/10" />
         <div class="row">
             <div class="col-md-6">
@@ -21,7 +21,7 @@
     <div class="card-body pb-1">
         <div class="row">
             <div class="col-md-6">
-                <x-input name="expected_servings" label="Số suất dự kiến" type="number" min="0" max="100000" step="1" inputmode="numeric"
+                <x-input name="expected_servings" label="Số suất dự kiến" integer maxlength="7"
                          :value="$batch->expected_servings" required />
             </div>
             <div class="col-md-6">
@@ -59,12 +59,12 @@
                 @endif
             </div>
             <div class="min-w-0">
-                <label for="f_cover" class="form-label fw-semibold">Ảnh nền đợt nấu</label>
+                <label for="f_cover" class="form-label fw-semibold">Ảnh nền chương trình</label>
                 <input type="file" id="f_cover" name="cover" accept="{{ $accept }}" data-image-input
                        @class(['form-control', 'is-invalid' => $errors->has('cover')])
                        aria-describedby="f_cover_help @error('cover') f_cover_error @enderror">
                 <div id="f_cover_help" class="form-text">
-                    Không bắt buộc. Hiện ở đầu trang đợt (quản lý và công khai) và trên slider trang chủ khi đợt đang diễn ra.<br>
+                    Không bắt buộc. Hiện ở đầu trang chương trình (quản lý và công khai) và trên slider trang chủ khi chương trình đang diễn ra.<br>
                     <strong>Kích thước gợi ý: 1600 × 900 px</strong> (ảnh ngang, tỉ lệ 16:9), tối thiểu 1200 px chiều ngang; JPG/PNG/WebP, tối đa {{ (int) round(config('bmb.post_images.max_upload_kb') / 1024) }} MB.
                     Ảnh được cắt theo phần giữa để vừa khung — đặt chủ thể ở giữa ảnh. Tránh ảnh nhìn rõ mặt người nhận suất ăn.
                 </div>

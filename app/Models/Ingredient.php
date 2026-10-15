@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** Nguyên liệu dự kiến/thực tế của một đợt nấu, có thể đang bị báo thiếu. */
+/** Nguyên liệu dự kiến/thực tế của một chương trình, có thể đang bị báo thiếu. */
 class Ingredient extends Model
 {
     use HasFactory;
@@ -25,6 +25,7 @@ class Ingredient extends Model
         'expected_quantity',
         'actual_quantity',
         'unit',
+        'unit_price_vnd',
         'notes',
     ];
 
@@ -36,13 +37,28 @@ class Ingredient extends Model
         return [
             'expected_quantity' => 'decimal:3',
             'actual_quantity' => 'decimal:3',
+            'unit_price_vnd' => 'integer',
             'needs_restock' => 'boolean',
             'restock_reported_at' => 'datetime',
         ];
     }
 
     /**
-     * Đợt nấu của nguyên liệu.
+     * Thành tiền (đồng) = đơn giá × lượng thực tế (chưa ghi nhận thì lượng dự kiến).
+     * Null khi chưa nhập đơn giá.
+     */
+    public function costVnd(): ?int
+    {
+        $quantity = $this->actual_quantity ?? $this->expected_quantity;
+        if ($this->unit_price_vnd === null || $quantity === null) {
+            return null;
+        }
+
+        return (int) round($this->unit_price_vnd * (float) $quantity);
+    }
+
+    /**
+     * Chương trình của nguyên liệu.
      *
      * @return BelongsTo<CookingBatch, $this>
      */

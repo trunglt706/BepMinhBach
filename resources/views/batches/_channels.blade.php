@@ -6,7 +6,7 @@
         ->filter(fn ($c) => $canManage || $c->is_enabled);
     $canAdd = $canManage && $batch->notificationChannels->count() < count(NotificationDriver::cases());
 @endphp
-{{-- Kênh thông báo của đợt: mọi người thấy link tham gia; điều phối viên cấu hình, gửi thử, bật/tắt. --}}
+{{-- Kênh thông báo của chương trình: mọi người thấy link tham gia; điều phối viên cấu hình, gửi thử, bật/tắt. --}}
 <section id="thong-bao" class="card scroll-mt" aria-labelledby="h-thong-bao">
     <div class="panel-header">
         <h2 id="h-thong-bao" class="panel-title"><i class="bi bi-bell" aria-hidden="true"></i> Kênh thông báo</h2>
@@ -18,10 +18,10 @@
     @if($channels->isEmpty())
         <div class="card-body small text-body-secondary">
             @if($canManage)
-                Chưa có kênh nào. Thêm kênh <strong>Slack</strong>, <strong>Telegram</strong> hoặc <strong>Chatwork</strong> để mọi thay đổi của đợt
-                (trạng thái, giao việc, việc bị vướng, báo thiếu nguyên liệu…) tự gửi vào nhóm chat của đội bếp.
+                Chưa có kênh nào. Thêm kênh <strong>Slack</strong>, <strong>Telegram</strong> hoặc <strong>Chatwork</strong> để mọi thay đổi của chương trình
+                (trạng thái, giao việc, việc bị vướng, báo thiếu nguyên liệu…) tự gửi vào nhóm chat của đội Góp Gió.
             @else
-                Đợt này chưa có kênh thông báo. Điều phối viên sẽ báo khi có.
+                Chương trình này chưa có kênh thông báo. Điều phối viên sẽ báo khi có.
             @endif
         </div>
     @else
@@ -60,25 +60,25 @@
                                     @elseif($channel->last_sent_at)
                                         <div class="text-body-secondary"><i class="bi bi-check2" aria-hidden="true"></i> Gửi gần nhất: {{ Format::dateTime($channel->last_sent_at) }}</div>
                                     @else
-                                        <div class="text-body-secondary">Chưa gửi tin nào. Bấm “Gửi thử” để kiểm tra kết nối.</div>
+                                        <div class="text-body-secondary">Chưa gửi tin nào. Bấm “⋮” → “Gửi thử” để kiểm tra kết nối.</div>
                                     @endif
                                     @foreach($channel->driver->fields() as $key => $field)
                                         @continue($field['secret'])
                                         <div class="text-body-secondary">{{ $field['label'] }}: <span class="tabular">{{ $channel->displaySetting($key) }}</span></div>
                                     @endforeach
                                 </div>
-                                <div class="d-flex flex-wrap gap-2 mt-2">
-                                    <form method="POST" action="{{ route('channels.test', $channel) }}" data-ajax>
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary" data-loading-text="Đang gửi…"><i class="bi bi-send" aria-hidden="true"></i> Gửi thử</button>
-                                    </form>
-                                </div>
                             @endif
                         </div>
                         @if($canManage)
                             <x-row-menu :label="'kênh '.$channel->driver->label()" :edit-url="route('channels.edit', $channel)"
                                         :delete-url="route('channels.destroy', $channel)"
-                                        :confirm="'Xóa kênh '.$channel->driver->label().' của đợt này? Thông báo sẽ không gửi vào kênh nữa và token đã lưu bị xóa.'">
+                                        :confirm="'Xóa kênh '.$channel->driver->label().' của chương trình này? Thông báo sẽ không gửi vào kênh nữa và token đã lưu bị xóa.'">
+                                <li>
+                                    <form method="POST" action="{{ route('channels.test', $channel) }}" data-ajax>
+                                        @csrf
+                                        <button type="submit" class="dropdown-item"><i class="bi bi-send" aria-hidden="true"></i> Gửi thử</button>
+                                    </form>
+                                </li>
                                 <li>
                                     <form method="POST" action="{{ route('channels.toggle', $channel) }}" data-ajax>
                                         @csrf
@@ -96,8 +96,9 @@
         </ul>
         @if($canManage)
             <div class="panel-footer small text-body-secondary">
-                Tự gửi khi: đổi trạng thái/hoàn tất/hủy/mở lại đợt, sửa thông tin đợt, thêm/giao việc, việc hoàn thành hoặc bị vướng,
-                báo/gỡ thiếu nguyên liệu, cập nhật số suất, đăng bài về đợt. <strong>Không gửi chi phí</strong> và ghi chú tự do.
+                Tự gửi (chạy nền, có thể trễ vài giây) khi: đổi trạng thái/hoàn tất/hủy/mở lại chương trình, sửa thông tin chương trình, cập nhật số suất,
+                thêm/sửa/giao/xóa việc và mọi lần đổi trạng thái việc, thêm/sửa/xóa nguyên liệu, báo/gỡ thiếu nguyên liệu,
+                đăng/gỡ bài về chương trình. <strong>Không gửi chi phí, đơn giá</strong> và ghi chú tự do.
             </div>
         @endif
     @endif

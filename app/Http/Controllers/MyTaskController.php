@@ -19,10 +19,14 @@ class MyTaskController extends Controller
     {
         $user = $request->user();
 
+        // Nạp sẵn coordinator_id + việc của chính người dùng trong chương trình: kiểm tra phạm vi xem
+        // (CookingBatch::isVisibleTo) của từng việc không phải truy vấn thêm (tránh N+1).
+        $batchColumns = fn ($q) => $q->select(['id', 'name', 'starts_on', 'status', 'location_text', 'coordinator_id'])
+            ->with(['tasks' => fn ($t) => $t->select(['id', 'cooking_batch_id', 'assignee_id'])->where('assignee_id', $user->id)]);
         $open = Task::where('assignee_id', $user->id)
             ->where('status', '!=', TaskStatus::Done->value)
             ->whereHas('batch', fn ($q) => $q->active())
-            ->with('batch:id,name,starts_on,status,location_text')
+            ->with(['batch' => $batchColumns, 'assignee:id,name', 'completer:id,name'])
             ->orderByRaw('due_at is null')
             ->orderBy('due_at')
             ->limit(100)

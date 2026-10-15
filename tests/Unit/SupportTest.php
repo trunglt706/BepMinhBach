@@ -44,9 +44,21 @@ class SupportTest extends TestCase
     {
         $this->assertSame('1.550.000 đ', Format::vnd(1_550_000));
         $this->assertSame('0 đ', Format::vnd(0));
-        $this->assertSame('Chưa nhập', Format::vnd(null));
+        $this->assertSame('—', Format::vnd(null));
         $this->assertSame('2,5', Format::quantity('2.500'));
         $this->assertSame('12', Format::quantity('12.000'));
         $this->assertSame('2.5', Format::quantityInput('2.500'));
+        $this->assertSame('1.500,25', Format::quantityField('1500.250'));
+        $this->assertSame('', Format::quantityField(null));
+    }
+
+    public function test_quantity_input_accepts_vietnamese_format(): void
+    {
+        $this->assertSame('1500.25', Input::quantity('1.500,25'));
+        $this->assertSame('1500', Input::quantity('1.500'));
+        $this->assertSame('2.5', Input::quantity('2,5'));
+        $this->assertSame('2.5', Input::quantity('2.5'));
+        $this->assertSame('1.23456', Input::quantity('1.23456')); // giữ nguyên để validation báo lỗi
+        $this->assertNull(Input::quantity(' '));
     }
 }

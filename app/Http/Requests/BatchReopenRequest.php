@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
-/** Mở lại đợt đã hoàn tất/đã hủy — bắt buộc ghi lý do và tick xác nhận. */
+/** Mở lại chương trình đã hoàn tất/đã hủy — bắt buộc ghi lý do và tick xác nhận. */
 class BatchReopenRequest extends FormRequest
 {
     /**
@@ -34,7 +34,7 @@ class BatchReopenRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['confirm.accepted' => 'Vui lòng đánh dấu ô xác nhận trước khi mở lại đợt.'];
+        return ['confirm.accepted' => 'Vui lòng đánh dấu ô xác nhận trước khi mở lại chương trình.'];
     }
 
     /**

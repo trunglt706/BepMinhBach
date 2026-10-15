@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
-/** Thêm/sửa công việc của đợt nấu (giao cho tài khoản đang hoạt động). */
+/** Thêm/sửa công việc của chương trình (giao cho tài khoản đang hoạt động). */
 class TaskRequest extends FormRequest
 {
     /**

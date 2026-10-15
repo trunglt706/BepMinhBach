@@ -8,7 +8,7 @@
         @can('create', App\Models\CookingBatch::class)
             @if($hasBatches)
                 <x-slot:actions>
-                    <a href="{{ route('batches.create') }}" data-modal class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo đợt nấu</a>
+                    <a href="{{ route('batches.create') }}" data-modal class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo chương trình</a>
                 </x-slot:actions>
             @endif
         @endcan
@@ -16,14 +16,14 @@
 
     @unless($hasBatches)
         <div class="card mb-4">
-            <x-empty-state icon="bi-egg-fried" title="Chưa có đợt nấu ăn nào">
-                Mỗi đợt nấu gồm thời gian, số suất dự kiến, danh sách nguyên liệu và công việc cần làm.
+            <x-empty-state icon="bi-calendar-plus" title="Chưa có chương trình nào">
+                Mỗi chương trình gồm thời gian, số suất dự kiến, danh sách nguyên liệu và công việc cần làm.
                 @cannot('create', App\Models\CookingBatch::class)
-                    Khi điều phối viên tạo đợt nấu và giao việc, bạn sẽ thấy ở đây.
+                    Khi điều phối viên tạo chương trình và giao việc, bạn sẽ thấy ở đây.
                 @endcannot
                 @can('create', App\Models\CookingBatch::class)
                     <x-slot:action>
-                        <a href="{{ route('batches.create') }}" data-modal class="btn btn-primary btn-lg"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo đợt nấu đầu tiên</a>
+                        <a href="{{ route('batches.create') }}" data-modal class="btn btn-primary btn-lg"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo chương trình đầu tiên</a>
                     </x-slot:action>
                 @endcan
             </x-empty-state>
@@ -32,11 +32,15 @@
 
     {{-- Cảnh báo --}}
     @if($shortages->isNotEmpty() || $blockedTasks->isNotEmpty())
-        <section class="card mb-4 border-danger-subtle" aria-labelledby="alerts-title">
-            <div class="panel-header">
-                <h2 id="alerts-title" class="panel-title"><i class="bi bi-exclamation-triangle-fill text-danger" aria-hidden="true"></i> Cần xử lý</h2>
-                <span class="panel-count">{{ $shortages->count() + $blockedTasks->count() }}</span>
-            </div>
+        {{-- Mặc định thu gọn; bấm tiêu đề để xem chi tiết (details/summary: chạy cả khi không có JS) --}}
+        <details class="card mb-4 border-danger-subtle collapsible-card">
+            <summary class="panel-header">
+                <h2 class="panel-title"><i class="bi bi-exclamation-triangle-fill text-danger" aria-hidden="true"></i> Cần xử lý</h2>
+                <span class="d-flex align-items-center gap-2">
+                    <span class="panel-count">{{ $shortages->count() + $blockedTasks->count() }}</span>
+                    <i class="bi bi-chevron-down collapsible-chevron" aria-hidden="true"></i>
+                </span>
+            </summary>
             <div class="list-group list-group-flush">
                 @foreach($shortages as $ingredient)
                     <a href="{{ route('batches.show', $ingredient->batch) }}#nguyen-lieu" class="list-group-item list-group-item-action d-flex gap-3 py-3">
@@ -59,7 +63,7 @@
                     </a>
                 @endforeach
             </div>
-        </section>
+        </details>
     @endif
 
     {{-- Số liệu nhanh --}}
@@ -74,21 +78,21 @@
         </div>
         <div class="row g-2 g-md-3">
             <div class="col-6 col-xl-3">
-                <x-stat label="Đợt sắp tới" icon="bi-calendar-check" tone="blue" :value="$upcomingCount"
+                <x-stat label="Chương trình sắp tới" icon="bi-calendar-check" tone="blue" :value="$upcomingCount"
                         hint="Nháp hoặc đã lên kế hoạch" :href="route('batches.index')" />
             </div>
             <div class="col-6 col-xl-3">
                 <x-stat label="Đang diễn ra" icon="bi-fire" tone="amber" :value="$inProgressCount"
-                        hint="Đợt đang nấu" :href="route('batches.index', ['status' => App\Enums\BatchStatus::InProgress->value])" />
+                        hint="Chương trình đang diễn ra" :href="route('batches.index', ['status' => App\Enums\BatchStatus::InProgress->value])" />
             </div>
             <div class="col-6 col-xl-3">
                 <x-stat :label="$isCoordinator ? 'Việc chưa xong' : 'Việc của tôi chưa xong'" icon="bi-list-check" tone="green" :value="$openTasksCount"
-                        :hint="$isCoordinator ? 'Trong các đợt đang mở' : 'Bấm để xem và cập nhật'" :href="$isCoordinator ? null : route('my-tasks')" />
+                        :hint="$isCoordinator ? 'Trong các chương trình đang mở' : 'Bấm để xem và cập nhật'" :href="$isCoordinator ? null : route('my-tasks')" />
             </div>
             <div class="col-6 col-xl-3">
                 @if($distributedBatchCount > 0)
                     <x-stat label="Suất đã phân phát" icon="bi-box2-heart" tone="green" :value="Format::number((int) $distributedTotal)"
-                            :hint="$distributedBatchCount.' đợt có số liệu · '.mb_strtolower($periods[$days])" />
+                            :hint="$distributedBatchCount.' chương trình có số liệu · '.mb_strtolower($periods[$days])" />
                 @else
                     <x-stat label="Suất đã phân phát" icon="bi-box2-heart" tone="gray" value="—" empty
                             :hint="'Chưa có số liệu · '.mb_strtolower($periods[$days])" />
@@ -104,17 +108,17 @@
                 <section class="card h-100" aria-labelledby="chart-servings-title">
                     <div class="panel-header">
                         <h2 id="chart-servings-title" class="panel-title"><i class="bi bi-bar-chart-line" aria-hidden="true"></i> Số suất: dự kiến và đã phân phát</h2>
-                        <span class="small text-body-secondary">{{ $servingsChart['batchCount'] }} đợt đã nhập số liệu</span>
+                        <span class="small text-body-secondary">{{ $servingsChart['batchCount'] }} chương trình đã nhập số liệu</span>
                     </div>
                     <div class="card-body">
                         @if($servingsChart['batchCount'] === 0)
                             <x-empty-state icon="bi-bar-chart" title="Chưa có số liệu phân phát" compact>
-                                Biểu đồ hiện khi có đợt trong {{ mb_strtolower($periods[$days]) }} đã nhập số suất phân phát.
+                                Biểu đồ hiện khi có chương trình trong {{ mb_strtolower($periods[$days]) }} đã nhập số suất phân phát.
                             </x-empty-state>
                         @else
                             <x-chart.columns :groups="$servingsChart['groups']" caption="Số suất dự kiến và đã phân phát theo thời gian"
                                              :series="['expected' => ['label' => 'Dự kiến', 'tone' => 'plan'], 'distributed' => ['label' => 'Đã phân phát', 'tone' => 'primary']]" />
-                            <p class="small text-body-secondary mb-0 mt-2">Chỉ tính các đợt đã nhập số suất phân phát (không gồm đợt đã hủy).</p>
+                            <p class="small text-body-secondary mb-0 mt-2">Chỉ tính các chương trình đã nhập số suất phân phát (không gồm chương trình đã hủy).</p>
                         @endif
                     </div>
                 </section>
@@ -122,14 +126,14 @@
             <div class="col-xl-4">
                 <section class="card h-100" aria-labelledby="chart-status-title">
                     <div class="panel-header">
-                        <h2 id="chart-status-title" class="panel-title"><i class="bi bi-calendar3" aria-hidden="true"></i> Đợt nấu theo trạng thái</h2>
+                        <h2 id="chart-status-title" class="panel-title"><i class="bi bi-calendar3" aria-hidden="true"></i> Chương trình theo trạng thái</h2>
                     </div>
                     <div class="card-body">
                         @if(collect($statusChart)->sum('value') === 0)
-                            <x-empty-state icon="bi-calendar" title="Chưa có đợt nấu nào" compact />
+                            <x-empty-state icon="bi-calendar" title="Chưa có chương trình nào" compact />
                         @else
-                            <x-chart.bars :rows="$statusChart" caption="Số đợt nấu theo trạng thái" />
-                            <p class="small text-body-secondary mb-0 mt-3">Các đợt bắt đầu từ {{ Format::date(now()->subDays($days)) }}, gồm cả đợt sắp tới.</p>
+                            <x-chart.bars :rows="$statusChart" caption="Số chương trình theo trạng thái" />
+                            <p class="small text-body-secondary mb-0 mt-3">Các chương trình bắt đầu từ {{ Format::date(now()->subDays($days)) }}, gồm cả chương trình sắp tới.</p>
                         @endif
                     </div>
                 </section>
@@ -144,12 +148,12 @@
                         <div class="card-body">
                             @if($expenseChart['batchCount'] === 0)
                                 <x-empty-state icon="bi-receipt" title="Chưa nhập chi phí" compact>
-                                    Chưa có đợt nào trong {{ mb_strtolower($periods[$days]) }} được nhập khoản chi.
+                                    Chưa có chương trình nào trong {{ mb_strtolower($periods[$days]) }} được nhập khoản chi.
                                 </x-empty-state>
                             @else
                                 <x-chart.columns :groups="$expenseChart['groups']" format="vnd" :height="150" caption="Chi phí thực tế theo thời gian"
                                                  :series="['amount' => ['label' => 'Chi phí', 'tone' => 'money']]" />
-                                <p class="small text-body-secondary mb-0 mt-2">Tổng các khoản chi đã nhập, theo ngày bắt đầu của đợt. Ghi nhận nội bộ, không phải sổ sách kế toán.</p>
+                                <p class="small text-body-secondary mb-0 mt-2">Tổng các khoản chi đã nhập, theo ngày bắt đầu của chương trình. Ghi nhận nội bộ, không phải sổ sách kế toán.</p>
                             @endif
                         </div>
                     </section>
@@ -163,12 +167,12 @@
         <div class="col-lg-7 col-xl-8">
             <section class="card h-100" aria-labelledby="active-title">
                 <div class="panel-header">
-                    <h2 id="active-title" class="panel-title"><i class="bi bi-calendar3" aria-hidden="true"></i> Đợt sắp tới và đang diễn ra</h2>
+                    <h2 id="active-title" class="panel-title"><i class="bi bi-calendar3" aria-hidden="true"></i> Chương trình sắp tới và đang diễn ra</h2>
                     <a href="{{ route('batches.index') }}" class="small fw-semibold">Xem tất cả <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                 </div>
                 @if($activeBatches->isEmpty())
-                    <x-empty-state icon="bi-calendar" title="Không có đợt nào đang mở" compact>
-                        Các đợt nháp, đã lên kế hoạch hoặc đang diễn ra sẽ hiện ở đây.
+                    <x-empty-state icon="bi-calendar" title="Không có chương trình nào đang mở" compact>
+                        Các chương trình nháp, đã lên kế hoạch hoặc đang diễn ra sẽ hiện ở đây.
                     </x-empty-state>
                 @else
                     <div>
@@ -235,7 +239,7 @@
                             <div><div class="serving-label">Đã phân phát</div><div @class(['serving-value', 'is-empty' => $latestResult->distributed_servings === null])>{{ Format::number($latestResult->distributed_servings) }}</div></div>
                         </div>
                     @else
-                        <p class="text-body-secondary mb-0">Chưa có đợt nào được ghi nhận số suất thực tế.</p>
+                        <p class="text-body-secondary mb-0">Chưa có chương trình nào được ghi nhận số suất thực tế.</p>
                     @endif
                 </div>
             </section>

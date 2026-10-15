@@ -26,7 +26,7 @@ class Charts
 
     /**
      * Chia khoảng [$from, $to] thành các nhóm: ≤ 14 ngày → theo ngày, ≤ 120 ngày → theo tuần (bắt đầu thứ Hai),
-     * dài hơn → theo tháng. Mọi nhóm đều có mặt (kể cả nhóm không có đợt nào) để trục thời gian liên tục.
+     * dài hơn → theo tháng. Mọi nhóm đều có mặt (kể cả nhóm không có chương trình nào) để trục thời gian liên tục.
      *
      * @param  CarbonInterface  $from  đầu khoảng
      * @param  CarbonInterface  $to  cuối khoảng

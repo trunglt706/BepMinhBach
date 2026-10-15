@@ -175,7 +175,7 @@ class PublicHomeTest extends TestCase
 
     public function test_post_detail_has_no_top_cover_but_keeps_share_image_and_lazy_album(): void
     {
-        $batch = CookingBatch::factory()->create(['name' => 'Đợt có bài']);
+        $batch = CookingBatch::factory()->create(['name' => 'Chương trình có bài']);
         $post = Post::factory()->published()->create(['cooking_batch_id' => $batch->id]);
         $this->image($post, PostImage::COVER, 'posts/2026/10/cover');
         $this->image($post, PostImage::GALLERY, 'posts/2026/10/album1');
@@ -186,8 +186,8 @@ class PublicHomeTest extends TestCase
         $this->assertStringNotContainsString('class="post-cover"', $html);
         $this->assertDoesNotMatchRegularExpression('/<img[^>]*cover-(480|960|1600)\.webp/', $html);
         $this->assertStringContainsString('<meta property="og:image" content="'.asset('uploads/posts/2026/10/cover-1600.webp').'">', $html);
-        // Breadcrumb đợt nấu dẫn tới URL mã hash của đợt
-        $this->assertMatchesRegularExpression('#<li class="breadcrumb-item"><a href="'.preg_quote(route('blog.batch', $batch), '#').'">Đợt có bài</a></li>#u', $html);
+        // Breadcrumb chương trình dẫn tới URL mã hash của chương trình
+        $this->assertMatchesRegularExpression('#<li class="breadcrumb-item"><a href="'.preg_quote(route('blog.batch', $batch), '#').'">Chương trình có bài</a></li>#u', $html);
         $this->assertStringNotContainsString('?dot=', $html);
         $this->assertStringContainsString('data-src="'.asset('uploads/posts/2026/10/album1-480.webp').'"', $html);
         $this->assertStringContainsString('bi-zoom-in', $html);

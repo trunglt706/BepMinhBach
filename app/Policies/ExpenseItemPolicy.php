@@ -6,9 +6,23 @@ use App\Models\ExpenseItem;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-/** Quyền trên khoản chi: theo quyền quản lý chi phí của đợt nấu chứa khoản chi. */
+/** Quyền trên khoản chi: theo quyền quản lý chi phí của chương trình chứa khoản chi. */
 class ExpenseItemPolicy
 {
+    /**
+     * Phạm vi dữ liệu: phải được xem chương trình chứa khoản chi (CookingBatch::isVisibleTo), không thì 404.
+     *
+     * @param  User  $user  người đăng nhập
+     * @param  string  $ability  tên quyền
+     * @param  mixed  ...$arguments  đối số (khoản chi)
+     */
+    public function before(User $user, string $ability, mixed ...$arguments): ?Response
+    {
+        $expense = $arguments[0] ?? null;
+
+        return $expense instanceof ExpenseItem && ! $expense->batch->isVisibleTo($user) ? Response::denyAsNotFound() : null;
+    }
+
     /**
      * Sửa khoản chi (xem CookingBatchPolicy::manageExpenses).
      *

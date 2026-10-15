@@ -2,10 +2,14 @@
 
 namespace App\Enums;
 
-/** Trạng thái bài viết: bản nháp (chỉ người quản lý thấy) hoặc đã đăng (công khai). */
+/**
+ * Trạng thái bài viết: bản nháp → chờ duyệt (tác giả gửi) → đã đăng (quản trị viên duyệt).
+ * Chỉ "Đã đăng" hiện ở trang công khai.
+ */
 enum PostStatus: string
 {
     case Draft = 'draft';
+    case Pending = 'pending';
     case Published = 'published';
 
     /**
@@ -15,16 +19,22 @@ enum PostStatus: string
     {
         return match ($this) {
             self::Draft => 'Bản nháp',
+            self::Pending => 'Chờ duyệt',
             self::Published => 'Đã đăng',
         };
     }
 
     /**
-     * Lớp CSS của nhãn: dùng lại màu nhãn trạng thái đợt nấu (nháp = xám, đã đăng = xanh như "đã hoàn tất").
+     * Lớp CSS của nhãn: dùng lại màu nhãn trạng thái chương trình
+     * (nháp = xám, chờ duyệt = xanh dương như "đã lên kế hoạch", đã đăng = xanh lá như "đã hoàn tất").
      */
     public function badgeClass(): string
     {
-        $look = $this === self::Draft ? BatchStatus::Draft : BatchStatus::Completed;
+        $look = match ($this) {
+            self::Draft => BatchStatus::Draft,
+            self::Pending => BatchStatus::Planned,
+            self::Published => BatchStatus::Completed,
+        };
 
         return $look->badgeClass();
     }
@@ -34,6 +44,10 @@ enum PostStatus: string
      */
     public function icon(): string
     {
-        return $this === self::Draft ? 'bi-pencil' : 'bi-globe2';
+        return match ($this) {
+            self::Draft => 'bi-pencil',
+            self::Pending => 'bi-hourglass-split',
+            self::Published => 'bi-globe2',
+        };
     }
 }

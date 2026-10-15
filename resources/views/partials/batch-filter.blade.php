@@ -1,5 +1,5 @@
 {{--
-    Bộ lọc đợt nấu, giữ giá trị sau khi gửi.
+    Bộ lọc chương trình, giữ giá trị sau khi gửi.
     Biến: $filter, $action, $submitLabel, $statusMode ('chips' = chip phía trên, 'select' = ô chọn trong form)
 --}}
 @php
@@ -20,7 +20,7 @@
     </nav>
 @endif
 
-<form method="GET" action="{{ $action }}" class="card card-body mb-3" role="search" aria-label="Lọc đợt nấu">
+<form method="GET" action="{{ $action }}" class="card card-body mb-3" role="search" aria-label="Lọc chương trình">
     @if($statusMode === 'chips' && $filter->status)
         <input type="hidden" name="status" value="{{ $filter->status->value }}">
     @endif

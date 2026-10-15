@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * Kênh nhận thông báo của đợt nấu. Mỗi kênh có bộ thông số riêng (fields) và mẫu link tham gia hợp lệ.
+ * Kênh nhận thông báo của chương trình. Mỗi kênh có bộ thông số riêng (fields) và mẫu link tham gia hợp lệ.
  * Chỉ gửi tới địa chỉ cố định của từng dịch vụ (không cho nhập URL tùy ý → không bị lợi dụng gọi vào mạng nội bộ).
  */
 enum NotificationDriver: string

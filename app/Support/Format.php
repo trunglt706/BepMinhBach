@@ -8,8 +8,8 @@ use DateTimeInterface;
 /** Định dạng hiển thị kiểu Việt Nam. */
 class Format
 {
-    /** Chữ hiển thị khi chưa có giá trị (khác với 0). */
-    public const NOT_ENTERED = 'Chưa nhập';
+    /** Chữ hiển thị khi số liệu chưa có (khác với 0). */
+    public const NOT_ENTERED = '—';
 
     /** Chữ hiển thị cho ngày/số lượng trống. */
     public const EMPTY = '—';
@@ -17,7 +17,7 @@ class Format
     private const WEEKDAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
 
     /**
-     * Số tiền VND: 1500000 → "1.500.000 đ"; null → "Chưa nhập".
+     * Số tiền VND: 1500000 → "1.500.000 đ"; null → "—".
      *
      * @param  int|null  $amount  số tiền (đồng)
      */
@@ -65,6 +65,16 @@ class Format
         }
 
         return rtrim(rtrim(number_format((float) $value, 3, '.', ''), '0'), '.');
+    }
+
+    /**
+     * Giá trị cho ô số lượng tự định dạng trong form: "1500.250" → "1.500,25"; null → "".
+     *
+     * @param  mixed  $value  số (chuỗi decimal từ DB hoặc số)
+     */
+    public static function quantityField(mixed $value): string
+    {
+        return $value === null || $value === '' ? '' : self::quantity($value);
     }
 
     /**

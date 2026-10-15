@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Công việc trong checklist của một đợt nấu.
+ * Công việc trong checklist của một chương trình.
  *
  * @property TaskStatus $status
  */
@@ -42,7 +42,7 @@ class Task extends Model
     }
 
     /**
-     * Đợt nấu chứa công việc.
+     * Chương trình chứa công việc.
      *
      * @return BelongsTo<CookingBatch, $this>
      */

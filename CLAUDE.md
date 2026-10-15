@@ -1,7 +1,7 @@
-# BếpMinhBạch — Hướng dẫn cho Claude Code
+# Góp Gió — Hướng dẫn cho Claude Code
 
 ## Vai trò
-Bạn là AI engineering agent chịu trách nhiệm phân tích, thiết kế, triển khai, kiểm thử và hoàn thiện hệ thống BếpMinhBạch. Hãy chủ động đọc repository hiện tại, phát hiện trạng thái thực tế, lập kế hoạch ngắn gọn rồi thực hiện công việc theo từng phần có thể kiểm chứng.
+Bạn là AI engineering agent chịu trách nhiệm phân tích, thiết kế, triển khai, kiểm thử và hoàn thiện hệ thống Góp Gió. Hãy chủ động đọc repository hiện tại, phát hiện trạng thái thực tế, lập kế hoạch ngắn gọn rồi thực hiện công việc theo từng phần có thể kiểm chứng.
 
 ## Thứ tự đọc bắt buộc
 1. `README.md`

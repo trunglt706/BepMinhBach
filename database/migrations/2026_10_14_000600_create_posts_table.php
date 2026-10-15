@@ -16,7 +16,7 @@ return new class extends Migration
             $table->text('body');
             $table->string('status', 20)->default('draft');
             $table->timestamp('published_at')->nullable();
-            // Không bắt buộc thuộc đợt nấu. Đợt bị xóa (chỉ đợt nháp) thì bài viết vẫn giữ, chỉ bỏ liên kết.
+            // Không bắt buộc thuộc chương trình. Chương trình bị xóa (chỉ chương trình nháp) thì bài viết vẫn giữ, chỉ bỏ liên kết.
             $table->foreignId('cooking_batch_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('author_id')->constrained('users')->restrictOnDelete();
             $table->timestamps();

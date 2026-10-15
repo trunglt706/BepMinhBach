@@ -16,17 +16,18 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Throwable;
 
-/** Đợt nấu: danh sách, tạo/sửa/xóa (nháp), trang chi tiết và bản in checklist. */
+/** Chương trình: danh sách, tạo/sửa/xóa (nháp), trang chi tiết và bản in checklist. */
 class CookingBatchController extends Controller
 {
     /**
-     * Danh sách đợt nấu có lọc và phân trang.
+     * Danh sách chương trình có lọc và phân trang.
      *
      * @param  BatchFilterRequest  $request  bộ lọc đã chuẩn hóa (giá trị lạ bị bỏ qua)
      */
@@ -36,7 +37,7 @@ class CookingBatchController extends Controller
 
         $filter = $request->filter();
 
-        $batches = $filter->apply(CookingBatch::query())
+        $batches = $filter->apply(CookingBatch::visibleTo(Auth::user()))
             ->with('coordinator:id,name')
             ->withTaskProgress()
             ->orderByDesc('starts_on')
@@ -47,7 +48,7 @@ class CookingBatchController extends Controller
     }
 
     /**
-     * Form tạo đợt nấu (người tạo là điều phối viên mặc định).
+     * Form tạo chương trình (người tạo là điều phối viên mặc định).
      */
     public function create(): View
     {
@@ -60,8 +61,8 @@ class CookingBatchController extends Controller
     }
 
     /**
-     * Tạo đợt nấu ở trạng thái nháp hoặc đã lên kế hoạch.
-     * Đợt mới có trang riêng nên AJAX cũng chuyển sang trang đó (một lần), thông báo được flash.
+     * Tạo chương trình ở trạng thái nháp hoặc đã lên kế hoạch.
+     * Chương trình mới có trang riêng nên AJAX cũng chuyển sang trang đó (một lần), thông báo được flash.
      *
      * @param  CookingBatchRequest  $request  dữ liệu đã kiểm tra (save_as ∈ {nháp, kế hoạch})
      */
@@ -77,21 +78,38 @@ class CookingBatchController extends Controller
             $this->fillCover($batch, $cover);
             $batch->save();
 
-            ActivityLog::record($batch, $request->user(), ActivityAction::BatchCreated, 'Tạo đợt nấu ('.$batch->status->label().').');
+            ActivityLog::record($batch, $request->user(), ActivityAction::BatchCreated, 'Tạo chương trình ('.$batch->status->label().').');
 
             return $batch;
         });
 
+        if (! $batch->isVisibleTo($request->user())) {
+            return $this->handedOver($request, $batch);
+        }
         $show = route('batches.show', $batch);
 
-        return $this->done($request, redirect($show), 'Đã lưu đợt nấu. Tiếp theo: thêm nguyên liệu và công việc.', ['redirect' => $show]);
+        return $this->done($request, redirect($show), 'Đã lưu chương trình. Tiếp theo: thêm nguyên liệu và công việc.', ['redirect' => $show]);
     }
 
     /**
-     * Trang chi tiết đợt: công việc, nguyên liệu, số suất; chi phí và lịch sử chỉ cho người xem được tài chính.
+     * Điều phối viên vừa giao chương trình cho người khác: không còn xem được chương trình → về danh sách thay vì trang 404.
+     *
+     * @param  Request  $request  yêu cầu hiện tại
+     * @param  CookingBatch  $batch  chương trình
+     */
+    private function handedOver(Request $request, CookingBatch $batch): JsonResponse|RedirectResponse
+    {
+        $index = route('batches.index');
+
+        return $this->done($request, redirect($index), 'Đã lưu và giao chương trình “'.$batch->name.'” cho '
+            .($batch->coordinator()->value('name') ?? 'người điều phối khác').'. Bạn không còn xem được chương trình này.', ['redirect' => $index]);
+    }
+
+    /**
+     * Trang chi tiết chương trình: công việc, nguyên liệu, số suất; chi phí và lịch sử chỉ cho người xem được tài chính.
      *
      * @param  Request  $request  yêu cầu hiện tại (lấy người dùng)
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function show(Request $request, CookingBatch $batch): View
     {
@@ -127,9 +145,9 @@ class CookingBatchController extends Controller
     }
 
     /**
-     * Form sửa thông tin đợt.
+     * Form sửa thông tin chương trình.
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function edit(CookingBatch $batch): View
     {
@@ -142,10 +160,10 @@ class CookingBatchController extends Controller
     }
 
     /**
-     * Lưu thông tin đợt; chỉ ghi log khi thực sự có thay đổi (không ghi nội dung ghi chú).
+     * Lưu thông tin chương trình; chỉ ghi log khi thực sự có thay đổi (không ghi nội dung ghi chú).
      *
      * @param  CookingBatchRequest  $request  dữ liệu đã kiểm tra + quyền update
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function update(CookingBatchRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
@@ -162,7 +180,7 @@ class CookingBatchController extends Controller
             $batch->save();
 
             if ($changed) {
-                ActivityLog::record($batch, $request->user(), ActivityAction::BatchUpdated, 'Sửa thông tin đợt nấu.');
+                ActivityLog::record($batch, $request->user(), ActivityAction::BatchUpdated, 'Sửa thông tin chương trình.');
             }
             // Ảnh nền cũ chỉ bị xóa khi giao dịch thành công.
             if ($replaceCover && $old) {
@@ -170,14 +188,18 @@ class CookingBatchController extends Controller
             }
         });
 
+        if (! $batch->isVisibleTo($request->user())) {
+            return $this->handedOver($request, $batch);
+        }
+
         return $this->done($request, redirect()->route('batches.show', $batch), 'Đã lưu thay đổi.');
     }
 
     /**
-     * Xóa đợt nháp chưa có dữ liệu (xem CookingBatchPolicy::delete). Bài viết gắn với đợt chỉ bị bỏ liên kết.
+     * Xóa chương trình nháp chưa có dữ liệu (xem CookingBatchPolicy::delete). Bài viết gắn với chương trình chỉ bị bỏ liên kết.
      *
      * @param  Request  $request  yêu cầu (không có dữ liệu nhập)
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function destroy(Request $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
@@ -187,13 +209,13 @@ class CookingBatchController extends Controller
 
         $index = route('batches.index');
 
-        return $this->done($request, redirect($index), 'Đã xóa đợt nấu nháp “'.$batch->name.'”.', ['redirect' => $index]);
+        return $this->done($request, redirect($index), 'Đã xóa chương trình nháp “'.$batch->name.'”.', ['redirect' => $index]);
     }
 
     /**
      * Bản in checklist A4 (dùng khi mất mạng trong bếp).
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function print(CookingBatch $batch): View
     {
@@ -246,9 +268,9 @@ class CookingBatchController extends Controller
     }
 
     /**
-     * Gán (hoặc xóa khi null) thông tin ảnh nền cho đợt.
+     * Gán (hoặc xóa khi null) thông tin ảnh nền cho chương trình.
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      * @param  array{path: string, widths: list<int>, width: int, height: int}|null  $cover  ảnh đã xử lý
      */
     private function fillCover(CookingBatch $batch, ?array $cover): void

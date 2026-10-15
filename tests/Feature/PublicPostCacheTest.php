@@ -47,7 +47,7 @@ class PublicPostCacheTest extends TestCase
 
     public function test_editing_post_or_batch_refreshes_cached_pages(): void
     {
-        $coordinator = User::factory()->coordinator()->create();
+        $coordinator = User::factory()->admin()->create();
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create(['distributed_servings' => null]);
         $post = Post::factory()->published()->create(['title' => 'Tiêu đề cũ', 'cooking_batch_id' => $batch->id]);
 
@@ -64,12 +64,12 @@ class PublicPostCacheTest extends TestCase
         $this->get("/bai-viet/{$post->slug}")->assertSee('Tiêu đề mới')->assertSee('#mới');
         $this->get('/')->assertSee('Tiêu đề mới')->assertDontSee('Tiêu đề cũ');
 
-        // Đợt nấu cập nhật số suất → khung "Thuộc đợt nấu" cập nhật
+        // Chương trình cập nhật số suất → khung "Thuộc chương trình" cập nhật
         $batch->forceFill(['distributed_servings' => 4321])->save();
         $this->get("/bai-viet/{$post->slug}")->assertSee('4.321');
 
         // Gỡ bài → không còn trong danh sách đã lưu đệm
-        $this->actingAs($coordinator)->postJson("/admin/posts/{$post->id}/publish")->assertOk();
+        $this->actingAs($coordinator)->postJson("/admin/posts/{$post->id}/unpublish")->assertOk();
         auth()->guard('web')->logout();
         $this->get('/')->assertDontSee('Tiêu đề mới');
         $this->get("/bai-viet/{$post->slug}")->assertNotFound();

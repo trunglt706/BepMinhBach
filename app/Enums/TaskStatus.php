@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-/** Trạng thái công việc trong checklist của đợt nấu. */
+/** Trạng thái công việc trong checklist của chương trình. */
 enum TaskStatus: string
 {
     case Todo = 'todo';

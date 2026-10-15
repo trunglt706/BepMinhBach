@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use App\Enums\ContactTopic;
 use App\Http\Requests\ContactRequest;
 use App\Models\ContactMessage;
+use App\Support\Mask;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-/** Trang liên hệ công khai: khách gửi lời nhắn cho đội bếp (1 liên hệ / client / ngày). */
+/** Trang liên hệ công khai: khách gửi lời nhắn cho đội Góp Gió (1 liên hệ / client / ngày). */
 class PublicContactController extends Controller
 {
     /**
@@ -42,7 +43,9 @@ class PublicContactController extends Controller
             'sent_on' => today(),
         ]);
 
+        // Xác nhận lại bằng thông tin liên lạc đã che (không in đầy đủ email/số điện thoại ra trang).
         return redirect()->route('contact.create')
-            ->with('success', 'Cảm ơn bạn! Đội bếp đã nhận được lời nhắn và sẽ liên hệ lại sớm.');
+            ->with('success', 'Cảm ơn bạn! Đội Góp Gió đã nhận được lời nhắn và sẽ liên hệ lại qua '
+                .Mask::contact($request->input('contact')).' sớm.');
     }
 }

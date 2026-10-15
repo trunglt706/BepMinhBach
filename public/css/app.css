@@ -901,7 +901,7 @@ a.stat:hover {
     gap: .5rem;
     overflow-x: auto;
     padding-bottom: .25rem;
-    scrollbar-width: thin;
+    scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 }
 .chip {
@@ -3457,4 +3457,152 @@ input.form-control.input {
     background-repeat: no-repeat;
     background-position: right .65rem center;
     background-size: 15px 15px;
+}
+
+/* Nút "Hôm nay" dưới lịch chọn ngày */
+.flatpickr-footer {
+    display: flex;
+    justify-content: center;
+    padding: .5rem;
+    border-top: 1px solid var(--bmb-border);
+}
+.flatpickr-footer .btn {
+    min-height: 38px;
+}
+
+/* Menu/tab cuộn ngang: vẫn vuốt được nhưng ẩn thanh cuộn (gọn trên điện thoại) */
+.segmented,
+.chip-row {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.segmented::-webkit-scrollbar,
+.chip-row::-webkit-scrollbar {
+    display: none;
+}
+
+/* Bộ lọc báo cáo trên điện thoại: thu gọn sau nút phễu, bấm mới hiện form */
+@media (max-width: 767.98px) {
+    .is-collapsible:not(.is-open) {
+        display: none;
+    }
+    .page-actions > .btn-icon {
+        flex: 0 0 auto;
+    }
+}
+.filter-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bmb-amber-600);
+}
+
+/* Thẻ thu gọn được (trang chủ: "Cần xử lý") — mặc định đóng, bấm tiêu đề để mở */
+.collapsible-card > summary {
+    list-style: none;
+    cursor: pointer;
+    border-bottom: 0;
+}
+.collapsible-card > summary::-webkit-details-marker {
+    display: none;
+}
+.collapsible-card[open] > summary {
+    border-bottom: 1px solid var(--bmb-border);
+}
+.collapsible-card > summary:focus-visible {
+    outline: 3px solid rgba(27, 99, 67, .35);
+    outline-offset: -3px;
+    border-radius: var(--bmb-radius);
+}
+.collapsible-chevron {
+    transition: transform .2s ease;
+}
+.collapsible-card[open] .collapsible-chevron {
+    transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+    .collapsible-chevron {
+        transition: none;
+    }
+}
+
+/* Danh sách quản lý (tài khoản): phần chính co giãn; điện thoại: các nút xuống dòng dưới cùng, nằm ngang hàng */
+.row-main {
+    flex: 1 1 0;
+}
+@media (max-width: 575.98px) {
+    .row-actions {
+        width: 100%;
+    }
+    .row-actions > .btn,
+    .row-actions > form {
+        flex: 1 1 0;
+    }
+    .user-pills {
+        flex-wrap: nowrap;
+    }
+}
+
+/* Bài viết: người viết + lượt xem luôn cùng một dòng */
+.meta-inline > .meta-pair {
+    gap: 1rem;
+    white-space: nowrap;
+}
+
+/* Liên hệ công khai trên điện thoại: chủ đề cuộn ngang một hàng, ẩn thanh cuộn */
+@media (max-width: 575.98px) {
+    .topic-options {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        padding: 4px 2px;          /* chừa chỗ cho viền focus */
+        margin: -4px -2px;
+    }
+    .topic-options::-webkit-scrollbar {
+        display: none;
+    }
+    .topic-option {
+        flex: 0 0 auto;
+    }
+    .topic-option-body {
+        white-space: nowrap;
+    }
+}
+
+/* Nút "Lên đầu trang" (trang công khai): hiện khi đã cuộn xuống */
+.back-to-top {
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    z-index: 1030;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+    opacity: 0;
+    transform: translateY(12px);
+    visibility: hidden; /* ẩn thì cũng không nhận Tab */
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease, visibility .2s;
+}
+.back-to-top.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+    .back-to-top {
+        transition: none;
+    }
+}
+@media print {
+    .back-to-top {
+        display: none !important;
+    }
 }

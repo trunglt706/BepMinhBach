@@ -19,6 +19,7 @@ class ResultsAndExpensesTest extends TestCase
     {
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create(['expected_servings' => 150]);
         $recorder = User::factory()->recorder()->create();
+        $this->assignToBatch($batch, $recorder);
 
         $this->actingAs($recorder)->put("/admin/batches/{$batch->id}/results", [
             'prepared_servings' => '148',
@@ -56,6 +57,7 @@ class ResultsAndExpensesTest extends TestCase
     {
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $recorder = User::factory()->recorder()->create();
+        $this->assignToBatch($batch, $recorder);
 
         $this->actingAs($recorder)->put("/admin/batches/{$batch->id}/results", [
             'prepared_servings' => '-1', 'distributed_servings' => '10.5', 'results_version' => '0',
@@ -68,6 +70,7 @@ class ResultsAndExpensesTest extends TestCase
     {
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $recorder = User::factory()->recorder()->create();
+        $this->assignToBatch($batch, $recorder);
         $batch->forceFill(['prepared_servings' => 50, 'results_version' => 3])->save();
 
         $this->actingAs($recorder)->put("/admin/batches/{$batch->id}/results", [
@@ -82,6 +85,7 @@ class ResultsAndExpensesTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $expense = ExpenseItem::factory()->for($batch, 'batch')->create(['name' => 'Khoản bí mật']);
         $volunteer = User::factory()->volunteer()->create();
+        $this->assignToBatch($batch, $volunteer);
 
         $this->actingAs($volunteer)->get("/admin/batches/{$batch->id}/results")->assertForbidden();
         $this->actingAs($volunteer)->put("/admin/batches/{$batch->id}/results", ['prepared_servings' => 5, 'results_version' => 0])->assertForbidden();
@@ -103,6 +107,7 @@ class ResultsAndExpensesTest extends TestCase
     {
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $recorder = User::factory()->recorder()->create();
+        $this->assignToBatch($batch, $recorder);
 
         $this->actingAs($recorder)->post("/admin/batches/{$batch->id}/expenses", [
             'name' => 'Rau củ', 'amount_vnd' => '350.000', 'note' => 'Chợ sáng',
@@ -118,6 +123,7 @@ class ResultsAndExpensesTest extends TestCase
     {
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $recorder = User::factory()->recorder()->create();
+        $this->assignToBatch($batch, $recorder);
 
         foreach (['-1000', 'abc', '12,5', ''] as $amount) {
             $this->actingAs($recorder)->post("/admin/batches/{$batch->id}/expenses", ['name' => 'Gas', 'amount_vnd' => $amount])
@@ -131,6 +137,7 @@ class ResultsAndExpensesTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $expense = ExpenseItem::factory()->for($batch, 'batch')->create(['amount_vnd' => 1000]);
         $recorder = User::factory()->recorder()->create();
+        $this->assignToBatch($batch, $recorder);
 
         $this->actingAs($recorder)->put("/admin/expenses/{$expense->id}", ['name' => 'Gas', 'amount_vnd' => '2000'])->assertRedirect();
         $this->assertSame(2000, $expense->fresh()->amount_vnd);
@@ -145,9 +152,10 @@ class ResultsAndExpensesTest extends TestCase
     {
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $recorder = User::factory()->recorder()->create();
+        $this->assignToBatch($batch, $recorder);
 
         $this->actingAs($recorder)->get("/admin/batches/{$batch->id}")
-            ->assertSeeInOrder(['Thực tế đã nhập', 'Chưa nhập']);
+            ->assertSeeInOrder(['Thực tế đã nhập', '<span class="hbar-value is-empty">—</span>'], false);
 
         ExpenseItem::factory()->for($batch, 'batch')->create(['amount_vnd' => 0]);
         $this->actingAs($recorder)->get("/admin/batches/{$batch->id}")
@@ -157,5 +165,31 @@ class ResultsAndExpensesTest extends TestCase
         ExpenseItem::factory()->for($batch, 'batch')->create(['amount_vnd' => 300_000]);
         $this->actingAs($recorder)->get("/admin/batches/{$batch->id}")
             ->assertSeeInOrder(['Thực tế đã nhập', '1.550.000 đ']);
+    }
+
+    public function test_servings_accept_thousand_separator_and_distributed_cannot_exceed_prepared(): void
+    {
+        $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create(['expected_servings' => 2000]);
+        $recorder = User::factory()->recorder()->create();
+        $this->assignToBatch($batch, $recorder);
+
+        $this->actingAs($recorder)->put("/admin/batches/{$batch->id}/results", [
+            'prepared_servings' => '1.200', 'distributed_servings' => '1.250', 'results_version' => '0',
+        ])->assertSessionHasErrors(['distributed_servings' => 'Số suất đã phân phát không được vượt quá số đã chuẩn bị (1.200).']);
+        $this->assertNull($batch->fresh()->prepared_servings);
+
+        // Chưa nhập số chuẩn bị: vẫn cho nhập số phân phát
+        $this->actingAs($recorder)->put("/admin/batches/{$batch->id}/results", [
+            'prepared_servings' => '', 'distributed_servings' => '1.000', 'results_version' => '0',
+        ])->assertSessionHasNoErrors()->assertRedirect(route('batches.show', $batch).'#ket-qua');
+        $this->assertSame(1000, $batch->fresh()->distributed_servings);
+
+        $this->actingAs($recorder)->put("/admin/batches/{$batch->id}/results", [
+            'prepared_servings' => '1.200', 'distributed_servings' => '1.200', 'results_version' => '1',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(1200, $batch->fresh()->prepared_servings);
+
+        $this->actingAs($recorder)->get("/admin/batches/{$batch->id}/results")
+            ->assertSee('value="1.200"', false)->assertSee('data-money', false);
     }
 }

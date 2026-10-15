@@ -1,6 +1,6 @@
 <x-form-shell :title="'Sửa công việc “'.$task->title.'”'" :subtitle="$batch->name"
               :action="route('tasks.update', $task)" method="PUT"
-              :back="route('batches.show', $batch).'#cong-viec'" back-label="Quay lại đợt nấu">
+              :back="route('batches.show', $batch).'#cong-viec'" back-label="Quay lại chương trình">
     <x-slot:before>
         <div class="callout callout-muted mb-3">
             <i class="bi bi-info-circle" aria-hidden="true"></i>

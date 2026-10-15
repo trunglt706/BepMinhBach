@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
-/** Hủy đợt nấu (giữ dữ liệu) — bắt buộc tick xác nhận. */
+/** Hủy chương trình (giữ dữ liệu) — bắt buộc tick xác nhận. */
 class BatchCancelRequest extends FormRequest
 {
     /**
@@ -34,7 +34,7 @@ class BatchCancelRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['confirm.accepted' => 'Vui lòng đánh dấu ô xác nhận trước khi hủy đợt.'];
+        return ['confirm.accepted' => 'Vui lòng đánh dấu ô xác nhận trước khi hủy chương trình.'];
     }
 
     /**

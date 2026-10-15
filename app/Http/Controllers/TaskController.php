@@ -10,6 +10,7 @@ use App\Models\ActivityLog;
 use App\Models\CookingBatch;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\TaskAssignedNotification;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -18,13 +19,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
-/** Công việc (checklist) của đợt nấu và cập nhật nhanh trạng thái. */
+/** Công việc (checklist) của chương trình và cập nhật nhanh trạng thái. */
 class TaskController extends Controller
 {
     /**
      * Form thêm công việc.
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function create(CookingBatch $batch): View
     {
@@ -41,7 +42,7 @@ class TaskController extends Controller
      * Thêm công việc; "Lưu và thêm tiếp" giữ modal mở.
      *
      * @param  TaskRequest  $request  dữ liệu đã kiểm tra + quyền manageChecklist
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function store(TaskRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
@@ -52,6 +53,7 @@ class TaskController extends Controller
             ActivityLog::record($batch, $request->user(), ActivityAction::TaskCreated,
                 'Thêm việc “'.$task->title.'”'.($task->assignee_id ? ' (có người phụ trách).' : '.'),
                 'Thêm việc “'.$task->title.'”'.$this->assigneeText($task).$this->dueText($task).'.');
+            $this->notifyAssignee($task, $request->user());
         });
 
         if ($request->boolean('add_another')) {
@@ -88,14 +90,22 @@ class TaskController extends Controller
         DB::transaction(function () use ($task, $request) {
             $task->fill($request->validated());
             $reassigned = $task->isDirty('assignee_id');
+            // Đổi tên/hạn được báo riêng; ghi chú (chữ tự do) không gửi ra kênh.
+            $edited = $task->isDirty(['title', 'due_at']);
+            $oldTitle = $task->getOriginal('title');
             $task->save();
 
+            if ($edited) {
+                ActivityLog::record($task->batch, $request->user(), ActivityAction::TaskUpdated,
+                    'Sửa việc “'.$task->title.'”'.($oldTitle !== $task->title ? ' (trước đây: “'.$oldTitle.'”)' : '').$this->dueText($task).'.');
+            }
             if ($reassigned) {
                 ActivityLog::record($task->batch, $request->user(), ActivityAction::TaskAssigned,
                     $task->assignee_id ? 'Đổi người phụ trách việc “'.$task->title.'”.' : 'Bỏ người phụ trách việc “'.$task->title.'”.',
                     $task->assignee_id
                         ? 'Giao việc “'.$task->title.'”'.$this->assigneeText($task).$this->dueText($task).'.'
                         : 'Việc “'.$task->title.'” chưa có người phụ trách.');
+                $this->notifyAssignee($task, $request->user());
             }
         });
 
@@ -112,7 +122,10 @@ class TaskController extends Controller
     {
         Gate::authorize('delete', $task);
 
-        $task->delete();
+        DB::transaction(function () use ($task, $request) {
+            $task->delete();
+            ActivityLog::record($task->batch, $request->user(), ActivityAction::TaskDeleted, 'Xóa việc “'.$task->title.'”.');
+        });
 
         return $this->done($request, redirect()->route('batches.show', $task->cooking_batch_id)->withFragment('cong-viec'), 'Đã xóa việc “'.$task->title.'”.');
     }
@@ -127,13 +140,17 @@ class TaskController extends Controller
     public function updateStatus(TaskStatusRequest $request, Task $task): JsonResponse|RedirectResponse
     {
         $status = $request->status();
-        $task->applyStatus($status, $request->user(), $request->validated('blocked_note'));
-        $task->save();
+        $previous = $task->status;
+        DB::transaction(function () use ($task, $status, $previous, $request) {
+            $task->applyStatus($status, $request->user(), $request->validated('blocked_note'));
+            $task->save();
 
-        if (in_array($status, [TaskStatus::Done, TaskStatus::Blocked], true)) {
-            ActivityLog::record($task->batch, $request->user(), ActivityAction::TaskStatusChanged,
-                'Việc “'.$task->title.'”: '.$status->label().'.');
-        }
+            // Mọi lần đổi trạng thái thật sự đều ghi lịch sử + báo kênh (bấm lại đúng trạng thái cũ thì thôi).
+            if ($previous !== $status) {
+                ActivityLog::record($task->batch, $request->user(), ActivityAction::TaskStatusChanged,
+                    'Việc “'.$task->title.'”: '.$status->label().'.');
+            }
+        });
 
         $message = match ($status) {
             TaskStatus::Done => 'Đã đánh dấu hoàn thành “'.$task->title.'”.',
@@ -156,6 +173,19 @@ class TaskController extends Controller
             ->when($currentId, fn ($q) => $q->orWhere('id', $currentId))
             ->orderBy('name')
             ->get(['id', 'name', 'role', 'is_active']);
+    }
+
+    /**
+     * Ghi thông báo "được giao việc" cho người phụ trách (không gửi khi tự giao cho mình).
+     *
+     * @param  Task  $task  công việc
+     * @param  User  $by  người giao
+     */
+    private function notifyAssignee(Task $task, User $by): void
+    {
+        if ($task->assignee_id && $task->assignee_id !== $by->id) {
+            User::find($task->assignee_id)?->notify(new TaskAssignedNotification($task, $by->name));
+        }
     }
 
     /**

@@ -1,4 +1,4 @@
-# Product Requirements — BếpMinhBạch
+# Product Requirements — Góp Gió
 
 ## 1. Tầm nhìn
 Giúp bếp ăn thiện nguyện tổ chức từng đợt nấu ăn rõ ràng, dễ phối hợp, dễ tổng hợp và có thể đối chiếu với sổ ghi chép thực tế. Công cụ phục vụ điều phối nội bộ; không thay thế chuyên môn an toàn thực phẩm.
@@ -8,6 +8,8 @@ Giúp bếp ăn thiện nguyện tổ chức từng đợt nấu ăn rõ ràng, 
 - **Điều phối viên:** tạo/quản lý đợt nấu, nguyên liệu, công việc, số suất và báo cáo.
 - **Tình nguyện viên:** xem công việc được giao, cập nhật tiến độ, báo thiếu nguyên liệu.
 - **Người ghi nhận kết quả (Recorder):** nhập số suất hoàn thành/phân phát và chi phí thực tế.
+- **Phạm vi xem (15/10/2026):** điều phối viên chỉ xem đợt mình điều phối; người ghi nhận và tình nguyện viên chỉ xem
+  đợt có việc giao cho mình (kể cả thống kê, báo cáo). Quản trị viên xem mọi đợt. Chi tiết: SECURITY_PRIVACY.md.
 Có thể cho phép một tài khoản có nhiều quyền; tránh tạo nhiều vai trò nếu Policy/permission đơn giản đáp ứng được.
 
 ## 3. Mục tiêu và chỉ số thử nghiệm

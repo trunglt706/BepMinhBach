@@ -3,7 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title') · BếpMinhBạch</title>
+    <title>@yield('title') · Góp Gió</title>
+    <meta name="robots" content="noindex, nofollow">
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     @include('partials.head-assets')
 </head>
@@ -11,8 +12,8 @@
 <main class="container d-flex align-items-center justify-content-center" style="min-height: 100vh;">
     <div class="card card-body text-center p-4 p-md-5" style="max-width: 520px;">
         <a class="brand justify-content-center mb-4" href="{{ url('/') }}">
-            <span class="brand-mark"><i class="bi bi-egg-fried" aria-hidden="true"></i></span>
-            <span>Bếp<span class="brand-accent">MinhBạch</span></span>
+            <span class="brand-mark"><i class="bi bi-wind" aria-hidden="true"></i></span>
+            <span>Góp <span class="brand-accent">Gió</span></span>
         </a>
         <p class="text-body-secondary fw-semibold mb-1">Mã lỗi @yield('code')</p>
         <h1 class="h3">@yield('title')</h1>

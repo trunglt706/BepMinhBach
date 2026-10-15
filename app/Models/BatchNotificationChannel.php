@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Kênh thông báo của một đợt nấu. Mỗi đợt có tối đa một kênh cho mỗi loại (Slack/Telegram/Chatwork).
+ * Kênh thông báo của một chương trình. Mỗi chương trình có tối đa một kênh cho mỗi loại (Slack/Telegram/Chatwork).
  *
  * @property NotificationDriver $driver
  * @property array<string, string> $settings thông số kết nối (đã giải mã)
@@ -42,7 +42,7 @@ class BatchNotificationChannel extends Model
     }
 
     /**
-     * Đợt nấu của kênh.
+     * Chương trình của kênh.
      *
      * @return BelongsTo<CookingBatch, $this>
      */

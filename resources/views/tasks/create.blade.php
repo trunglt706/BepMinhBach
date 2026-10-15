@@ -1,6 +1,6 @@
 <x-form-shell title="Thêm công việc" :subtitle="$batch->name"
               :action="route('batches.tasks.store', $batch)"
-              :back="route('batches.show', $batch).'#cong-viec'" back-label="Quay lại đợt nấu">
+              :back="route('batches.show', $batch).'#cong-viec'" back-label="Quay lại chương trình">
     @include('tasks._form')
     <x-slot:actions>
         <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> Lưu công việc</button>

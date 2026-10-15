@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Đợt nấu chỉ cần NGÀY bắt đầu (yêu cầu 14/10/2026): starts_at (datetime) → starts_on (date).
+ * Chương trình chỉ cần NGÀY bắt đầu (yêu cầu 14/10/2026): starts_at (datetime) → starts_on (date).
  * Giữ nguyên ngày của dữ liệu cũ, bỏ phần giờ. Thêm cột mới → chép → xóa cột cũ (chạy được trên MySQL/MariaDB và SQLite).
  */
 return new class extends Migration

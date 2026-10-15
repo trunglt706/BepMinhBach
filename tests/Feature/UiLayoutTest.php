@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\BatchStatus;
 use App\Models\CookingBatch;
+use App\Models\Post;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,17 +18,17 @@ class UiLayoutTest extends TestCase
     {
         $expected = [
             BatchStatus::Draft->value => 'Chốt kế hoạch',
-            BatchStatus::Planned->value => 'Bắt đầu nấu',
-            BatchStatus::InProgress->value => 'Hoàn tất đợt',
-            BatchStatus::Completed->value => 'Mở lại đợt',
-            BatchStatus::Cancelled->value => 'Mở lại đợt',
+            BatchStatus::Planned->value => 'Bắt đầu thực hiện',
+            BatchStatus::InProgress->value => 'Hoàn tất chương trình',
+            BatchStatus::Completed->value => 'Mở lại chương trình',
+            BatchStatus::Cancelled->value => 'Mở lại chương trình',
         ];
 
         foreach ($expected as $status => $label) {
             $batch = CookingBatch::factory()->status(BatchStatus::from($status))->create();
             $this->actingAs($batch->coordinator)->get("/admin/batches/{$batch->id}")
                 ->assertOk()
-                ->assertSee('class="btn btn-'.($label === 'Mở lại đợt' ? 'outline-warning' : 'primary').'"', false)
+                ->assertSee('class="btn btn-'.($label === 'Mở lại chương trình' ? 'outline-warning' : 'primary').'"', false)
                 ->assertSee($label);
         }
     }
@@ -36,11 +37,13 @@ class UiLayoutTest extends TestCase
     {
         $batch = CookingBatch::factory()->create();
 
-        $this->actingAs(User::factory()->volunteer()->create())->get("/admin/batches/{$batch->id}")
+        $volunteer = User::factory()->volunteer()->create();
+        $this->assignToBatch($batch, $volunteer);
+        $this->actingAs($volunteer)->get("/admin/batches/{$batch->id}")
             ->assertOk()
-            ->assertDontSee('Bắt đầu nấu')
-            ->assertDontSee('Hủy đợt')
-            ->assertDontSee('Thao tác khác với đợt nấu')
+            ->assertDontSee('Bắt đầu thực hiện')
+            ->assertDontSee('Hủy chương trình')
+            ->assertDontSee('Thao tác khác với chương trình')
             ->assertSee('In checklist');
     }
 
@@ -49,7 +52,7 @@ class UiLayoutTest extends TestCase
         $html = $this->actingAs(User::factory()->create())->get('/admin')->assertOk()->getContent();
 
         // Cả nút ở sidebar (máy tính) lẫn menu tài khoản (điện thoại); không JS vẫn đăng xuất được bình thường
-        $this->assertSame(2, substr_count($html, 'action="'.route('logout').'" data-confirm="Bạn muốn đăng xuất khỏi BếpMinhBạch?" data-confirm-label="Đăng xuất"'));
+        $this->assertSame(2, substr_count($html, 'action="'.route('logout').'" data-confirm="Bạn muốn đăng xuất khỏi Góp Gió?" data-confirm-label="Đăng xuất"'));
     }
 
     public function test_navigation_shows_today_task_count_live_batches_and_role_based_items(): void
@@ -60,10 +63,10 @@ class UiLayoutTest extends TestCase
         CookingBatch::factory()->status(BatchStatus::InProgress)->create(['starts_on' => today()->subDay()]);
         CookingBatch::factory()->status(BatchStatus::Completed)->create();
 
-        // Tính: hạn hôm nay; không có hạn nhưng đợt diễn ra hôm nay
+        // Tính: hạn hôm nay; không có hạn nhưng chương trình diễn ra hôm nay
         Task::factory()->for($today, 'batch')->create(['assignee_id' => $volunteer->id, 'due_at' => today()->setTime(9, 0)]);
         Task::factory()->for($today, 'batch')->create(['assignee_id' => $volunteer->id, 'due_at' => null]);
-        // Không tính: đã xong, hạn ngày khác, đợt ngày khác không có hạn, việc của người khác
+        // Không tính: đã xong, hạn ngày khác, chương trình ngày khác không có hạn, việc của người khác
         Task::factory()->for($today, 'batch')->create(['assignee_id' => $volunteer->id, 'due_at' => today()->setTime(8, 0), 'status' => 'done']);
         Task::factory()->for($later, 'batch')->create(['assignee_id' => $volunteer->id, 'due_at' => today()->addDays(3)]);
         Task::factory()->for($later, 'batch')->create(['assignee_id' => $volunteer->id, 'due_at' => null]);
@@ -71,7 +74,7 @@ class UiLayoutTest extends TestCase
 
         $this->actingAs($volunteer)->get('/admin')
             ->assertSee('aria-label="2 việc của tôi hôm nay"', false)
-            ->assertSee('class="nav-badge is-live" aria-label="2 đợt đang diễn ra"', false)
+            ->assertSee('class="nav-badge is-live" aria-label="1 chương trình đang diễn ra"', false) // chỉ chương trình mình có việc
             ->assertDontSee('Quản lý tài khoản')
             ->assertDontSee(route('reports.index'));
 
@@ -97,6 +100,7 @@ class UiLayoutTest extends TestCase
     {
         $recorder = User::factory()->recorder()->create();
         $batch = CookingBatch::factory()->create();
+        $this->assignToBatch($batch, $recorder);
 
         $this->actingAs($recorder)->get('/admin/reports')->assertOk()
             ->assertSee('data-skeleton="table"', false)
@@ -124,5 +128,41 @@ class UiLayoutTest extends TestCase
         $this->actingAs(User::factory()->coordinator()->create())->get('/admin?days=90')
             ->assertOk()
             ->assertSee('class="active"  aria-current="true" >90 ngày qua', false);
+    }
+
+    public function test_admin_lists_have_mobile_filter_toggle_and_keep_filter_values(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        foreach ([
+            '/admin/contacts?q=Lan' => ['contact-filter', 'value="Lan"'],
+            '/admin/users?q=Lan&role=volunteer' => ['user-filter', 'value="Lan"'],
+            '/admin/posts?q=Lan' => ['post-filter', 'value="Lan"'],
+        ] as $url => [$target, $kept]) {
+            $this->actingAs($admin)->get($url)->assertOk()
+                ->assertSee('data-filter-toggle="'.$target.'"', false)
+                ->assertSee('id="'.$target.'"', false)
+                ->assertSee('class="filter-dot"', false)
+                ->assertSee($kept, false);
+        }
+
+        // Chưa lọc: nút phễu không có chấm báo
+        $this->actingAs($admin)->get('/admin/posts')->assertSee('data-filter-toggle="post-filter"', false)->assertDontSee('class="filter-dot"', false);
+    }
+
+    public function test_post_list_puts_publish_action_in_menu_on_mobile_and_user_actions_in_one_row(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Post::factory()->create(['title' => 'Bài thử bố cục']);
+        User::factory()->volunteer()->create(['name' => 'Người thử']);
+
+        $html = $this->actingAs($admin)->get('/admin/posts')->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('#<li class="d-sm-none">\s*<form method="POST" action="[^"]+/publish"[^>]*>.*?class="dropdown-item">.*?Đăng bài#s', $html);
+        $this->assertStringContainsString('class="d-block fw-semibold mb-1"', $html); // tiêu đề riêng một dòng
+        $this->assertMatchesRegularExpression('#<span class="meta-pair">\s*<span><i class="bi bi-person"#', $html);
+
+        $this->actingAs($admin)->get('/admin/users')->assertOk()
+            ->assertSee('class="d-flex gap-2 flex-shrink-0 row-actions"', false)
+            ->assertSee('user-pills', false);
     }
 }

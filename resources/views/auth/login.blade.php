@@ -20,18 +20,21 @@
             </div>
             @error('password')<div id="f_password_error" class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
-        <div class="form-check mb-4">
-            <input class="form-check-input" type="checkbox" name="remember" id="remember" value="1" @checked(old('remember'))>
-            <label class="form-check-label" for="remember">Ghi nhớ đăng nhập trên máy này</label>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+            <div class="form-check mb-0">
+                <input class="form-check-input" type="checkbox" name="remember" id="remember" value="1" @checked(old('remember'))>
+                <label class="form-check-label" for="remember">Ghi nhớ đăng nhập trên máy này</label>
+            </div>
+            <a href="{{ route('password.request') }}" class="small fw-semibold">Quên mật khẩu?</a>
         </div>
         <button type="submit" class="btn btn-primary btn-lg w-100" data-loading-text="Đang đăng nhập…">Đăng nhập</button>
     </form>
 
     <p class="text-center small text-body-secondary mt-4 mb-0">
         <i class="bi bi-question-circle" aria-hidden="true"></i>
-        Quên mật khẩu hoặc chưa có tài khoản? Liên hệ quản trị viên của bếp.
+        Chưa có tài khoản? Liên hệ quản trị viên Góp Gió. Không dùng “Ghi nhớ đăng nhập” trên máy dùng chung.
     </p>
     <p class="text-center small mt-2 mb-0">
-        <a href="{{ route('blog.index') }}" class="fw-semibold"><i class="bi bi-newspaper" aria-hidden="true"></i> Xem bài viết về các đợt nấu</a>
+        <a href="{{ route('blog.index') }}" class="fw-semibold"><i class="bi bi-newspaper" aria-hidden="true"></i> Xem bài viết về các chương trình</a>
     </p>
 </x-layouts.guest>

@@ -12,7 +12,7 @@ Không chặn các chức năng MVP không phụ thuộc câu trả lời. Cột
 | OQ-06 | Đợt nấu có cần ngày kết thúc không? | Không; chỉ `starts_at`, `completed_at`, `cancelled_at` | Khi có nhu cầu đợt kéo dài nhiều ngày |
 | OQ-07 | Có cần báo cáo công khai cho cộng đồng không? | Không; báo cáo chỉ dành cho người ghi nhận trở lên sau khi đăng nhập | Chỉ khi được yêu cầu rõ |
 | OQ-08 | Có cần lượng nguyên liệu thực tế đã dùng? | Có, tùy chọn, cùng đơn vị với lượng dự kiến | Khi làm kết quả |
-| OQ-09 | Thông tin kết nối MySQL/MariaDB | **Đã giải quyết:** người dùng cấu hình MySQL `bepminhbach` trong `.env`; migration và bộ test đã chạy trên MySQL 8.4 | — |
+| OQ-09 | Thông tin kết nối MySQL/MariaDB | **Đã giải quyết:** người dùng cấu hình MySQL `gopgio` trong `.env`; migration và bộ test đã chạy trên MySQL 8.4 | — |
 | OQ-10 | Tình nguyện viên có được xem chi phí và báo cáo không? | Không. Tình nguyện viên xem đợt, nguyên liệu, công việc và số suất; chi phí, lịch sử và báo cáo từ vai trò Người ghi nhận trở lên | Khi thử với bếp |
 | OQ-11 | Tình nguyện viên có được tự nhận việc chưa giao không? | Không; chỉ điều phối viên phân công | Nếu bếp muốn tự đăng ký việc |
 | OQ-12 | Triển khai ở đâu (hosting chia sẻ, VPS, máy trong bếp)? | **VPS** (theo yêu cầu 14/10/2026): `deploy/deploy.sh` một lệnh cho Ubuntu 22.04/24.04, Debian 12. Chưa chạy trên VPS thật | Khi có VPS: chạy script, kiểm tra theo mục 9 của `docs/DEPLOYMENT.md` |

@@ -16,18 +16,14 @@
         'dateModified' => $post->updated_at?->toAtomString(),
         'image' => $cover ? [$cover->url()] : null,
         'keywords' => $post->tags->pluck('name')->implode(', ') ?: null,
-        'author' => ['@type' => 'Organization', 'name' => 'BếpMinhBạch'],
-        'publisher' => ['@type' => 'Organization', 'name' => 'BếpMinhBạch', 'logo' => ['@type' => 'ImageObject', 'url' => asset('favicon.svg')]],
+        'author' => ['@type' => 'Organization', 'name' => 'Góp Gió'],
+        'publisher' => ['@type' => 'Organization', 'name' => 'Góp Gió', 'logo' => ['@type' => 'ImageObject', 'url' => asset('favicon.svg')]],
     ]);
 @endphp
-<x-layouts.public :title="$post->title" :description="$description" :canonical="$url" :noindex="$preview">
+<x-layouts.public :title="$post->title" :description="$description" :canonical="$url" :noindex="$preview"
+                   og-type="article" :image="$cover?->url()">
     <x-slot:head>
-        <meta property="og:type" content="article">
-        <meta property="og:title" content="{{ $post->title }}">
-        <meta property="og:description" content="{{ $description }}">
-        <meta property="og:url" content="{{ $url }}">
         @if($cover)
-            <meta property="og:image" content="{{ $cover->url() }}">
             <meta property="og:image:type" content="image/webp">
             <meta property="og:image:width" content="{{ $cover->largestWidth() }}">
             <meta property="og:image:height" content="{{ $cover->heightFor($cover->largestWidth()) }}">
@@ -36,10 +32,6 @@
         @if($post->published_at)<meta property="article:published_time" content="{{ $post->published_at->toAtomString() }}">@endif
         <meta property="article:modified_time" content="{{ $post->updated_at->toAtomString() }}">
         @foreach($post->tags as $t)<meta property="article:tag" content="{{ $t->name }}">@endforeach
-        <meta name="twitter:card" content="{{ $cover ? 'summary_large_image' : 'summary' }}">
-        <meta name="twitter:title" content="{{ $post->title }}">
-        <meta name="twitter:description" content="{{ $description }}">
-        @if($cover)<meta name="twitter:image" content="{{ $cover->url() }}">@endif
         @unless($preview)<script type="application/ld+json">@json($jsonLd)</script>@endunless
     </x-slot:head>
 
@@ -125,7 +117,7 @@
             @if($batch)
                 <section class="card" aria-labelledby="batch-info-title">
                     <div class="panel-header">
-                        <h2 id="batch-info-title" class="panel-title"><i class="bi bi-egg-fried" aria-hidden="true"></i> Thuộc đợt nấu</h2>
+                        <h2 id="batch-info-title" class="panel-title"><i class="bi bi-calendar3" aria-hidden="true"></i> Thuộc chương trình</h2>
                     </div>
                     <div class="card-body">
                         <div class="d-flex gap-3 mb-3">
@@ -136,16 +128,16 @@
                                 <div class="small text-body-secondary"><i class="bi bi-calendar3" aria-hidden="true"></i> {{ Format::date($batch->starts_on) }}</div>
                             </div>
                         </div>
-                        <x-chart.bars caption="Số suất của đợt nấu" empty="Chưa ghi nhận" :rows="[
+                        <x-chart.bars caption="Số suất của chương trình" :rows="[
                             ['label' => 'Dự kiến', 'value' => $batch->expected_servings, 'tone' => 'plan'],
                             ['label' => 'Đã chuẩn bị', 'value' => $batch->prepared_servings, 'tone' => 'primary'],
                             ['label' => 'Đã phân phát', 'value' => $batch->distributed_servings, 'tone' => 'primary'],
                         ]" />
-                        <p class="small text-body-secondary mt-3 mb-0">Số suất do đội bếp tự ghi nhận.</p>
+                        <p class="small text-body-secondary mt-3 mb-0">Số suất do đội Góp Gió tự ghi nhận.</p>
                     </div>
                     @if($batchPostCount > 1)
                         <div class="panel-footer">
-                            <a href="{{ route('blog.batch', $batch) }}" class="fw-semibold">Xem {{ $batchPostCount }} bài viết về đợt này <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                            <a href="{{ route('blog.batch', $batch) }}" class="fw-semibold">Xem {{ $batchPostCount }} bài viết về chương trình này <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                         </div>
                     @endif
                 </section>
@@ -160,7 +152,7 @@
                                 @if($r->cover)
                                     <span class="related-thumb-wrap"><x-post-img :image="$r->cover" :width="72" class="related-thumb" sizes="72px" /></span>
                                 @else
-                                    <span class="related-thumb is-empty" aria-hidden="true"><i class="bi bi-egg-fried"></i></span>
+                                    <span class="related-thumb is-empty" aria-hidden="true"><i class="bi bi-wind"></i></span>
                                 @endif
                                 <div class="min-w-0">
                                     <a href="{{ route('blog.show', $r) }}" class="fw-semibold d-block">{{ $r->title }}</a>

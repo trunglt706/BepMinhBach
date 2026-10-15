@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Đợt nấu ăn: kế hoạch, nguyên liệu, công việc, số suất thực tế, chi phí.
+ * Chương trình: kế hoạch, nguyên liệu, công việc, số suất thực tế, chi phí.
  *
  * @property BatchStatus $status
  */
@@ -81,11 +81,11 @@ class CookingBatch extends Model
     }
 
     /**
-     * Xóa đợt → xóa file ảnh nền sau khi giao dịch thành công.
+     * Xóa chương trình → xóa file ảnh nền sau khi giao dịch thành công.
      */
     protected static function booted(): void
     {
-        // Mã công khai cho URL trang đợt (/dot-nau/{public_id}): ngẫu nhiên, duy nhất, không suy ra được từ ID.
+        // Mã công khai cho URL trang chương trình (/chuong-trinh/{public_id}; link cũ /dot-nau/… chuyển 301): ngẫu nhiên, duy nhất, không suy ra được từ ID.
         static::creating(function (CookingBatch $batch) {
             while (! $batch->public_id) {
                 $candidate = bin2hex(random_bytes(8));
@@ -123,8 +123,8 @@ class CookingBatch extends Model
     }
 
     /**
-     * Đợt khách được xem ở trang công khai: đang diễn ra, hoặc có bài viết đã đăng.
-     * Đợt nháp/kế hoạch chưa có bài không lộ ra ngoài (không dò được qua ID).
+     * Chương trình khách được xem ở trang công khai: đang diễn ra, hoặc có bài viết đã đăng.
+     * Chương trình nháp/kế hoạch chưa có bài không lộ ra ngoài (không dò được qua ID).
      *
      * @param  Builder<CookingBatch>  $query
      * @return Builder<CookingBatch>
@@ -137,7 +137,51 @@ class CookingBatch extends Model
     }
 
     /**
-     * Người điều phối đợt.
+     * Chương trình mà tài khoản được xem trong khu quản lý (danh sách, chi tiết, thống kê, báo cáo):
+     * - Quản trị viên: mọi chương trình.
+     * - Điều phối viên: chương trình mình điều phối (coordinator_id) hoặc có công việc giao cho mình.
+     * - Người ghi nhận, tình nguyện viên: chương trình có công việc giao cho mình.
+     *
+     * @param  Builder<CookingBatch>  $query
+     * @param  User  $user  người đăng nhập
+     * @return Builder<CookingBatch>
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        $myTask = fn (Builder $t) => $t->where('assignee_id', $user->id);
+
+        return match (true) {
+            $user->isAdmin() => $query,
+            $user->isCoordinator() => $query->where(fn (Builder $q) => $q
+                ->where($query->qualifyColumn('coordinator_id'), $user->id)
+                ->orWhereHas('tasks', $myTask)),
+            default => $query->whereHas('tasks', $myTask),
+        };
+    }
+
+    /**
+     * Tài khoản có được xem chương trình này không (cùng quy tắc với scopeVisibleTo).
+     * Không truy vấn thêm khi quan hệ tasks đã được nạp — nơi liệt kê nhiều việc nên nạp sẵn
+     * tasks của chính người dùng (xem MyTaskController) để tránh N+1.
+     *
+     * @param  User  $user  người đăng nhập
+     */
+    public function isVisibleTo(User $user): bool
+    {
+        if (! $user->is_active) {
+            return false;
+        }
+        if ($user->isAdmin() || ($user->isCoordinator() && $this->coordinator_id === $user->id)) {
+            return true;
+        }
+
+        return $this->relationLoaded('tasks')
+            ? $this->tasks->contains('assignee_id', $user->id)
+            : $this->tasks()->where('assignee_id', $user->id)->exists();
+    }
+
+    /**
+     * Người điều phối chương trình.
      *
      * @return BelongsTo<User, $this>
      */
@@ -147,7 +191,7 @@ class CookingBatch extends Model
     }
 
     /**
-     * Người tạo đợt.
+     * Người tạo chương trình.
      *
      * @return BelongsTo<User, $this>
      */
@@ -167,7 +211,7 @@ class CookingBatch extends Model
     }
 
     /**
-     * Nguyên liệu của đợt.
+     * Nguyên liệu của chương trình.
      *
      * @return HasMany<Ingredient, $this>
      */
@@ -177,7 +221,18 @@ class CookingBatch extends Model
     }
 
     /**
-     * Công việc (checklist) của đợt.
+     * Tổng tiền nguyên liệu (đồng) của các nguyên liệu đã nhập đơn giá; null nếu chưa có cái nào.
+     * Chỉ là ước tính để tham khảo — tách riêng với các khoản chi thực tế.
+     */
+    public function ingredientCostVnd(): ?int
+    {
+        $priced = $this->ingredients->filter(fn (Ingredient $ingredient) => $ingredient->unit_price_vnd !== null);
+
+        return $priced->isEmpty() ? null : $priced->sum(fn (Ingredient $ingredient) => $ingredient->costVnd());
+    }
+
+    /**
+     * Công việc (checklist) của chương trình.
      *
      * @return HasMany<Task, $this>
      */
@@ -187,7 +242,7 @@ class CookingBatch extends Model
     }
 
     /**
-     * Khoản chi của đợt.
+     * Khoản chi của chương trình.
      *
      * @return HasMany<ExpenseItem, $this>
      */
@@ -197,7 +252,7 @@ class CookingBatch extends Model
     }
 
     /**
-     * Bài viết công khai về đợt này (gồm cả bản nháp).
+     * Bài viết công khai về chương trình này (gồm cả bản nháp).
      *
      * @return HasMany<Post, $this>
      */
@@ -207,7 +262,7 @@ class CookingBatch extends Model
     }
 
     /**
-     * Lịch sử thay đổi của đợt.
+     * Lịch sử thay đổi của chương trình.
      *
      * @return HasMany<ActivityLog, $this>
      */
@@ -217,7 +272,7 @@ class CookingBatch extends Model
     }
 
     /**
-     * Kênh thông báo (Slack/Telegram/Chatwork) của đợt.
+     * Kênh thông báo (Slack/Telegram/Chatwork) của chương trình.
      *
      * @return HasMany<BatchNotificationChannel, $this>
      */
@@ -227,7 +282,7 @@ class CookingBatch extends Model
     }
 
     /**
-     * Đợt đã khóa (đã hoàn tất hoặc đã hủy).
+     * Chương trình đã khóa (đã hoàn tất hoặc đã hủy).
      */
     public function isLocked(): bool
     {
@@ -303,7 +358,7 @@ class CookingBatch extends Model
     }
 
     /**
-     * Đợt đang mở (mọi trạng thái chưa khóa: nháp, đã lên kế hoạch, đang diễn ra).
+     * Chương trình đang mở (mọi trạng thái chưa khóa: nháp, đã lên kế hoạch, đang diễn ra).
      *
      * @param  Builder<CookingBatch>  $query
      * @return Builder<CookingBatch>

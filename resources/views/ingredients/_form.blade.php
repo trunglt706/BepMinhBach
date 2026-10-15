@@ -10,8 +10,8 @@
 <x-input name="name" label="Tên nguyên liệu" :value="$ingredient->name" required maxlength="150" help="Ví dụ: Gạo, Đậu hũ, Rau muống" />
 <div class="row">
     <div class="col-sm-6">
-        <x-input name="expected_quantity" label="Lượng dự kiến" inputmode="decimal" required
-                 :value="App\Support\Format::quantityInput($ingredient->expected_quantity)" help="Có thể nhập số thập phân, ví dụ 2,5." />
+        <x-input name="expected_quantity" label="Lượng dự kiến" quantity required maxlength="20"
+                 :value="App\Support\Format::quantityField($ingredient->expected_quantity)" help="Có thể nhập số thập phân, ví dụ 2,5 hoặc 1.500." />
     </div>
     <div class="col-sm-6">
         <div class="mb-3">
@@ -33,6 +33,9 @@
         </div>
     </div>
 </div>
-<x-input name="actual_quantity" label="Lượng thực tế đã dùng" inputmode="decimal"
-         :value="App\Support\Format::quantityInput($ingredient->actual_quantity)" help="Để trống nếu chưa ghi nhận. Cùng đơn vị với lượng dự kiến." />
+<x-input name="actual_quantity" label="Lượng thực tế đã dùng" quantity maxlength="20"
+         :value="App\Support\Format::quantityField($ingredient->actual_quantity)" help="Để trống nếu chưa ghi nhận. Cùng đơn vị với lượng dự kiến." />
+<x-input name="unit_price_vnd" label="Đơn giá (không bắt buộc)" money maxlength="11" suffix="đ / 1 đơn vị"
+         :value="$ingredient->unit_price_vnd" help="Giá cho 1 đơn vị đã chọn ở trên (ví dụ giá 1 kg). Thành tiền = đơn giá × lượng thực tế, chưa có thì lấy lượng dự kiến." />
+<p class="small mb-3" data-ingredient-cost aria-live="polite" hidden></p>
 <x-textarea name="notes" label="Ghi chú" :value="$ingredient->notes" rows="2" maxlength="1000" />

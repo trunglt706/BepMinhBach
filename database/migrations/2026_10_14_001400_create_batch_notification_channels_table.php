@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Kênh thông báo của từng đợt nấu (Slack / Telegram / Chatwork).
+ * Kênh thông báo của từng chương trình (Slack / Telegram / Chatwork).
  * settings: thông số kết nối, MÃ HÓA bằng APP_KEY (token, webhook). join_url: link để mọi người tham gia kênh.
  */
 return new class extends Migration

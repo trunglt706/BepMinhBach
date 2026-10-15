@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\PostStatus;
+use App\Models\CookingBatch;
 use App\Models\Post;
 use App\Support\PostHtml;
 use Illuminate\Contracts\Validation\Validator;
@@ -12,7 +13,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Tạo/sửa bài viết: nội dung HTML (lọc khi lưu), thẻ, đợt nấu, ảnh đại diện và album.
+ * Tạo/sửa bài viết: nội dung HTML (lọc khi lưu), thẻ, chương trình, ảnh đại diện và album.
  * Ảnh: kiểm tra kiểu theo nội dung file + kích thước tại đây; PostImageProcessor còn giải mã và mã hóa lại.
  */
 class PostRequest extends FormRequest
@@ -67,10 +68,20 @@ class PostRequest extends FormRequest
             'title' => ['required', 'string', 'max:200'],
             'excerpt' => ['nullable', 'string', 'max:500'],
             'body' => ['required', 'string', 'max:100000'],
-            'cooking_batch_id' => ['nullable', 'integer', Rule::exists('cooking_batches', 'id')],
+            // Chỉ gắn được với chương trình trong phạm vi được xem (giữ nguyên chương trình đang gắn thì luôn được).
+            'cooking_batch_id' => ['nullable', 'integer', Rule::exists('cooking_batches', 'id'),
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    $current = $this->route('post')?->cooking_batch_id;
+                    if ($value && (int) $value !== $current && ! CookingBatch::visibleTo($this->user())->whereKey($value)->exists()) {
+                        $fail('Bạn chỉ gắn được bài với chương trình mình phụ trách.');
+                    }
+                }],
             'tag_list' => ['array', 'max:'.self::MAX_TAGS],
             'tag_list.*' => ['string', 'max:40', 'regex:/[\pL\pN]/u'],
-            'save_as' => [$this->route('post') ? 'prohibited' : 'required', Rule::enum(PostStatus::class)],
+            // Quản trị viên: lưu nháp hoặc đăng ngay. Người khác: lưu nháp hoặc gửi duyệt — không tự đăng được.
+            'save_as' => [$this->route('post') ? 'prohibited' : 'required', Rule::in($this->user()->isAdmin()
+                ? [PostStatus::Draft->value, PostStatus::Published->value]
+                : [PostStatus::Draft->value, PostStatus::Pending->value])],
             'cover' => ['nullable', ...$image],
             'remove_cover' => ['nullable', 'boolean'],
             'gallery' => ['nullable', 'array', 'max:'.config('bmb.post_images.max_album')],
@@ -114,7 +125,7 @@ class PostRequest extends FormRequest
             'title' => 'tiêu đề',
             'excerpt' => 'tóm tắt',
             'body' => 'nội dung',
-            'cooking_batch_id' => 'đợt nấu',
+            'cooking_batch_id' => 'chương trình',
             'tag_list' => 'thẻ',
             'tag_list.*' => 'thẻ',
             'cover' => 'ảnh đại diện',
@@ -134,6 +145,7 @@ class PostRequest extends FormRequest
         $type = 'Chỉ nhận ảnh JPG, PNG hoặc WebP.';
 
         return [
+            'save_as.in' => 'Bạn chỉ lưu nháp hoặc gửi duyệt được; quản trị viên sẽ duyệt để đăng bài.',
             'tag_list.max' => 'Tối đa '.self::MAX_TAGS.' thẻ cho mỗi bài viết.',
             'tag_list.*.max' => 'Mỗi thẻ tối đa 40 ký tự.',
             'tag_list.*.regex' => 'Thẻ phải có chữ hoặc số.',

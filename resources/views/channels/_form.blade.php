@@ -57,7 +57,7 @@
                 <input type="url" id="{{ $joinId }}" name="join_urls[{{ $d->value }}]" data-error-name="join_url" value="{{ old('join_urls.'.$d->value, $channel->join_url) }}"
                        @class(['form-control', 'is-invalid' => $currentDriver === $d->value && $errors->has('join_url')]) maxlength="500"
                        placeholder="{{ $d->joinUrlExample() }}" aria-describedby="{{ $joinId }}_help">
-                <div id="{{ $joinId }}_help" class="form-text">Không bắt buộc nhưng nên có: hiện nút “Tham gia kênh” trên trang đợt để mọi người tự vào nhận thông báo.</div>
+                <div id="{{ $joinId }}_help" class="form-text">Không bắt buộc nhưng nên có: hiện nút “Tham gia kênh” trên trang chương trình để mọi người tự vào nhận thông báo.</div>
                 @if($currentDriver === $d->value)@error('join_url')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror @endif
             </div>
         </fieldset>
@@ -70,5 +70,5 @@
         <label class="form-check-label" for="f_is_enabled">Gửi thông báo vào kênh này</label>
     </div>
     <p class="small text-body-secondary mb-0"><i class="bi bi-shield-lock" aria-hidden="true"></i>
-        Token/webhook được mã hóa khi lưu và không hiện lại. Tin nhắn không chứa chi phí hay ghi chú tự do; có link mở đợt trong hệ thống.</p>
+        Token/webhook được mã hóa khi lưu và không hiện lại. Tin nhắn không chứa chi phí hay ghi chú tự do; có link mở chương trình trong hệ thống.</p>
 </div>

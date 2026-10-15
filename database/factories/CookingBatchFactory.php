@@ -17,7 +17,7 @@ class CookingBatchFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Đợt nấu thử '.fake()->unique()->numberBetween(1, 99999),
+            'name' => 'Chương trình thử '.fake()->unique()->numberBetween(1, 99999),
             'starts_on' => today()->addDays(fake()->numberBetween(1, 14))->toDateString(),
             'location_text' => 'Bếp thử nghiệm',
             'expected_servings' => fake()->numberBetween(50, 300),

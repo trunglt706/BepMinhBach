@@ -5,8 +5,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Lý do mở lại đợt trước đây chỉ nằm trong tóm tắt activity log. Ghi chú tự do không nên vào log,
- * nên lưu ở đợt nấu (lần mở lại gần nhất); log chỉ ghi "đã mở lại, có lý do".
+ * Lý do mở lại chương trình trước đây chỉ nằm trong tóm tắt activity log. Ghi chú tự do không nên vào log,
+ * nên lưu ở chương trình (lần mở lại gần nhất); log chỉ ghi "đã mở lại, có lý do".
  */
 return new class extends Migration
 {

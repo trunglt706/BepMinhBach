@@ -1,4 +1,4 @@
-# Báo cáo nghiệm thu MVP — BếpMinhBạch
+# Báo cáo nghiệm thu MVP — Góp Gió
 
 - **Ngày lập:** 14/10/2026 · **Phiên bản:** nhánh `main` (sau commit `b4ebf18` + thay đổi BM-050/051/053/054 trong phiên này)
 - **Phạm vi:** đối chiếu `docs/PRODUCT_REQUIREMENTS.md` (FR-01 → FR-09), `docs/DEFINITION_OF_DONE.md` và `tasks/BACKLOG.md`.
@@ -24,7 +24,7 @@
 | Loại | Kết quả |
 |---|---|
 | `php artisan test` — SQLite in-memory | **147 passed (1047 assertions)** |
-| `php artisan test` — MySQL 8.4.3 (`bepminhbach_test`) | **147 passed (1047 assertions)** |
+| `php artisan test` — MySQL 8.4.3 (`gopgio_test`) | **147 passed (1047 assertions)** |
 | `vendor/bin/pint --test` | Sạch |
 | Chrome headless (bản cách ly: SQLite tạm + dữ liệu demo, cổng 8001) — 3 cỡ màn hình 360 / 768 / 1280 px × 26 trang và trạng thái (khách, quản trị, tình nguyện viên, modal, trang lỗi) = 78 lượt | Không tràn ngang; không lỗi JS; không vi phạm CSP. Phát hiện và sửa: bảng checklist in tràn 65px ở 360px; thanh công cụ trình soạn thảo bị cắt ở 360px; thẻ (#tag) cao 23px → 28px |
 | E2E luồng ảnh dưới CSP (390px): đăng nhập điều phối viên → viết bài có ảnh bìa 3000×2000 + 2 ảnh album → trang công khai → PhotoSwipe | Xem trước `blob:` hiển thị, đăng bài thành công, `srcset` chọn bản 480px, PhotoSwipe mở "1 / 2", không lỗi. Ảnh thử (18 file) đã xóa sau khi kiểm tra |

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\ActivityAction;
 use App\Enums\NotificationDriver;
+use App\Jobs\SendBatchChannelNotification;
 use App\Models\ActivityLog;
 use App\Models\BatchNotificationChannel;
 use App\Models\CookingBatch;
@@ -14,17 +15,17 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-use function Illuminate\Support\defer;
-
 /**
- * Đẩy thông báo của đợt nấu vào các kênh đã cấu hình (Slack, Telegram, Chatwork).
+ * Đẩy thông báo của chương trình vào các kênh đã cấu hình (Slack, Telegram, Chatwork).
  *
- * - Nguồn sự kiện: ActivityLog::record() — mọi thay đổi quan trọng của đợt đều đi qua đây.
- * - Chỉ gửi sự kiện trong EVENTS: KHÔNG gửi chi phí (tình nguyện viên không được xem chi phí, mà ai có link
- *   đều tham gia kênh được), không gửi chữ tự do (lý do vướng, ghi chú thiếu…) — tin nhắn có link về hệ thống.
- * - Gửi SAU khi giao dịch DB thành công và SAU khi đã trả trang cho người dùng (defer): thao tác không bị chậm,
- *   lỗi mạng/token sai không làm hỏng thao tác — chỉ ghi lỗi vào kênh (last_error) để người quản lý thấy.
- * - Không cần queue worker. Mỗi lần gọi tối đa 5 giây/kênh.
+ * - Nguồn sự kiện: ActivityLog::record() — mọi thay đổi quan trọng của chương trình đều đi qua đây.
+ * - Chỉ gửi sự kiện trong EVENTS: mọi hoạt động của chương trình (thông tin, trạng thái, kết quả, nguyên liệu, công việc,
+ *   bài viết công khai) — TRỪ chi phí và đơn giá nguyên liệu (tình nguyện viên không được xem chi phí, mà ai có
+ *   link đều tham gia kênh được); không gửi chữ tự do (lý do vướng, ghi chú…) — tin nhắn có link về hệ thống.
+ * - Gửi qua QUEUE (SendBatchChannelNotification, mỗi kênh đang bật một job) SAU khi giao dịch DB thành công:
+ *   thao tác không chờ mạng; lỗi mạng/token sai không làm hỏng thao tác — chỉ ghi lỗi vào kênh (last_error).
+ *   Production cần worker `php artisan queue:work` (deploy.sh tạo dịch vụ gopgio-queue).
+ * - Không gửi khi tạo chương trình (chương trình mới chưa có kênh) và khi xóa chương trình nháp (kênh bị xóa cùng chương trình).
  */
 class BatchNotifier
 {
@@ -36,19 +37,26 @@ class BatchNotifier
         ActivityAction::BatchCancelled,
         ActivityAction::BatchReopened,
         ActivityAction::BatchResultsUpdated,
+        ActivityAction::IngredientCreated,
+        ActivityAction::IngredientUpdated,
+        ActivityAction::IngredientDeleted,
         ActivityAction::IngredientShortage,
         ActivityAction::IngredientResolved,
         ActivityAction::TaskCreated,
+        ActivityAction::TaskUpdated,
         ActivityAction::TaskAssigned,
         ActivityAction::TaskStatusChanged,
+        ActivityAction::TaskDeleted,
         ActivityAction::PostPublished,
+        ActivityAction::PostUnpublished,
     ];
 
     /** Thời gian chờ mỗi lần gửi (giây). */
     private const TIMEOUT = 5;
 
     /**
-     * Lên lịch gửi thông báo cho một dòng lịch sử (nếu là sự kiện được gửi và đợt có kênh đang bật).
+     * Đưa thông báo của một dòng lịch sử vào queue (nếu là sự kiện được gửi và chương trình có kênh đang bật):
+     * sau khi giao dịch DB thành công, mỗi kênh đang bật một job.
      *
      * @param  ActivityLog  $log  dòng lịch sử vừa ghi
      * @param  string  $text  nội dung sự kiện (đã lọc thông tin nhạy cảm)
@@ -62,33 +70,17 @@ class BatchNotifier
         }
 
         $batchId = $log->cooking_batch_id;
-        DB::afterCommit(fn () => defer(fn () => $this->deliver($batchId, $text, $actor)));
-    }
-
-    /**
-     * Gửi tới mọi kênh đang bật của đợt. Không bao giờ ném lỗi.
-     *
-     * @param  int  $batchId  ID đợt nấu
-     * @param  string  $text  nội dung sự kiện
-     * @param  string|null  $actor  tên người thực hiện
-     */
-    public function deliver(int $batchId, string $text, ?string $actor): void
-    {
-        $batch = CookingBatch::find($batchId);
-        if (! $batch) {
-            return;
-        }
-
-        foreach ($batch->notificationChannels()->where('is_enabled', true)->get() as $channel) {
-            $this->send($channel, $batch, $text, $actor);
-        }
+        DB::afterCommit(function () use ($batchId, $text, $actor) {
+            BatchNotificationChannel::where('cooking_batch_id', $batchId)->where('is_enabled', true)->pluck('id')
+                ->each(fn (int $channelId) => SendBatchChannelNotification::dispatch($channelId, $text, $actor));
+        });
     }
 
     /**
      * Gửi một tin vào một kênh và ghi kết quả (last_sent_at / last_error).
      *
      * @param  BatchNotificationChannel  $channel  kênh
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      * @param  string  $text  nội dung sự kiện
      * @param  string|null  $actor  tên người thực hiện
      * @return string|null null nếu thành công, ngược lại là mô tả lỗi (đã che token)
@@ -109,16 +101,16 @@ class BatchNotifier
             : ['last_failed_at' => now(), 'last_error' => mb_substr($error, 0, 255)])->saveQuietly();
 
         if ($error !== null) {
-            Log::warning('Gửi thông báo đợt nấu thất bại', ['channel_id' => $channel->id, 'driver' => $channel->driver->value, 'error' => $error]);
+            Log::warning('Gửi thông báo chương trình thất bại', ['channel_id' => $channel->id, 'driver' => $channel->driver->value, 'error' => $error]);
         }
 
         return $error;
     }
 
     /**
-     * Nội dung tin: tiêu đề (tên + ngày đợt), sự kiện, người thực hiện, link mở đợt trong hệ thống.
+     * Nội dung tin: tiêu đề (tên + ngày chương trình), sự kiện, người thực hiện, link mở chương trình trong hệ thống.
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      * @param  string  $text  nội dung sự kiện
      * @param  string|null  $actor  tên người thực hiện
      * @return array{title: string, text: string, url: string}
@@ -126,7 +118,7 @@ class BatchNotifier
     public function message(CookingBatch $batch, string $text, ?string $actor): array
     {
         return [
-            'title' => 'BếpMinhBạch · '.$batch->name.' ('.Format::date($batch->starts_on).')',
+            'title' => 'Góp Gió · '.$batch->name.' ('.Format::date($batch->starts_on).')',
             'text' => $text.($actor ? ' — '.$actor : ''),
             'url' => route('batches.show', $batch),
         ];
@@ -144,7 +136,7 @@ class BatchNotifier
 
         return match ($channel->driver) {
             NotificationDriver::Slack => $http->post((string) $channel->setting('webhook_url'), [
-                'text' => '*'.$this->slack($m['title'])."*\n".$this->slack($m['text'])."\n<".$m['url'].'|Mở đợt nấu>',
+                'text' => '*'.$this->slack($m['title'])."*\n".$this->slack($m['text'])."\n<".$m['url'].'|Mở chương trình>',
                 'unfurl_links' => false,
             ]),
             NotificationDriver::Telegram => $http->post('https://api.telegram.org/bot'.$channel->setting('bot_token').'/sendMessage', [

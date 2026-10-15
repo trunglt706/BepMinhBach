@@ -69,6 +69,7 @@ class IngredientTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $ingredient = Ingredient::factory()->for($batch, 'batch')->create(['name' => 'Nấm rơm']);
         $volunteer = User::factory()->volunteer()->create();
+        $this->assignToBatch($batch, $volunteer);
 
         $this->actingAs($volunteer)->from(route('batches.show', $batch))
             ->post("/admin/ingredients/{$ingredient->id}/shortage", ['restock_note' => 'Còn thiếu 2 kg'])
@@ -88,6 +89,7 @@ class IngredientTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $reporter = User::factory()->volunteer()->create();
         $other = User::factory()->volunteer()->create();
+        $this->assignToBatch($batch, $reporter, $other);
         $ingredient = Ingredient::factory()->for($batch, 'batch')->create();
         $ingredient->forceFill(['needs_restock' => true, 'restock_reported_by' => $reporter->id, 'restock_reported_at' => now()])->save();
 
@@ -106,7 +108,7 @@ class IngredientTest extends TestCase
 
         $this->actingAs($batch->coordinator)->get("/admin/batches/{$batch->id}")
             ->assertSee('<div class="qty-main" data-expected>30 cái</div>', false)
-            ->assertSee('chưa ghi nhận')
+            ->assertSeeInOrder(['Thực tế đã dùng:', '—'])
             ->assertSee('không phải lượng đã có sẵn');
 
         $this->assertNull(Ingredient::first()->actual_quantity);
@@ -117,6 +119,7 @@ class IngredientTest extends TestCase
         $batch = CookingBatch::factory()->create();
         $ingredient = Ingredient::factory()->for($batch, 'batch')->create();
         $volunteer = User::factory()->volunteer()->create();
+        $this->assignToBatch($batch, $volunteer);
 
         $this->actingAs($volunteer)->get("/admin/batches/{$batch->id}/ingredients/create")->assertForbidden();
         $this->actingAs($volunteer)->post("/admin/batches/{$batch->id}/ingredients", ['name' => 'X', 'expected_quantity' => '1', 'unit' => 'kg'])->assertForbidden();
@@ -139,7 +142,59 @@ class IngredientTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::Completed)->create();
         $ingredient = Ingredient::factory()->for($batch, 'batch')->create();
 
-        $this->actingAs(User::factory()->volunteer()->create())
+        $volunteer = User::factory()->volunteer()->create();
+        $this->assignToBatch($batch, $volunteer);
+        $this->actingAs($volunteer)
             ->post("/admin/ingredients/{$ingredient->id}/shortage")->assertForbidden();
+    }
+
+    public function test_quantity_accepts_thousand_separator_and_unit_price_is_optional(): void
+    {
+        $batch = CookingBatch::factory()->create();
+
+        $this->actingAs($batch->coordinator)->post("/admin/batches/{$batch->id}/ingredients", [
+            'name' => 'Gạo', 'expected_quantity' => '1.500,5', 'actual_quantity' => '1.200', 'unit' => 'kg', 'unit_price_vnd' => '25.000',
+        ])->assertRedirect();
+        $this->actingAs($batch->coordinator)->post("/admin/batches/{$batch->id}/ingredients", [
+            'name' => 'Muối', 'expected_quantity' => '2', 'unit' => 'gói', 'unit_price_vnd' => '',
+        ])->assertRedirect();
+
+        $rice = Ingredient::where('name', 'Gạo')->firstOrFail();
+        $this->assertSame('1500.500', $rice->expected_quantity);
+        $this->assertSame('1200.000', $rice->actual_quantity);
+        $this->assertSame(25_000, $rice->unit_price_vnd);
+        $this->assertSame(30_000_000, $rice->costVnd()); // theo lượng thực tế 1.200 kg
+        $this->assertNull(Ingredient::where('name', 'Muối')->firstOrFail()->unit_price_vnd);
+
+        // Form sửa hiển thị lại số lượng dạng Việt Nam
+        $this->actingAs($batch->coordinator)->get("/admin/ingredients/{$rice->id}/edit")
+            ->assertSee('value="1.500,5"', false)->assertSee('value="25.000"', false);
+
+        $this->actingAs($batch->coordinator)->post("/admin/batches/{$batch->id}/ingredients", [
+            'name' => 'Rau', 'expected_quantity' => '1', 'unit' => 'bó', 'unit_price_vnd' => '-5',
+        ])->assertSessionHasErrors('unit_price_vnd');
+    }
+
+    public function test_ingredient_cost_uses_expected_quantity_until_actual_and_sums_for_batch(): void
+    {
+        $batch = CookingBatch::factory()->create();
+        Ingredient::factory()->for($batch, 'batch')->create(['name' => 'Đậu hũ', 'expected_quantity' => 30, 'unit' => 'cái', 'unit_price_vnd' => 5_000]);
+        Ingredient::factory()->for($batch, 'batch')->create(['name' => 'Gạo', 'expected_quantity' => 10, 'actual_quantity' => 2.5, 'unit' => 'kg', 'unit_price_vnd' => 20_000]);
+        Ingredient::factory()->for($batch, 'batch')->create(['name' => 'Muối', 'expected_quantity' => 1, 'unit' => 'gói']);
+
+        $this->assertSame(200_000, $batch->fresh()->ingredientCostVnd()); // 30 × 5.000 + 2,5 × 20.000
+
+        $this->actingAs($batch->coordinator)->get("/admin/batches/{$batch->id}")
+            ->assertSee('150.000 đ')->assertSee('theo lượng dự kiến')
+            ->assertSee('50.000 đ')->assertSee('theo lượng thực tế')
+            ->assertSeeInOrder(['Tổng tiền nguyên liệu:', '200.000 đ', '2/3 nguyên liệu có đơn giá']);
+
+        // Tình nguyện viên không xem thông tin tài chính
+        $volunteer = User::factory()->volunteer()->create();
+        $this->assignToBatch($batch, $volunteer);
+        $this->actingAs($volunteer)->get("/admin/batches/{$batch->id}")
+            ->assertOk()->assertDontSee('Tổng tiền nguyên liệu')->assertDontSee('Đơn giá:');
+
+        $this->assertNull(CookingBatch::factory()->create()->ingredientCostVnd());
     }
 }

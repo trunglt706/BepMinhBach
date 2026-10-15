@@ -32,9 +32,9 @@ enum Role: string
     public function description(): string
     {
         return match ($this) {
-            self::Volunteer => 'Xem đợt nấu, cập nhật việc được giao, báo thiếu nguyên liệu.',
+            self::Volunteer => 'Xem chương trình, cập nhật việc được giao, báo thiếu nguyên liệu.',
             self::Recorder => 'Như tình nguyện viên, thêm: nhập số suất, chi phí và xem báo cáo.',
-            self::Coordinator => 'Như người ghi nhận, thêm: tạo/quản lý đợt nấu, nguyên liệu, công việc, bài viết.',
+            self::Coordinator => 'Như người ghi nhận, thêm: tạo/quản lý chương trình, nguyên liệu, công việc, bài viết.',
             self::Admin => 'Toàn quyền, gồm quản lý tài khoản.',
         };
     }

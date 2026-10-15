@@ -46,11 +46,11 @@
     if ($user->can('changeStatus', $batch) && $batch->status === BatchStatus::Draft) {
         $primary = ['type' => 'status', 'to' => BatchStatus::Planned->value, 'label' => 'Chốt kế hoạch', 'icon' => 'bi-calendar-check'];
     } elseif ($user->can('changeStatus', $batch) && $batch->status === BatchStatus::Planned) {
-        $primary = ['type' => 'status', 'to' => BatchStatus::InProgress->value, 'label' => 'Bắt đầu nấu', 'icon' => 'bi-fire'];
+        $primary = ['type' => 'status', 'to' => BatchStatus::InProgress->value, 'label' => 'Bắt đầu thực hiện', 'icon' => 'bi-fire'];
     } elseif ($batch->status === BatchStatus::InProgress && $user->can('complete', $batch)) {
-        $primary = ['type' => 'link', 'url' => route('batches.complete', $batch), 'label' => 'Hoàn tất đợt', 'icon' => 'bi-check-circle'];
+        $primary = ['type' => 'link', 'url' => route('batches.complete', $batch), 'label' => 'Hoàn tất chương trình', 'icon' => 'bi-check-circle'];
     } elseif ($user->can('reopen', $batch)) {
-        $primary = ['type' => 'link', 'url' => route('batches.reopen', $batch), 'label' => 'Mở lại đợt', 'icon' => 'bi-unlock', 'class' => 'btn-outline-warning'];
+        $primary = ['type' => 'link', 'url' => route('batches.reopen', $batch), 'label' => 'Mở lại chương trình', 'icon' => 'bi-unlock', 'class' => 'btn-outline-warning'];
     }
     $canEdit = $user->can('update', $batch);
     $canToDraft = $batch->status === BatchStatus::Planned && $user->can('changeStatus', $batch);
@@ -62,12 +62,12 @@
 @endphp
 <x-layouts.app :title="$batch->name">
 <div id="batch-page" data-region>
-    <a href="{{ route('batches.index') }}" class="back-link d-print-none"><i class="bi bi-chevron-left" aria-hidden="true"></i> Đợt nấu ăn</a>
+    <a href="{{ route('batches.index') }}" class="back-link d-print-none"><i class="bi bi-chevron-left" aria-hidden="true"></i> Chương trình</a>
 
     {{-- Phần đầu trang --}}
     <section class="card mb-3" aria-labelledby="batch-title">
         @if($cover = $batch->coverImage())
-            {{-- Ảnh nền của đợt (cũng dùng cho slider trang chủ và trang đợt công khai). --}}
+            {{-- Ảnh nền của chương trình (cũng dùng cho slider trang chủ và trang chương trình công khai). --}}
             <div class="batch-cover-banner">
                 <x-post-img :image="$cover" :width="960" priority sizes="(min-width: 1400px) 1100px, 100vw" alt="" />
             </div>
@@ -104,7 +104,7 @@
                     </a>
                     @if($hasMenu)
                         <div class="dropdown" style="flex-grow: 0">
-                            <button type="button" class="btn btn-outline-secondary btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Thao tác khác với đợt nấu">
+                            <button type="button" class="btn btn-outline-secondary btn-icon" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Thao tác khác với chương trình">
                                 <i class="bi bi-three-dots" aria-hidden="true"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
@@ -112,7 +112,7 @@
                                     <li><a class="dropdown-item" href="{{ route('batches.edit', $batch) }}" data-modal><i class="bi bi-pencil" aria-hidden="true"></i> Sửa thông tin</a></li>
                                 @endif
                                 @if($canCompleteEarly)
-                                    <li><a class="dropdown-item" href="{{ route('batches.complete', $batch) }}" data-modal><i class="bi bi-check-circle" aria-hidden="true"></i> Hoàn tất đợt</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('batches.complete', $batch) }}" data-modal><i class="bi bi-check-circle" aria-hidden="true"></i> Hoàn tất chương trình</a></li>
                                 @endif
                                 @if($canToDraft)
                                     <li>
@@ -124,23 +124,23 @@
                                     </li>
                                 @endif
                                 @can('create', App\Models\Post::class)
-                                    <li><a class="dropdown-item" href="{{ route('posts.create', ['batch' => $batch->id]) }}" data-modal><i class="bi bi-pencil-square" aria-hidden="true"></i> Viết bài về đợt này</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('posts.create', ['batch' => $batch->id]) }}" data-modal><i class="bi bi-pencil-square" aria-hidden="true"></i> Viết bài về chương trình này</a></li>
                                 @endcan
                                 @if($canReport)
-                                    <li><a class="dropdown-item" href="{{ route('reports.show', $batch) }}"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Báo cáo đợt này</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('reports.show', $batch) }}"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Báo cáo chương trình này</a></li>
                                 @endif
                                 @if($canCancel)
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="{{ route('batches.cancel', $batch) }}" data-modal><i class="bi bi-x-circle" aria-hidden="true"></i> Hủy đợt</a></li>
+                                    <li><a class="dropdown-item text-danger" href="{{ route('batches.cancel', $batch) }}" data-modal><i class="bi bi-x-circle" aria-hidden="true"></i> Hủy chương trình</a></li>
                                 @endif
                                 @if($canDelete)
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <form method="POST" action="{{ route('batches.destroy', $batch) }}" data-ajax
-                                              data-confirm="Xóa hẳn đợt nấu nháp này? Thao tác không thể hoàn tác." data-confirm-label="Xóa đợt nháp">
+                                              data-confirm="Xóa hẳn chương trình nháp này? Thao tác không thể hoàn tác." data-confirm-label="Xóa chương trình nháp">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="dropdown-item text-danger" data-loading-text="Đang xóa…"><i class="bi bi-trash" aria-hidden="true"></i> Xóa đợt nháp</button>
+                                            <button type="submit" class="dropdown-item text-danger" data-loading-text="Đang xóa…"><i class="bi bi-trash" aria-hidden="true"></i> Xóa chương trình nháp</button>
                                         </form>
                                     </li>
                                 @endif
@@ -162,17 +162,17 @@
             <i class="bi bi-lock-fill" aria-hidden="true"></i>
             <div>
                 @if($batch->status === BatchStatus::Cancelled)
-                    <strong>Đợt nấu đã hủy</strong> lúc {{ Format::dateTime($batch->cancelled_at) }}.
+                    <strong>Chương trình đã hủy</strong> lúc {{ Format::dateTime($batch->cancelled_at) }}.
                     @if($batch->cancellation_reason) Lý do: {{ $batch->cancellation_reason }}. @endif
                 @else
-                    <strong>Đợt nấu đã hoàn tất</strong> lúc {{ Format::dateTime($batch->completed_at) }}.
+                    <strong>Chương trình đã hoàn tất</strong> lúc {{ Format::dateTime($batch->completed_at) }}.
                 @endif
                 Dữ liệu đang được khóa; điều phối viên có thể mở lại nếu cần chỉnh sửa.
             </div>
         </div>
     @endif
 
-    {{-- Số liệu nhanh của đợt --}}
+    {{-- Số liệu nhanh của chương trình --}}
     <div class="row g-2 g-md-3 mb-3">
         <div class="col-6 col-lg-3">
             <x-stat label="Công việc" icon="bi-list-check" :tone="$blockedCount ? 'red' : 'green'" :value="$doneCount.'/'.$taskTotal"
@@ -189,7 +189,7 @@
         <div class="col-6 col-lg-3">
             @if($canViewFinancials)
                 <x-stat label="Chi phí thực tế" icon="bi-cash-coin" tone="amber" compact :value="$batch->expenseItems->isEmpty() ? '—' : Format::vnd($expenseTotal)"
-                        :empty="$batch->expenseItems->isEmpty()" :hint="$batch->expenseItems->isEmpty() ? 'Chưa nhập' : $batch->expenseItems->count().' khoản chi'" href="#chi-phi" />
+                        :empty="$batch->expenseItems->isEmpty()" :hint="$batch->expenseItems->count().' khoản chi'" href="#chi-phi" />
             @else
                 <x-stat label="Suất dự kiến" icon="bi-people" tone="gray" :value="Format::number($batch->expected_servings)" hint="Theo kế hoạch" />
             @endif
@@ -197,7 +197,7 @@
     </div>
 
     {{-- Mục lục (điện thoại) --}}
-    <nav class="section-nav d-print-none" aria-label="Các phần của đợt nấu">
+    <nav class="section-nav d-print-none" aria-label="Các phần của chương trình">
         <a href="#cong-viec"><i class="bi bi-list-check" aria-hidden="true"></i> Công việc</a>
         <a href="#nguyen-lieu"><i class="bi bi-basket" aria-hidden="true"></i> Nguyên liệu @if($shortageCount)<span class="badge text-bg-danger">{{ $shortageCount }} thiếu</span>@endif</a>
         <a href="#ket-qua"><i class="bi bi-box2-heart" aria-hidden="true"></i> Kết quả</a>
@@ -249,6 +249,16 @@
                 @else
                     <div class="callout callout-muted mx-3 mt-3"><i class="bi bi-info-circle" aria-hidden="true"></i>
                         <span>Lượng dự kiến là kế hoạch, không phải lượng đã có sẵn hay đã mua.</span></div>
+                    @if($canViewFinancials)
+                        @php $ingredientCost = $batch->ingredientCostVnd(); @endphp
+                        <div class="d-flex flex-wrap justify-content-between gap-2 mx-3 mt-2 small">
+                            <span>Tổng tiền nguyên liệu:
+                                <strong class="tabular">{{ Format::vnd($ingredientCost) }}</strong></span>
+                            <span class="text-body-secondary">
+                                {{ $batch->ingredients->whereNotNull('unit_price_vnd')->count() }}/{{ $batch->ingredients->count() }} nguyên liệu có đơn giá · ước tính, không gồm các khoản chi khác
+                            </span>
+                        </div>
+                    @endif
                     <div class="mt-2">
                         @foreach($batch->ingredients as $ingredient)
                             @include('ingredients._item', ['ingredient' => $ingredient])
@@ -309,7 +319,7 @@
                     </div>
                     @if($batch->expenseItems->isEmpty())
                         <x-empty-state icon="bi-receipt" title="Chưa nhập khoản chi nào" compact>
-                            “Chưa nhập” khác với 0 đồng. Nếu đợt này không tốn chi phí, có thể nhập một khoản 0 đồng kèm ghi chú.
+                            “Chưa nhập” khác với 0 đồng. Nếu chương trình này không tốn chi phí, có thể nhập một khoản 0 đồng kèm ghi chú.
                         </x-empty-state>
                     @else
                         <ul class="list-group list-group-flush border-top">
@@ -346,7 +356,7 @@
                             <h3 class="h6 mt-2">Rút kinh nghiệm</h3>
                             <p class="text-pre-line mb-2">{{ $batch->completion_notes }}</p>
                         @endif
-                        {{-- Lý do mở lại chỉ hiện cho người quản lý đợt (không nằm trong lịch sử thay đổi). --}}
+                        {{-- Lý do mở lại chỉ hiện cho người quản lý chương trình (không nằm trong lịch sử thay đổi). --}}
                         @if($batch->reopen_reason && $canEdit)
                             <h3 class="h6 mt-2">Lý do mở lại gần nhất @if($batch->reopened_at)<span class="small text-body-secondary fw-normal">({{ Format::dateTime($batch->reopened_at) }})</span>@endif</h3>
                             <p class="text-pre-line mb-0">{{ $batch->reopen_reason }}</p>

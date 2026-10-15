@@ -17,7 +17,7 @@ class PostFactory extends Factory
     public function definition(): array
     {
         return [
-            'title' => fake()->randomElement(['Cảm ơn các bạn tình nguyện viên', 'Nhìn lại đợt nấu tuần qua', 'Chuẩn bị cho bữa cơm chủ nhật']).' '.fake()->unique()->numberBetween(1, 99999),
+            'title' => fake()->randomElement(['Cảm ơn các bạn tình nguyện viên', 'Nhìn lại chương trình tuần qua', 'Chuẩn bị cho bữa cơm chủ nhật']).' '.fake()->unique()->numberBetween(1, 99999),
             'excerpt' => null,
             'body' => "Đoạn mở đầu của bài viết.\n\nĐoạn thứ hai kể về công việc trong bếp.",
             'author_id' => User::factory()->coordinator(),

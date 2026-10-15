@@ -1,6 +1,10 @@
-# BếpMinhBạch
+# Góp Gió
 
-Hệ thống web quản lý các đợt nấu ăn thiện nguyện và suất ăn cộng đồng. Mục tiêu là thay sổ tay/tin nhắn rời rạc bằng kế hoạch, checklist, phân công, số liệu thực tế và báo cáo dễ kiểm tra.
+Hệ thống web quản lý các chương trình thiện nguyện (nấu ăn, phát quà…) và suất ăn cộng đồng. Mục tiêu là thay sổ tay/tin nhắn rời rạc bằng kế hoạch, checklist, phân công, số liệu thực tế và báo cáo dễ kiểm tra.
+
+> **Thuật ngữ (từ 15/10/2026):** giao diện dùng **“Chương trình”** thay cho “Đợt nấu ăn” để dùng được cho cả nấu ăn,
+> phát quà và các hoạt động thiện nguyện khác. Trong code và CSDL vẫn giữ tên cũ (`CookingBatch`, bảng `cooking_batches`,
+> route `batches.*`). Trong các tài liệu cũ, “đợt nấu” = “chương trình”.
 
 ## Phạm vi MVP
 - Đăng nhập và phân quyền theo vai trò.
@@ -45,7 +49,7 @@ php artisan serve            # mở http://127.0.0.1:8000
 ```
 
 Tài khoản demo (mật khẩu = `DEMO_PASSWORD` trong `.env`, mặc định `demo12345` chỉ dùng ở local):
-`admin@bepminhbach.test`, `dieuphoi@bepminhbach.test`, `ghinhan@bepminhbach.test`, `tnv1@bepminhbach.test`, `tnv2@bepminhbach.test`.
+`admin@gopgio.test`, `dieuphoi@gopgio.test`, `ghinhan@gopgio.test`, `tnv1@gopgio.test`, `tnv2@gopgio.test`.
 
 Trên môi trường thật **không chạy seed demo**; tạo quản trị viên đầu tiên bằng `php artisan bmb:create-admin` (mật khẩu nhập ẩn).
 
@@ -65,7 +69,7 @@ Cấu hình thêm trong `.env` (xem `config/bmb.php`): `BMB_RATE_WRITES`, `BMB_R
 php artisan test        # PHPUnit, SQLite in-memory
 vendor/bin/pint --test  # kiểm tra định dạng code
 # Chạy trên MySQL (dùng DB riêng, test sẽ XÓA dữ liệu của DB này):
-DB_CONNECTION=mysql DB_DATABASE=bepminhbach_test php artisan test
+DB_CONNECTION=mysql DB_DATABASE=gopgio_test php artisan test
 ```
 
 ### Vai trò

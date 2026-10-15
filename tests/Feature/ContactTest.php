@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Enums\ContactTopic;
 use App\Http\Requests\ContactRequest;
+use App\Models\ActivityLog;
 use App\Models\ContactMessage;
 use App\Models\User;
+use App\Support\Mask;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
@@ -45,7 +47,7 @@ class ContactTest extends TestCase
     {
         $this->post('/lien-he', $this->payload(['contact' => '0901 234.567', 'topic' => 'donation']))
             ->assertRedirect(route('contact.create'))
-            ->assertSessionHas('success');
+            ->assertSessionHas('success', fn ($m) => str_contains($m, '090****567') && ! str_contains($m, '0901234567'));
 
         $message = ContactMessage::sole();
         $this->assertSame('0901234567', $message->contact);
@@ -103,7 +105,7 @@ class ContactTest extends TestCase
         $guest = $this->get('/')->assertOk()
             ->assertSee(route('contact.create'))
             ->assertSee('Đăng nhập')
-            ->assertSee('© '.now()->year.' BếpMinhBạch');
+            ->assertSee('© '.now()->year.' Góp Gió');
         $footer = str($guest->getContent())->after('<footer')->before('</footer>');
         $this->assertStringNotContainsString('kiểm toán', (string) $footer);
 
@@ -170,7 +172,8 @@ class ContactTest extends TestCase
         $coordinator = User::factory()->coordinator()->create();
 
         $this->actingAs($coordinator)->get('/admin/contacts')->assertOk()
-            ->assertSee('Chị Thử')->assertSee('mailto:'.$message->contact, false)
+            ->assertSee('Chị Thử')->assertSee(Mask::contact($message->contact))
+            ->assertDontSee($message->contact) // danh sách chỉ có bản đã che
             ->assertSee('<span class="nav-badge" aria-label="1 liên hệ chưa xử lý">1</span>', false);
 
         $this->actingAs($coordinator)->postJson("/admin/contacts/{$message->id}/toggle")->assertOk();
@@ -188,5 +191,30 @@ class ContactTest extends TestCase
 
         $this->actingAs($coordinator)->deleteJson("/admin/contacts/{$message->id}")->assertOk();
         $this->assertSame(0, ContactMessage::count());
+    }
+
+    public function test_contact_info_is_masked_and_revealed_only_on_request_with_audit_log(): void
+    {
+        $this->assertSame('l*****@gmail.com', Mask::contact('lan.nguyen@gmail.com'));
+        $this->assertSame('090****567', Mask::contact('0901234567'));
+        $this->assertSame('', Mask::contact(null));
+
+        $message = ContactMessage::factory()->create(['contact' => 'lan.nguyen@gmail.com']);
+        $coordinator = User::factory()->coordinator()->create();
+
+        $this->actingAs($coordinator)->get('/admin/contacts')->assertOk()
+            ->assertSee('l*****@gmail.com')->assertDontSee('lan.nguyen')
+            ->assertSee(route('contacts.reveal', $message), false);
+
+        $this->actingAs($coordinator)->postJson("/admin/contacts/{$message->id}/reveal")->assertOk()
+            ->assertExactJson(['contact' => 'lan.nguyen@gmail.com', 'href' => 'mailto:lan.nguyen@gmail.com'])
+            ->assertHeader('Cache-Control', 'no-store, private');
+        $this->assertDatabaseHas('activity_logs', ['user_id' => $coordinator->id, 'action' => 'contact.revealed',
+            'summary' => 'Xem thông tin liên lạc của liên hệ #'.$message->id.'.']);
+        $this->assertStringNotContainsString('lan.nguyen', ActivityLog::pluck('summary')->implode(' ')); // nhật ký không chứa email
+
+        // Không có quyền xem liên hệ → không lấy được
+        $this->actingAs(User::factory()->volunteer()->create())->postJson("/admin/contacts/{$message->id}/reveal")->assertForbidden();
+        $this->get("/admin/contacts/{$message->id}/reveal")->assertStatus(405); // chỉ POST
     }
 }

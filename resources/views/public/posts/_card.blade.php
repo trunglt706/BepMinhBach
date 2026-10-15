@@ -1,5 +1,5 @@
 @php use App\Support\Format; @endphp
-{{-- Thẻ bài viết (trang chủ, trang đợt nấu). $priority: ảnh tải ngay — chỉ cho ảnh lớn đầu tiên của màn hình đầu. --}}
+{{-- Thẻ bài viết (trang chủ, trang chương trình). $priority: ảnh tải ngay — chỉ cho ảnh lớn đầu tiên của màn hình đầu. --}}
 <article class="card post-card h-100">
     {{-- Thẻ rộng tối đa ~430px: điện thoại tải bản 480/960, không tải bản 1600.
          Chỉ thẻ đầu tiên tải ngay (ảnh lớn nhất màn hình đầu); các thẻ khác tải khi cuộn tới. --}}
@@ -8,12 +8,12 @@
             <x-post-img :image="$post->cover" class="post-card-cover" :priority="$priority ?? false"
                         sizes="(min-width: 1200px) 400px, (min-width: 768px) 50vw, 100vw" />
         @else
-            <span class="post-card-placeholder" aria-hidden="true"><i class="bi bi-egg-fried"></i></span>
+            <span class="post-card-placeholder" aria-hidden="true"><i class="bi bi-wind"></i></span>
         @endif
         @if($post->batch)
-            {{-- Badge đợt nấu nổi trên ảnh (kiểu "tin nóng"); bấm riêng được (nằm trên lớp liên kết phủ cả thẻ). --}}
-            <a href="{{ route('blog.batch', $post->batch) }}" class="post-card-badge" title="Đợt nấu: {{ $post->batch->name }}">
-                <i class="bi bi-fire" aria-hidden="true"></i><span class="visually-hidden">Đợt nấu:</span>
+            {{-- Badge chương trình nổi trên ảnh (kiểu "tin nóng"); bấm riêng được (nằm trên lớp liên kết phủ cả thẻ). --}}
+            <a href="{{ route('blog.batch', $post->batch) }}" class="post-card-badge" title="Chương trình: {{ $post->batch->name }}">
+                <i class="bi bi-fire" aria-hidden="true"></i><span class="visually-hidden">Chương trình:</span>
                 <span class="text-truncate">{{ $post->batch->name }}</span>
             </a>
         @endif

@@ -11,7 +11,7 @@
     <div class="panel-header"><h2 id="sec-post" class="panel-title"><span class="step-number">1</span> Nội dung</h2></div>
     <div class="card-body pb-1">
         <x-input name="title" label="Tiêu đề" :value="$post->title" required maxlength="200"
-                 help="Ví dụ: Cảm ơn 30 bạn tình nguyện viên đợt cơm chay chủ nhật" />
+                 help="Ví dụ: Cảm ơn 30 bạn tình nguyện viên chương trình cơm chay chủ nhật" />
         <x-textarea name="excerpt" label="Tóm tắt" :value="$post->excerpt" rows="2" maxlength="500"
                     help="Không bắt buộc. Hiện ở danh sách bài viết và khi chia sẻ lên mạng xã hội; để trống thì lấy đoạn đầu của nội dung." />
 
@@ -94,11 +94,11 @@
 </section>
 
 <section class="card mb-3" aria-labelledby="sec-link">
-    <div class="panel-header"><h2 id="sec-link" class="panel-title"><span class="step-number">3</span> Đợt nấu và thẻ</h2></div>
+    <div class="panel-header"><h2 id="sec-link" class="panel-title"><span class="step-number">3</span> Chương trình và thẻ</h2></div>
     <div class="card-body pb-1">
-        <x-select name="cooking_batch_id" label="Thuộc đợt nấu" :options="$batches" :value="$post->cooking_batch_id"
-                  placeholder="— Không thuộc đợt nào —"
-                  help="Nếu chọn, trang bài viết hiện thêm tên, thời gian, trạng thái và số suất của đợt (không hiện chi phí hay người phụ trách)." />
+        <x-select name="cooking_batch_id" label="Thuộc chương trình" :options="$batches" :value="$post->cooking_batch_id"
+                  placeholder="— Không thuộc chương trình nào —"
+                  help="Nếu chọn, trang bài viết hiện thêm tên, thời gian, trạng thái và số suất của chương trình (không hiện chi phí hay người phụ trách)." />
 
         {{-- Không có JS: ô chữ, ngăn cách bằng dấu phẩy. Có JS: app.js biến thành ô nhập thẻ (Enter/Tab/dấu phẩy để thêm). --}}
         <div class="mb-3">

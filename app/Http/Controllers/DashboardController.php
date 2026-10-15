@@ -14,7 +14,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\View\View;
 
-/** Trang tổng quan: số liệu nhanh, biểu đồ theo khoảng thời gian, việc cần xử lý, đợt đang mở, việc của tôi. */
+/** Trang tổng quan: số liệu nhanh, biểu đồ theo khoảng thời gian, việc cần xử lý, chương trình đang mở, việc của tôi. */
 class DashboardController extends Controller
 {
     /**
@@ -27,19 +27,19 @@ class DashboardController extends Controller
         $user = $request->user();
         $days = $request->days();
 
-        $hasBatches = CookingBatch::exists();
+        $hasBatches = CookingBatch::visibleTo($user)->exists();
 
-        $upcomingQuery = CookingBatch::whereIn('status', [BatchStatus::Draft->value, BatchStatus::Planned->value])
+        $upcomingQuery = CookingBatch::visibleTo($user)->whereIn('status', [BatchStatus::Draft->value, BatchStatus::Planned->value])
             ->where('starts_on', '>=', today()->toDateString());
-        $inProgressQuery = CookingBatch::where('status', BatchStatus::InProgress->value);
+        $inProgressQuery = CookingBatch::visibleTo($user)->where('status', BatchStatus::InProgress->value);
 
-        $unlockedBatch = fn (Builder $q) => $q->active();
+        $unlockedBatch = fn (Builder $q) => $q->active()->visibleTo($user); // chỉ chương trình trong phạm vi được xem
         $openTasksQuery = Task::where('status', '!=', TaskStatus::Done->value)
             ->whereHas('batch', $unlockedBatch)
             ->when(! $user->isCoordinator(), fn ($q) => $q->where('assignee_id', $user->id));
 
         $periodStart = now()->subDays($days)->startOfDay();
-        $periodBatches = CookingBatch::where('status', '!=', BatchStatus::Cancelled->value)
+        $periodBatches = CookingBatch::visibleTo($user)->where('status', '!=', BatchStatus::Cancelled->value)
             ->whereBetween('starts_on', [$periodStart->toDateString(), today()->toDateString()])
             ->whereNotNull('distributed_servings');
 
@@ -53,7 +53,7 @@ class DashboardController extends Controller
             'openTasksCount' => (clone $openTasksQuery)->count(),
             'distributedTotal' => (clone $periodBatches)->sum('distributed_servings'),
             'distributedBatchCount' => (clone $periodBatches)->count(),
-            'activeBatches' => CookingBatch::active()
+            'activeBatches' => CookingBatch::visibleTo($user)->active()
                 ->with('coordinator:id,name')
                 ->withTaskProgress()
                 ->orderByRaw('case when status = ? then 0 else 1 end', [BatchStatus::InProgress->value])
@@ -80,7 +80,7 @@ class DashboardController extends Controller
                 ->latest('status_updated_at')
                 ->limit(10)
                 ->get(),
-            'latestResult' => CookingBatch::where(fn ($q) => $q->whereNotNull('prepared_servings')->orWhereNotNull('distributed_servings'))
+            'latestResult' => CookingBatch::visibleTo($user)->where(fn ($q) => $q->whereNotNull('prepared_servings')->orWhereNotNull('distributed_servings'))
                 ->orderByDesc('starts_on')
                 ->first(),
         ]);
@@ -88,7 +88,7 @@ class DashboardController extends Controller
 
     /**
      * Số liệu cho biểu đồ, cùng khoảng thời gian với bộ chọn phía trên.
-     * Chỉ là số tổng hợp theo đợt, không có thông tin người nhận. Chi phí chỉ dành cho người xem được báo cáo.
+     * Chỉ là số tổng hợp theo chương trình, không có thông tin người nhận. Chi phí chỉ dành cho người xem được báo cáo.
      *
      * @param  User  $user  người đang xem (quyết định có biểu đồ chi phí hay không)
      * @param  CarbonInterface  $from  đầu khoảng thời gian
@@ -98,21 +98,21 @@ class DashboardController extends Controller
     {
         $to = now();
 
-        // So sánh dự kiến với phân phát chỉ trên các đợt đã nhập số phân phát, để "chưa nhập" không bị hiểu là thiếu suất.
-        $withResults = CookingBatch::where('status', '!=', BatchStatus::Cancelled->value)
+        // So sánh dự kiến với phân phát chỉ trên các chương trình đã nhập số phân phát, để "chưa nhập" không bị hiểu là thiếu suất.
+        $withResults = CookingBatch::visibleTo($user)->where('status', '!=', BatchStatus::Cancelled->value)
             ->whereBetween('starts_on', [$from->toDateString(), $to->toDateString()])
             ->whereNotNull('distributed_servings')
             ->get(['id', 'starts_on', 'expected_servings', 'distributed_servings']);
 
-        // Trạng thái: các đợt bắt đầu từ đầu khoảng thời gian, gồm cả đợt sắp tới.
-        $statusCounts = CookingBatch::where('starts_on', '>=', $from->toDateString())
+        // Trạng thái: các chương trình bắt đầu từ đầu khoảng thời gian, gồm cả chương trình sắp tới.
+        $statusCounts = CookingBatch::visibleTo($user)->where('starts_on', '>=', $from->toDateString())
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
 
         $expenseChart = null;
         if ($user->can('viewReports')) {
-            $withExpenses = CookingBatch::whereBetween('starts_on', [$from->toDateString(), $to->toDateString()])
+            $withExpenses = CookingBatch::visibleTo($user)->whereBetween('starts_on', [$from->toDateString(), $to->toDateString()])
                 ->whereHas('expenseItems')
                 ->withSum('expenseItems', 'amount_vnd')
                 ->get(['id', 'starts_on']);

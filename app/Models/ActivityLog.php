@@ -51,7 +51,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * Đợt nấu liên quan (null với thao tác không thuộc đợt nào, ví dụ quản lý tài khoản).
+     * Chương trình liên quan (null với thao tác không thuộc chương trình nào, ví dụ quản lý tài khoản).
      *
      * @return BelongsTo<CookingBatch, $this>
      */
@@ -65,11 +65,11 @@ class ActivityLog extends Model
      *
      * Tóm tắt được che thêm một lớp (email, số điện thoại) phòng khi chuỗi ghép vô tình chứa dữ liệu cá nhân.
      *
-     * @param  CookingBatch|null  $batch  đợt nấu liên quan
+     * @param  CookingBatch|null  $batch  chương trình liên quan
      * @param  User|null  $user  người thực hiện
      * @param  ActivityAction  $action  loại sự kiện
      * @param  string  $summary  mô tả ngắn, KHÔNG chứa dữ liệu nhạy cảm (xem ghi chú lớp)
-     * @param  string|null  $notify  nội dung riêng cho kênh thông báo của đợt (mặc định = tóm tắt). Truyền giá trị
+     * @param  string|null  $notify  nội dung riêng cho kênh thông báo của chương trình (mặc định = tóm tắt). Truyền giá trị
      *                               cũng là yêu cầu gửi kể cả khi sự kiện không nằm trong BatchNotifier::EVENTS.
      */
     public static function record(?CookingBatch $batch, ?User $user, ActivityAction $action, string $summary, ?string $notify = null): self
@@ -81,7 +81,7 @@ class ActivityLog extends Model
             'summary' => mb_substr(self::redact($summary), 0, self::SUMMARY_MAX),
         ]);
 
-        // Kênh thông báo của đợt (Slack/Telegram/Chatwork): gửi sau khi lưu xong, không làm chậm thao tác.
+        // Kênh thông báo của chương trình (Slack/Telegram/Chatwork): gửi sau khi lưu xong, không làm chậm thao tác.
         app(BatchNotifier::class)->queue($log, self::redact($notify ?? $summary), $user?->name, $notify !== null);
 
         return $log;

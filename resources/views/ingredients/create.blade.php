@@ -1,6 +1,6 @@
 <x-form-shell title="Thêm nguyên liệu" :subtitle="$batch->name"
               :action="route('batches.ingredients.store', $batch)"
-              :back="route('batches.show', $batch).'#nguyen-lieu'" back-label="Quay lại đợt nấu">
+              :back="route('batches.show', $batch).'#nguyen-lieu'" back-label="Quay lại chương trình">
     @include('ingredients._form')
     <x-slot:actions>
         <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> Lưu nguyên liệu</button>

@@ -1,8 +1,8 @@
-<x-layouts.app title="Đợt nấu ăn">
-    <x-page-header title="Đợt nấu ăn" :subtitle="$batches->total() > 0 ? 'Tìm thấy '.$batches->total().' đợt nấu.' : null">
+<x-layouts.app title="Chương trình">
+    <x-page-header title="Chương trình" :subtitle="$batches->total() > 0 ? 'Tìm thấy '.$batches->total().' chương trình.' : null">
         @can('create', App\Models\CookingBatch::class)
             <x-slot:actions>
-                <a href="{{ route('batches.create') }}" data-modal class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo đợt nấu</a>
+                <a href="{{ route('batches.create') }}" data-modal class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo chương trình</a>
             </x-slot:actions>
         @endcan
     </x-page-header>
@@ -12,16 +12,16 @@
     @if($batches->isEmpty())
         <div class="card">
             @if($filter->isEmpty())
-                <x-empty-state icon="bi-calendar-plus" title="Chưa có đợt nấu ăn nào">
-                    Tạo đợt nấu để lên kế hoạch số suất, nguyên liệu và phân công việc.
+                <x-empty-state icon="bi-calendar-plus" title="Chưa có chương trình nào">
+                    Tạo chương trình để lên kế hoạch số suất, nguyên liệu và phân công việc.
                     @can('create', App\Models\CookingBatch::class)
                         <x-slot:action>
-                            <a href="{{ route('batches.create') }}" data-modal class="btn btn-primary">Tạo đợt nấu đầu tiên</a>
+                            <a href="{{ route('batches.create') }}" data-modal class="btn btn-primary">Tạo chương trình đầu tiên</a>
                         </x-slot:action>
                     @endcan
                 </x-empty-state>
             @else
-                <x-empty-state icon="bi-search" title="Không tìm thấy đợt nấu phù hợp">
+                <x-empty-state icon="bi-search" title="Không tìm thấy chương trình phù hợp">
                     Thử bỏ bớt điều kiện lọc.
                     <x-slot:action><a href="{{ route('batches.index') }}" class="btn btn-outline-secondary">Xóa bộ lọc</a></x-slot:action>
                 </x-empty-state>

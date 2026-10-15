@@ -2,10 +2,11 @@
     <x-page-header title="Quản lý tài khoản" subtitle="Tài khoản không bị xóa để giữ lịch sử; hãy khóa khi người dùng không còn tham gia.">
         <x-slot:actions>
             <a href="{{ route('users.create') }}" data-modal class="btn btn-primary"><i class="bi bi-person-plus" aria-hidden="true"></i> Tạo tài khoản</a>
+            <x-filter-toggle target="user-filter" :active="$q !== '' || $role || $state" />
         </x-slot:actions>
     </x-page-header>
 
-    <form method="GET" action="{{ route('users.index') }}" class="card card-body mb-3" role="search" aria-label="Lọc tài khoản">
+    <form method="GET" action="{{ route('users.index') }}" id="user-filter" class="card card-body mb-3" role="search" aria-label="Lọc tài khoản">
         <div class="row g-2 align-items-end">
             <div class="col-12 col-md-5">
                 <label for="u_q" class="form-label small mb-1">Tìm theo tên hoặc email</label>
@@ -48,14 +49,14 @@
             </div>
             <ul class="list-group list-group-flush" data-skeleton="list">
                 @foreach($users as $u)
-                    <li @class(['list-group-item py-3 d-flex gap-3 align-items-center', 'bg-body-tertiary' => ! $u->is_active])>
+                    <li @class(['list-group-item py-3 d-flex flex-wrap flex-sm-nowrap gap-3 align-items-center', 'bg-body-tertiary' => ! $u->is_active])>
                         <x-avatar :name="$u->name" size="lg" :class="$u->is_active ? '' : 'opacity-50'" />
-                        <div class="flex-grow-1 min-w-0">
+                        <div class="flex-grow-1 min-w-0 row-main">
                             <div class="fw-semibold text-truncate">
-                                {{ $u->name }} @if($u->is(auth()->user()))<span class="small text-body-secondary fw-normal">(bạn)</span>@endif
+                                <a href="{{ route('users.show', $u) }}">{{ $u->name }}</a> @if($u->is(auth()->user()))<span class="small text-body-secondary fw-normal">(bạn)</span>@endif
                             </div>
                             <div class="small text-body-secondary text-truncate">{{ $u->email }}</div>
-                            <div class="d-flex flex-wrap gap-1 mt-1">
+                            <div class="d-flex flex-wrap gap-1 mt-1 user-pills">
                                 <span class="status-pill status-draft">{{ $u->role->label() }}</span>
                                 @if($u->is_active)
                                     <span class="status-pill status-completed"><i class="bi bi-check-circle" aria-hidden="true"></i> Đang hoạt động</span>
@@ -64,7 +65,8 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="d-flex flex-column flex-sm-row gap-2 flex-shrink-0">
+                        {{-- Điện thoại: Sửa + Khóa/Mở khóa nằm ngang hàng ở dòng dưới cùng --}}
+                        <div class="d-flex gap-2 flex-shrink-0 row-actions">
                             <a href="{{ route('users.edit', $u) }}" data-modal class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil" aria-hidden="true"></i> Sửa</a>
                             @can('toggleActive', $u)
                                 <form method="POST" action="{{ route('users.toggle-active', $u) }}" data-ajax

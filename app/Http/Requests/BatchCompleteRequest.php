@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
-/** Hoàn tất (khóa) đợt nấu — bắt buộc tick xác nhận. */
+/** Hoàn tất (khóa) chương trình — bắt buộc tick xác nhận. */
 class BatchCompleteRequest extends FormRequest
 {
     /**
@@ -34,7 +34,7 @@ class BatchCompleteRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['confirm.accepted' => 'Vui lòng đánh dấu ô xác nhận trước khi hoàn tất đợt.'];
+        return ['confirm.accepted' => 'Vui lòng đánh dấu ô xác nhận trước khi hoàn tất chương trình.'];
     }
 
     /**

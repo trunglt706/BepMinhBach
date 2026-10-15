@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * Thêm/sửa kênh thông báo của đợt nấu.
+ * Thêm/sửa kênh thông báo của chương trình.
  * - Chỉ kiểm tra thông số của loại kênh đang chọn (form có đủ ô của mọi loại khi tắt JS).
  * - Sửa: ô bí mật để trống = giữ giá trị đã lưu (không bao giờ điền lại token vào form).
  * - Link tham gia: chỉ https và đúng tên miền của dịch vụ.
@@ -28,7 +28,7 @@ class NotificationChannelRequest extends FormRequest
     }
 
     /**
-     * Đợt nấu của yêu cầu (thêm: từ route; sửa: từ kênh).
+     * Chương trình của yêu cầu (thêm: từ route; sửa: từ kênh).
      */
     public function batch(): CookingBatch
     {
@@ -150,7 +150,7 @@ class NotificationChannelRequest extends FormRequest
         $driver = $this->driver();
 
         return [
-            'driver.unique' => 'Đợt này đã có kênh '.($driver?->label() ?? '').'. Hãy sửa kênh đó thay vì thêm mới.',
+            'driver.unique' => 'Chương trình này đã có kênh '.($driver?->label() ?? '').'. Hãy sửa kênh đó thay vì thêm mới.',
             'join_url.url' => 'Link tham gia phải là địa chỉ https://.',
             'join_url.regex' => 'Link tham gia phải là link của '.($driver?->label() ?? 'dịch vụ đã chọn').', ví dụ '.($driver?->joinUrlExample() ?? '').'.',
             'settings.*.regex' => ':attribute chưa đúng định dạng. Xem hướng dẫn bên dưới ô nhập.',

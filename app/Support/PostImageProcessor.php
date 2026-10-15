@@ -39,7 +39,7 @@ class PostImageProcessor
      * Giải mã, xoay đúng hướng, tạo các bản WebP theo bmb.post_images.widths (không phóng to ảnh nhỏ).
      *
      * @param  UploadedFile  $file  file đã qua validation của FormRequest
-     * @param  string  $directory  thư mục con: posts (ảnh bài viết) hoặc batches (ảnh nền đợt nấu)
+     * @param  string  $directory  thư mục con: posts (ảnh bài viết) hoặc batches (ảnh nền chương trình)
      * @return array{path: string, widths: list<int>, width: int, height: int} dữ liệu cho PostImage
      *
      * @throws InvalidImage ảnh hỏng, sai định dạng thật hoặc quá nhiều điểm ảnh (thông báo cho người dùng)

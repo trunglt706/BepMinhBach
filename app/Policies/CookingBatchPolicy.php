@@ -7,16 +7,32 @@ use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
 /**
- * Quyền trên đợt nấu. Vai trò theo cấp (xem App\Enums\Role); đợt đã khóa (hoàn tất/hủy)
+ * Quyền trên chương trình. Vai trò theo cấp (xem App\Enums\Role); chương trình đã khóa (hoàn tất/hủy)
  * không nhận chỉnh sửa cho tới khi được mở lại.
  */
 class CookingBatchPolicy
 {
-    /** Thông báo khi thao tác trên đợt đã khóa. */
-    public const LOCKED_MESSAGE = 'Đợt nấu đã hoàn tất hoặc đã hủy. Cần mở lại đợt trước khi chỉnh sửa.';
+    /** Thông báo khi thao tác trên chương trình đã khóa. */
+    public const LOCKED_MESSAGE = 'Chương trình đã hoàn tất hoặc đã hủy. Cần mở lại chương trình trước khi chỉnh sửa.';
 
     /**
-     * Xem danh sách đợt: mọi tài khoản đang hoạt động (để biết việc cần làm).
+     * Phạm vi dữ liệu: mọi quyền trên MỘT chương trình cụ thể đều yêu cầu được xem chương trình đó (CookingBatch::isVisibleTo —
+     * điều phối viên: chương trình mình điều phối; ghi nhận/tình nguyện viên: chương trình có việc giao cho mình). Không được xem
+     * thì trả 404 (không tiết lộ chương trình có tồn tại). null = tiếp tục kiểm tra quyền như bình thường.
+     *
+     * @param  User  $user  người đăng nhập
+     * @param  string  $ability  tên quyền
+     * @param  mixed  ...$arguments  đối số (chương trình nếu có)
+     */
+    public function before(User $user, string $ability, mixed ...$arguments): ?Response
+    {
+        $batch = $arguments[0] ?? null;
+
+        return $batch instanceof CookingBatch && ! $batch->isVisibleTo($user) ? Response::denyAsNotFound() : null;
+    }
+
+    /**
+     * Xem danh sách chương trình: mọi tài khoản đang hoạt động (danh sách tự lọc theo CookingBatch::scopeVisibleTo).
      *
      * @param  User  $user  người đăng nhập
      */
@@ -26,10 +42,10 @@ class CookingBatchPolicy
     }
 
     /**
-     * Xem chi tiết đợt: mọi tài khoản đang hoạt động.
+     * Xem chi tiết chương trình: tài khoản đang hoạt động trong phạm vi được xem (kiểm tra ở before()).
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function view(User $user, CookingBatch $batch): bool
     {
@@ -37,7 +53,7 @@ class CookingBatchPolicy
     }
 
     /**
-     * Tạo đợt: điều phối viên trở lên.
+     * Tạo chương trình: điều phối viên trở lên.
      *
      * @param  User  $user  người đăng nhập
      */
@@ -47,10 +63,10 @@ class CookingBatchPolicy
     }
 
     /**
-     * Sửa thông tin đợt: điều phối viên, đợt chưa khóa.
+     * Sửa thông tin chương trình: điều phối viên, chương trình chưa khóa.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function update(User $user, CookingBatch $batch): Response
     {
@@ -58,10 +74,10 @@ class CookingBatchPolicy
     }
 
     /**
-     * Xóa đợt: chỉ đợt nháp chưa có dữ liệu (còn lại phải "Hủy" để giữ lịch sử).
+     * Xóa chương trình: chỉ chương trình nháp chưa có dữ liệu (còn lại phải "Hủy" để giữ lịch sử).
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function delete(User $user, CookingBatch $batch): Response
     {
@@ -70,7 +86,7 @@ class CookingBatchPolicy
         }
 
         return $batch->hasHistory()
-            ? Response::deny('Đợt nấu đã có dữ liệu nên không thể xóa. Hãy dùng “Hủy đợt” để giữ lại lịch sử.')
+            ? Response::deny('Chương trình đã có dữ liệu nên không thể xóa. Hãy dùng “Hủy chương trình” để giữ lại lịch sử.')
             : Response::allow();
     }
 
@@ -78,7 +94,7 @@ class CookingBatchPolicy
      * Chuyển trạng thái đơn giản: nháp ↔ đã lên kế hoạch → đang diễn ra.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function changeStatus(User $user, CookingBatch $batch): Response
     {
@@ -86,10 +102,10 @@ class CookingBatchPolicy
     }
 
     /**
-     * Hoàn tất (khóa) đợt: điều phối viên, đợt đã lên kế hoạch hoặc đang diễn ra.
+     * Hoàn tất (khóa) chương trình: điều phối viên, chương trình đã lên kế hoạch hoặc đang diễn ra.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function complete(User $user, CookingBatch $batch): Response
     {
@@ -99,14 +115,14 @@ class CookingBatchPolicy
 
         return $batch->status->canComplete()
             ? Response::allow()
-            : Response::deny('Chỉ hoàn tất được đợt đã lên kế hoạch hoặc đang diễn ra.');
+            : Response::deny('Chỉ hoàn tất được chương trình đã lên kế hoạch hoặc đang diễn ra.');
     }
 
     /**
-     * Hủy đợt: điều phối viên, đợt chưa khóa.
+     * Hủy chương trình: điều phối viên, chương trình chưa khóa.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function cancel(User $user, CookingBatch $batch): Response
     {
@@ -116,14 +132,14 @@ class CookingBatchPolicy
 
         return $batch->status->canCancel()
             ? Response::allow()
-            : Response::deny('Đợt nấu này đã hoàn tất hoặc đã hủy.');
+            : Response::deny('Chương trình này đã hoàn tất hoặc đã hủy.');
     }
 
     /**
-     * Mở lại đợt đã khóa: điều phối viên.
+     * Mở lại chương trình đã khóa: điều phối viên.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function reopen(User $user, CookingBatch $batch): Response
     {
@@ -133,14 +149,14 @@ class CookingBatchPolicy
 
         return $batch->isLocked()
             ? Response::allow()
-            : Response::deny('Đợt nấu đang mở, không cần mở lại.');
+            : Response::deny('Chương trình đang mở, không cần mở lại.');
     }
 
     /**
-     * Thêm/sửa nguyên liệu, công việc: điều phối viên, đợt chưa khóa.
+     * Thêm/sửa nguyên liệu, công việc: điều phối viên, chương trình chưa khóa.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function manageChecklist(User $user, CookingBatch $batch): Response
     {
@@ -148,10 +164,10 @@ class CookingBatchPolicy
     }
 
     /**
-     * Nhập số suất thực tế: người ghi nhận trở lên, đợt chưa khóa.
+     * Nhập số suất thực tế: người ghi nhận trở lên, chương trình chưa khóa.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function recordResults(User $user, CookingBatch $batch): Response
     {
@@ -166,7 +182,7 @@ class CookingBatchPolicy
      * Thêm/sửa/xóa khoản chi: cùng điều kiện với nhập số suất.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function manageExpenses(User $user, CookingBatch $batch): Response
     {
@@ -177,7 +193,7 @@ class CookingBatchPolicy
      * Xem số suất thực tế, chi phí và lịch sử thay đổi: người ghi nhận trở lên.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function viewFinancials(User $user, CookingBatch $batch): bool
     {
@@ -185,10 +201,10 @@ class CookingBatchPolicy
     }
 
     /**
-     * Báo thiếu nguyên liệu: mọi tài khoản đang hoạt động, khi đợt còn mở.
+     * Báo thiếu nguyên liệu: mọi tài khoản đang hoạt động, khi chương trình còn mở.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function reportIssues(User $user, CookingBatch $batch): Response
     {
@@ -200,11 +216,11 @@ class CookingBatchPolicy
     }
 
     /**
-     * Cấu hình kênh thông báo (Slack/Telegram/Chatwork): điều phối viên trở lên, kể cả đợt đã khóa
-     * (cấu hình kênh không đổi dữ liệu đợt; đợt có thể được mở lại và vẫn cần thông báo).
+     * Cấu hình kênh thông báo (Slack/Telegram/Chatwork): điều phối viên trở lên, kể cả chương trình đã khóa
+     * (cấu hình kênh không đổi dữ liệu chương trình; chương trình có thể được mở lại và vẫn cần thông báo).
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function manageNotifications(User $user, CookingBatch $batch): bool
     {
@@ -212,10 +228,10 @@ class CookingBatchPolicy
     }
 
     /**
-     * Điều kiện chung: điều phối viên trở lên và đợt chưa khóa.
+     * Điều kiện chung: điều phối viên trở lên và chương trình chưa khóa.
      *
      * @param  User  $user  người đăng nhập
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     private function coordinatorOnUnlocked(User $user, CookingBatch $batch): Response
     {

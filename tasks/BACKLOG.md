@@ -2,12 +2,12 @@
 
 Trạng thái: `[ ]` chưa làm, `[-]` đang làm / làm một phần, `[x]` đã xác minh hoàn tất (có test tự động hoặc kiểm tra thực tế ghi trong `docs/IMPLEMENTATION_LOG.md`).
 
-Cập nhật lần cuối: 2026-10-14. Bộ test: `php artisan test` → 188 test pass trên SQLite và trên MySQL 8.4 (`bepminhbach_test`). Báo cáo nghiệm thu: `docs/ACCEPTANCE_REPORT.md`.
+Cập nhật lần cuối: 2026-10-14. Bộ test: `php artisan test` → 188 test pass trên SQLite và trên MySQL 8.4 (`gopgio_test`). Báo cáo nghiệm thu: `docs/ACCEPTANCE_REPORT.md`.
 
 ## P0 — Nền tảng
 - [x] BM-001 Khảo sát repository, runtime, dependencies, git status và test hiện có. *(Repo chỉ có tài liệu, chưa phải git repo; PHP 8.3 Laragon / 8.2 trên PATH; MySQL 8.4 đang chạy nhưng cần mật khẩu root.)*
 - [x] BM-002 Thiết lập ứng dụng Laravel/Blade/Bootstrap. *(Laravel 12.70, Bootstrap 5.3.8 + Bootstrap Icons dạng file tĩnh trong `public/vendor`.)*
-- [x] BM-003 Cấu hình `.env.example`, hướng dẫn cài đặt và database. *(MySQL 8.4 đã cấu hình; bộ test pass trên DB `bepminhbach_test`.)*
+- [x] BM-003 Cấu hình `.env.example`, hướng dẫn cài đặt và database. *(MySQL 8.4 đã cấu hình; bộ test pass trên DB `gopgio_test`.)*
 - [x] BM-004 Xác thực, quản lý vai trò và kiểm soát quyền. *(Đăng nhập email, rate limit, khóa tài khoản, 4 vai trò phân cấp, Policies cho mọi thao tác ghi.)*
 - [x] BM-005 Layout responsive, navigation và trạng thái giao diện cơ bản. *(Thiết kế lại 2026-10-14: sidebar desktop, bottom nav mobile, design system.)*
 - [x] BM-006 Factories/seeders dữ liệu demo an toàn cho local/testing. *(DemoSeeder chỉ chạy ở local/testing; lệnh `bmb:create-admin` cho production.)*

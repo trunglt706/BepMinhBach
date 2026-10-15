@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -48,6 +49,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Email đặt lại mật khẩu bằng tiếng Việt, gửi nền qua queue.
+     *
+     * @param  string  $token  token đặt lại mật khẩu
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    /**
      * Tài khoản đang hoạt động và có vai trò từ mức cho trước trở lên.
      *
      * @param  Role  $role  vai trò tối thiểu
@@ -66,7 +77,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Điều phối viên trở lên (quản lý đợt nấu, bài viết).
+     * Điều phối viên trở lên (quản lý chương trình, bài viết).
      */
     public function isCoordinator(): bool
     {
@@ -93,7 +104,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Tài khoản có thể làm người điều phối một đợt nấu (đang hoạt động, điều phối viên trở lên).
+     * Tài khoản có thể làm người điều phối một chương trình (đang hoạt động, điều phối viên trở lên).
      *
      * @param  Builder<User>  $query
      * @return Builder<User>

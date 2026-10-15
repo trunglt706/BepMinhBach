@@ -113,6 +113,7 @@ class TaskTest extends TestCase
         $owner = User::factory()->volunteer()->create();
         $intruder = User::factory()->volunteer()->create();
         $task = Task::factory()->for($batch, 'batch')->create(['assignee_id' => $owner->id]);
+        $this->assignToBatch($batch, $intruder); // cùng chương trình nhưng không phải việc của mình
         $unassigned = Task::factory()->for($batch, 'batch')->create(['assignee_id' => null]);
 
         $this->actingAs($intruder)->post("/admin/tasks/{$task->id}/status", ['status' => 'done'])->assertForbidden();
@@ -132,7 +133,7 @@ class TaskTest extends TestCase
     {
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $task = Task::factory()->for($batch, 'batch')->create(['assignee_id' => User::factory()->volunteer()]);
-        $coordinator = User::factory()->coordinator()->create();
+        $coordinator = $batch->coordinator; // điều phối viên của chương trình
 
         $this->actingAs($coordinator)->post("/admin/tasks/{$task->id}/status", ['status' => 'done'])->assertRedirect();
         $this->assertSame($coordinator->id, $task->fresh()->completed_by);
@@ -143,13 +144,13 @@ class TaskTest extends TestCase
 
     public function test_my_tasks_shows_only_own_open_tasks_grouped(): void
     {
-        $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create(['name' => 'Đợt hôm nay']);
+        $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create(['name' => 'Chương trình hôm nay']);
         $volunteer = User::factory()->volunteer()->create();
         Task::factory()->for($batch, 'batch')->create(['assignee_id' => $volunteer->id, 'title' => 'Việc quá hạn', 'due_at' => now()->subHour()]);
         Task::factory()->for($batch, 'batch')->create(['assignee_id' => $volunteer->id, 'title' => 'Việc tuần sau', 'due_at' => now()->addWeek()]);
         Task::factory()->for($batch, 'batch')->create(['assignee_id' => User::factory()->volunteer(), 'title' => 'Việc của người khác']);
         $cancelled = CookingBatch::factory()->status(BatchStatus::Cancelled)->create();
-        Task::factory()->for($cancelled, 'batch')->create(['assignee_id' => $volunteer->id, 'title' => 'Việc đợt đã hủy']);
+        Task::factory()->for($cancelled, 'batch')->create(['assignee_id' => $volunteer->id, 'title' => 'Việc chương trình đã hủy']);
 
         $this->actingAs($volunteer)->get('/admin/my-tasks')
             ->assertOk()
@@ -157,7 +158,7 @@ class TaskTest extends TestCase
             ->assertSee('Đánh dấu hoàn thành')
             ->assertSee('Báo đang bị vướng')
             ->assertDontSee('Việc của người khác')
-            ->assertDontSee('Việc đợt đã hủy');
+            ->assertDontSee('Việc chương trình đã hủy');
     }
 
     public function test_my_tasks_empty_state(): void

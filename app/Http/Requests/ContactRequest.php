@@ -11,7 +11,7 @@ use Illuminate\Validation\Validator;
 
 /**
  * Form liên hệ công khai.
- * - Email hoặc số điện thoại Việt Nam (để đội bếp liên lạc lại), chuẩn hóa trước khi kiểm tra.
+ * - Email hoặc số điện thoại Việt Nam (để đội Góp Gió liên lạc lại), chuẩn hóa trước khi kiểm tra.
  * - Ô "website" là bẫy bot (ẩn với người dùng): có giá trị thì từ chối.
  * - Mỗi client (IP đã băm) hoặc mỗi email/SĐT chỉ gửi 1 liên hệ / ngày.
  */
@@ -81,7 +81,7 @@ class ContactRequest extends FormRequest
                 return;
             }
             if (ContactMessage::sentToday(ContactMessage::clientHash($this), (string) $this->input('contact'))) {
-                $validator->errors()->add('limit', 'Bạn đã gửi một liên hệ hôm nay. Đội bếp sẽ phản hồi sớm; bạn có thể gửi thêm vào ngày mai.');
+                $validator->errors()->add('limit', 'Bạn đã gửi một liên hệ hôm nay. Đội Góp Gió sẽ phản hồi sớm; bạn có thể gửi thêm vào ngày mai.');
             }
         }];
     }

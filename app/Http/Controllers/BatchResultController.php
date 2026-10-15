@@ -12,13 +12,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
-/** Nhập số suất thực tế (đã chuẩn bị / đã phân phát) của đợt nấu. */
+/** Nhập số suất thực tế (đã chuẩn bị / đã phân phát) của chương trình. */
 class BatchResultController extends Controller
 {
     /**
      * Form nhập số suất.
      *
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function edit(CookingBatch $batch): View
     {
@@ -32,7 +32,7 @@ class BatchResultController extends Controller
      * trả 409 (AJAX) hoặc quay lại form với giá trị mới nhất.
      *
      * @param  BatchResultRequest  $request  dữ liệu đã kiểm tra + quyền recordResults
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function update(BatchResultRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
@@ -48,9 +48,9 @@ class BatchResultController extends Controller
 
             $old = [$fresh->prepared_servings, $fresh->distributed_servings];
 
-            $fresh->prepared_servings = $validated['prepared_servings'];
-            $fresh->distributed_servings = $validated['distributed_servings'];
-            $fresh->variance_note = $validated['variance_note'];
+            $fresh->prepared_servings = $validated['prepared_servings'] ?? null;
+            $fresh->distributed_servings = $validated['distributed_servings'] ?? null;
+            $fresh->variance_note = $validated['variance_note'] ?? null;
             $fresh->results_updated_by = $request->user()->id;
             $fresh->results_updated_at = now();
             $fresh->results_version++;

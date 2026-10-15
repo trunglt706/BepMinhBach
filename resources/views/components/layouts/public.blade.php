@@ -1,8 +1,9 @@
-@props(['title' => null, 'description' => null, 'canonical' => null, 'noindex' => false])
+@props(['title' => null, 'description' => null, 'canonical' => null, 'noindex' => false, 'ogType' => 'website', 'image' => null])
 {{--
     Khung trang công khai (khách không cần đăng nhập). Không hiện thông tin nội bộ của tài khoản đang đăng nhập.
-    SEO: description, canonical, robots (noindex cho trang tìm kiếm/lọc và bản xem trước), slot $head cho
-    Open Graph / dữ liệu có cấu trúc riêng từng trang.
+    SEO: description, canonical, robots (noindex cho trang tìm kiếm/lọc và bản xem trước), Open Graph + Twitter
+    chung cho mọi trang (og:type, title, description, url = canonical, image); slot $head cho thẻ riêng từng trang
+    (kích thước ảnh, article:*, dữ liệu có cấu trúc).
 --}}
 <!DOCTYPE html>
 <html lang="vi">
@@ -11,12 +12,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1b6343">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ? $title.' · ' : '' }}BếpMinhBạch</title>
+    <title>{{ $title ? $title.' · ' : '' }}Góp Gió</title>
     @if($description)<meta name="description" content="{{ $description }}">@endif
     <meta name="robots" content="{{ $noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large' }}">
     @if($canonical)<link rel="canonical" href="{{ $canonical }}">@endif
-    <meta property="og:site_name" content="BếpMinhBạch">
+    <meta property="og:site_name" content="Góp Gió">
     <meta property="og:locale" content="vi_VN">
+    <meta property="og:type" content="{{ $ogType }}">
+    <meta property="og:title" content="{{ $title ?: 'Góp Gió' }}">
+    @if($description)<meta property="og:description" content="{{ $description }}">@endif
+    @if($canonical)<meta property="og:url" content="{{ $canonical }}">@endif
+    @if($image)<meta property="og:image" content="{{ $image }}">@endif
+    <meta name="twitter:card" content="{{ $image ? 'summary_large_image' : 'summary' }}">
+    <meta name="twitter:title" content="{{ $title ?: 'Góp Gió' }}">
+    @if($description)<meta name="twitter:description" content="{{ $description }}">@endif
+    @if($image)<meta name="twitter:image" content="{{ $image }}">@endif
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     <link rel="sitemap" type="application/xml" href="{{ route('sitemap') }}">
     @include('partials.head-assets')
@@ -28,8 +38,8 @@
 <header class="public-header d-print-none">
     <div class="container-xxl d-flex align-items-center gap-3">
         <a class="brand" href="{{ route('blog.index') }}">
-            <span class="brand-mark"><i class="bi bi-egg-fried" aria-hidden="true"></i></span>
-            <span>Bếp<span class="brand-accent">MinhBạch</span></span>
+            <span class="brand-mark"><i class="bi bi-wind" aria-hidden="true"></i></span>
+            <span>Góp <span class="brand-accent">Gió</span></span>
         </a>
         <nav class="public-nav me-auto" aria-label="Điều hướng công khai">
             <a href="{{ route('blog.index') }}" @class(['active' => request()->routeIs('blog.*')]) @if(request()->routeIs('blog.index')) aria-current="page" @endif>Bài viết</a>
@@ -52,7 +62,7 @@
         </details>
         {{-- Màn rất hẹp (< 400px): nút chỉ còn biểu tượng, tên đọc qua aria-label/title. --}}
         @guest
-            <a href="{{ route('login') }}" class="btn btn-sm btn-outline-primary public-header-action" aria-label="Đăng nhập" title="Đăng nhập">
+            <a href="{{ route('login') }}" rel="nofollow" class="btn btn-sm btn-outline-primary public-header-action" aria-label="Đăng nhập" title="Đăng nhập">
                 <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> <span class="public-header-action-text" aria-hidden="true">Đăng nhập</span></a>
         @endguest
     </div>
@@ -64,9 +74,15 @@
 
 <footer class="public-footer d-print-none">
     <div class="container-xxl">
-        <p class="public-footer-copy">© {{ now()->year }} BếpMinhBạch. Bảo lưu mọi quyền.</p>
+        <p class="public-footer-copy">© {{ now()->year }} Góp Gió. Bảo lưu mọi quyền.</p>
     </div>
 </footer>
+
+{{-- Lên đầu trang: app.js hiện nút khi đã cuộn xuống; không có JS thì nút không xuất hiện. --}}
+<button type="button" class="btn btn-primary btn-icon back-to-top d-print-none" data-back-to-top hidden
+        aria-label="Lên đầu trang" title="Lên đầu trang">
+    <i class="bi bi-arrow-up" aria-hidden="true"></i>
+</button>
 
 <script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>

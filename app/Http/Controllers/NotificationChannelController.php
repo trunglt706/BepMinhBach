@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
- * Kênh thông báo của đợt nấu (Slack / Telegram / Chatwork): thêm, sửa, bật/tắt, gửi thử, xóa.
+ * Kênh thông báo của chương trình (Slack / Telegram / Chatwork): thêm, sửa, bật/tắt, gửi thử, xóa.
  * Chỉ điều phối viên trở lên. Thông số bí mật không bao giờ được trả lại ra form/trang.
  */
 class NotificationChannelController extends Controller
@@ -23,7 +23,7 @@ class NotificationChannelController extends Controller
      * Form thêm kênh. Loại kênh có thể chọn sẵn qua ?driver=telegram.
      *
      * @param  Request  $request  yêu cầu hiện tại
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function create(Request $request, CookingBatch $batch): View
     {
@@ -44,7 +44,7 @@ class NotificationChannelController extends Controller
      * Lưu kênh mới.
      *
      * @param  NotificationChannelRequest  $request  dữ liệu đã kiểm tra + quyền
-     * @param  CookingBatch  $batch  đợt nấu
+     * @param  CookingBatch  $batch  chương trình
      */
     public function store(NotificationChannelRequest $request, CookingBatch $batch): JsonResponse|RedirectResponse
     {
@@ -128,7 +128,7 @@ class NotificationChannelController extends Controller
     {
         Gate::authorize('manageNotifications', $channel->batch);
 
-        $error = $notifier->send($channel, $channel->batch, 'Tin thử: kênh thông báo đã kết nối với đợt nấu.', $request->user()->name);
+        $error = $notifier->send($channel, $channel->batch, 'Tin thử: kênh thông báo đã kết nối với chương trình.', $request->user()->name);
         $back = redirect()->route('batches.show', $channel->cooking_batch_id)->withFragment('thong-bao');
 
         if ($error !== null) {

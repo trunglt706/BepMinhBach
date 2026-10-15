@@ -9,6 +9,7 @@
     <x-page-header title="Liên hệ" subtitle="Lời nhắn khách gửi từ trang công khai. Có thông tin cá nhân — chỉ dùng để liên lạc lại, xóa khi đã xử lý xong.">
         <x-slot:actions>
             <a href="{{ route('contact.create') }}" class="btn btn-outline-secondary" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Trang liên hệ</a>
+            <x-filter-toggle target="contact-filter" :active="$filtered" />
         </x-slot:actions>
     </x-page-header>
 
@@ -44,7 +45,7 @@
         @endif
     </section>
 
-    <form method="GET" action="{{ route('contacts.index') }}" class="card card-body mb-3" role="search" aria-label="Lọc liên hệ">
+    <form method="GET" action="{{ route('contacts.index') }}" id="contact-filter" class="card card-body mb-3" role="search" aria-label="Lọc liên hệ">
         <div class="row g-2 align-items-end">
             <div class="col-12 col-lg-4">
                 <label for="c_q" class="form-label small mb-1">Tìm theo tên, email hoặc số điện thoại</label>
@@ -111,8 +112,15 @@
                             </div>
                             <p class="mb-2 contact-message">{{ $m->message }}</p>
                             <div class="meta-inline">
-                                <a href="{{ $isEmail ? 'mailto:'.$m->contact : 'tel:'.$m->contact }}">
-                                    <i class="bi {{ $isEmail ? 'bi-envelope' : 'bi-telephone' }}" aria-hidden="true"></i> {{ $m->contact }}</a>
+                                {{-- Chỉ in bản đã che; "Hiện" gọi máy chủ lấy bản đầy đủ (ghi nhật ký) rồi thay bằng link gọi/gửi mail. --}}
+                                <span class="contact-masked" data-reveal-target>
+                                    <i class="bi {{ $isEmail ? 'bi-envelope' : 'bi-telephone' }}" aria-hidden="true"></i>
+                                    <span class="tabular" data-reveal-value>{{ App\Support\Mask::contact($m->contact) }}</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 align-baseline" hidden
+                                            data-reveal-url="{{ route('contacts.reveal', $m) }}"
+                                            aria-label="Hiện đầy đủ {{ $isEmail ? 'email' : 'số điện thoại' }} của {{ $m->name }}">
+                                        <i class="bi bi-eye" aria-hidden="true"></i> Hiện</button>
+                                </span>
                                 <span><i class="bi bi-clock" aria-hidden="true"></i> {{ Format::dateTime($m->created_at) }}</span>
                                 @if($m->handled_at)
                                     <span><i class="bi bi-person-check" aria-hidden="true"></i> {{ $m->handler?->name ?? 'Tài khoản đã xóa' }} · {{ Format::dateTime($m->handled_at) }}</span>

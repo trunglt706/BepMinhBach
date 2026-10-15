@@ -118,7 +118,7 @@ class AjaxFlowTest extends TestCase
         $ingredient = Ingredient::factory()->for($batch, 'batch')->create();
 
         $this->actingAs($coordinator)->postJson("/admin/batches/{$batch->id}/status", ['to' => 'in_progress'])
-            ->assertOk()->assertJson(['message' => 'Đợt nấu đã chuyển sang “Đang diễn ra”.']);
+            ->assertOk()->assertJson(['message' => 'Chương trình đã chuyển sang “Đang diễn ra”.']);
 
         $this->actingAs($coordinator)->postJson("/admin/tasks/{$task->id}/status", ['status' => 'blocked'])
             ->assertStatus(422)->assertJsonValidationErrors('blocked_note');
@@ -158,6 +158,7 @@ class AjaxFlowTest extends TestCase
         $batch = CookingBatch::factory()->status(BatchStatus::InProgress)->create();
         $task = Task::factory()->for($batch, 'batch')->create(['assignee_id' => User::factory()->volunteer()]);
         $intruder = User::factory()->volunteer()->create();
+        $this->assignToBatch($batch, $intruder);
 
         $this->actingAs($intruder)->postJson("/admin/tasks/{$task->id}/status", ['status' => 'done'])
             ->assertForbidden()->assertJson(['message' => 'Bạn chỉ cập nhật được công việc được giao cho mình.']);
@@ -191,7 +192,7 @@ class AjaxFlowTest extends TestCase
             }
             $this->assertDoesNotMatchRegularExpression('#type="password"[^>]*value=#', $html);
         }
-        // Trang đầy đủ (không JS) vẫn có vùng xóa đợt nháp, form gửi bình thường.
+        // Trang đầy đủ (không JS) vẫn có vùng xóa chương trình nháp, form gửi bình thường.
         $this->actingAs($admin)->get("/admin/batches/{$batch->id}/edit")->assertOk()->assertSee('danger-title', false)->assertSee('app-sidebar');
 
         $this->actingAs($admin)->get('/admin/batches')->assertSee(route('batches.create').'" data-modal', false);
@@ -214,7 +215,7 @@ class AjaxFlowTest extends TestCase
         ])->assertOk();
         $batch = CookingBatch::firstWhere('name', 'Cơm chay CN');
         $this->assertSame(3_200_000, $batch->estimated_cost_vnd);
-        // Đợt mới có trang riêng: chuyển trang một lần, thông báo được flash cho trang đích.
+        // Chương trình mới có trang riêng: chuyển trang một lần, thông báo được flash cho trang đích.
         $response->assertJson(['redirect' => route('batches.show', $batch)])->assertSessionHas('success');
 
         $this->actingAs($coordinator)->putJson("/admin/batches/{$batch->id}", [
@@ -245,12 +246,14 @@ class AjaxFlowTest extends TestCase
             ->assertOk()->assertJsonMissing(['redirect']);
         $this->assertSame('TNV A', $user->fresh()->name);
 
+        $this->flushSession(); // đổi người dùng = phiên mới (auth.session lưu mã băm mật khẩu theo phiên)
         $this->actingAs($user)->putJson('/admin/account/password', ['current_password' => 'sai', 'password' => 'moi-12345', 'password_confirmation' => 'moi-12345'])
             ->assertStatus(422)->assertJsonValidationErrors('current_password');
         $this->actingAs($user)->putJson('/admin/account/password', ['current_password' => 'matkhau-123', 'password' => 'moi-12345', 'password_confirmation' => 'moi-12345'])
             ->assertOk()->assertExactJson(['message' => 'Đã đổi mật khẩu.', 'refresh' => false]);
 
         $volunteer = User::factory()->volunteer()->create();
+        $this->flushSession();
         $this->actingAs($volunteer)->postJson('/admin/users', ['name' => 'X'])->assertForbidden();
         $this->actingAs($volunteer)->get('/admin/users/create?modal=1')->assertForbidden();
     }

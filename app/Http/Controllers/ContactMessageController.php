@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActivityAction;
 use App\Enums\ContactTopic;
 use App\Http\Requests\ContactIndexRequest;
+use App\Models\ActivityLog;
 use App\Models\ContactMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -110,6 +112,26 @@ class ContactMessageController extends Controller
         ])->save();
 
         return $this->done($request, back(), $handled ? 'Đã đánh dấu liên hệ là đã xử lý.' : 'Đã chuyển liên hệ về chưa xử lý.');
+    }
+
+    /**
+     * Trả thông tin liên lạc đầy đủ (danh sách chỉ hiện bản đã che). Mỗi lần xem được ghi nhật ký
+     * (ai xem, liên hệ số mấy — không ghi chính thông tin liên lạc) để kiểm tra khi cần.
+     *
+     * @param  Request  $request  yêu cầu hiện tại
+     * @param  ContactMessage  $contact  liên hệ
+     */
+    public function reveal(Request $request, ContactMessage $contact): JsonResponse
+    {
+        Gate::authorize('viewAny', ContactMessage::class);
+
+        ActivityLog::record(null, $request->user(), ActivityAction::ContactRevealed, 'Xem thông tin liên lạc của liên hệ #'.$contact->id.'.');
+        $isEmail = str_contains($contact->contact, '@');
+
+        return response()->json([
+            'contact' => $contact->contact,
+            'href' => ($isEmail ? 'mailto:' : 'tel:').$contact->contact,
+        ])->header('Cache-Control', 'no-store');
     }
 
     /**

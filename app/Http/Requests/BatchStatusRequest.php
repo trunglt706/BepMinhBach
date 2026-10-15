@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 class BatchStatusRequest extends FormRequest
 {
     /**
-     * Điều phối viên của đợt (xem CookingBatchPolicy::changeStatus).
+     * Điều phối viên của chương trình (xem CookingBatchPolicy::changeStatus).
      */
     public function authorize(): bool
     {
@@ -42,7 +42,7 @@ class BatchStatusRequest extends FormRequest
      */
     public function messages(): array
     {
-        return ['to.in' => 'Không thể chuyển đợt nấu sang trạng thái này từ trạng thái hiện tại.'];
+        return ['to.in' => 'Không thể chuyển chương trình sang trạng thái này từ trạng thái hiện tại.'];
     }
 
     /**
@@ -54,7 +54,7 @@ class BatchStatusRequest extends FormRequest
     }
 
     /**
-     * Đợt nấu trong URL.
+     * Chương trình trong URL.
      */
     private function batch(): CookingBatch
     {

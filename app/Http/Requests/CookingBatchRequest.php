@@ -10,10 +10,10 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
-/** Tạo/sửa thông tin đợt nấu. */
+/** Tạo/sửa thông tin chương trình. */
 class CookingBatchRequest extends FormRequest
 {
-    /** Trạng thái được chọn khi tạo đợt (nút "Lưu nháp" / "Lưu kế hoạch"). */
+    /** Trạng thái được chọn khi tạo chương trình (nút "Lưu nháp" / "Lưu kế hoạch"). */
     public const CREATE_STATUSES = [BatchStatus::Draft, BatchStatus::Planned];
 
     /**
@@ -28,12 +28,13 @@ class CookingBatchRequest extends FormRequest
     }
 
     /**
-     * Chuẩn hóa số tiền "1.500.000 đ" → "1500000" trước khi kiểm tra.
+     * Chuẩn hóa số tiền "1.500.000 đ" → "1500000" và số suất "1.200" → "1200" trước khi kiểm tra.
      */
     protected function prepareForValidation(): void
     {
         $this->merge([
             'estimated_cost_vnd' => Input::money($this->input('estimated_cost_vnd')),
+            'expected_servings' => Input::money($this->input('expected_servings')),
         ]);
     }
 
@@ -56,7 +57,7 @@ class CookingBatchRequest extends FormRequest
                     ->whereIn('role', Role::valuesAtLeast(Role::Coordinator)),
             ],
             'notes' => ['nullable', 'string', 'max:2000'],
-            // Ảnh nền (slider trang chủ, trang đợt công khai): kiểm tra kiểu theo NỘI DUNG file như ảnh bài viết.
+            // Ảnh nền (slider trang chủ, trang chương trình công khai): kiểm tra kiểu theo NỘI DUNG file như ảnh bài viết.
             'cover' => ['nullable', 'file', 'max:'.config('bmb.post_images.max_upload_kb'),
                 'mimetypes:'.implode(',', config('bmb.post_images.mimes')), 'mimes:jpg,jpeg,png,webp'],
             'remove_cover' => ['nullable', 'boolean'],
@@ -73,7 +74,7 @@ class CookingBatchRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'name' => 'tên đợt nấu',
+            'name' => 'tên chương trình',
             'starts_on' => 'ngày bắt đầu',
             'location_text' => 'địa điểm',
             'expected_servings' => 'số suất dự kiến',

@@ -1,5 +1,5 @@
 @props(['batch'])
-{{-- Thẻ đợt nấu dùng ở danh sách và tổng quan. Cần withTaskProgress() + coordinator. --}}
+{{-- Thẻ chương trình dùng ở danh sách và tổng quan. Cần withTaskProgress() + coordinator. --}}
 <a href="{{ route('batches.show', $batch) }}" {{ $attributes->class(['batch-card']) }}>
     <div class="batch-card-body">
         <x-date-tile :date="$batch->starts_on" />

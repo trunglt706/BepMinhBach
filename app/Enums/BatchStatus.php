@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * Trạng thái đợt nấu: Nháp → Đã lên kế hoạch → Đang diễn ra → Đã hoàn tất; có thể Hủy.
+ * Trạng thái chương trình: Nháp → Đã lên kế hoạch → Đang diễn ra → Đã hoàn tất; có thể Hủy.
  * Hoàn tất/Hủy là trạng thái khóa (chỉ mở lại được qua thao tác có ghi lý do).
  */
 enum BatchStatus: string
@@ -51,7 +51,7 @@ enum BatchStatus: string
     }
 
     /**
-     * Đợt đã khóa: không nhận cập nhật thông thường cho tới khi được mở lại.
+     * Chương trình đã khóa: không nhận cập nhật thông thường cho tới khi được mở lại.
      */
     public function isLocked(): bool
     {

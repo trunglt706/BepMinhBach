@@ -24,7 +24,7 @@ class ContactMessageFactory extends Factory
             'topic' => ContactTopic::Volunteer,
             'name' => 'Khách thử '.fake()->numberBetween(1, 999),
             'contact' => 'khach'.fake()->unique()->numberBetween(1, 99999).'@example.org',
-            'message' => 'Tôi muốn tham gia hỗ trợ đợt nấu cuối tuần này.',
+            'message' => 'Tôi muốn tham gia hỗ trợ chương trình cuối tuần này.',
             'client_hash' => hash('sha256', fake()->uuid()),
             'sent_on' => today(),
         ];

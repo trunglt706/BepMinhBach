@@ -50,4 +50,34 @@ class Input
 
         return preg_match('/^-?\d+,\d+$/', $trimmed) ? str_replace(',', '.', $trimmed) : $trimmed;
     }
+
+    /**
+     * Số lượng kiểu Việt Nam (ô số lượng tự định dạng): "1.500,25" → "1500.25", "1.500" → "1500", "2,5" → "2.5".
+     * Có dấu phẩy: dấu chấm là phân cách hàng nghìn. Không có dấu phẩy: dấu chấm chỉ bị coi là phân cách
+     * hàng nghìn khi đúng nhóm 3 chữ số ("1.500"), còn lại là dấu thập phân ("2.5").
+     * Giá trị khác giữ nguyên để validation báo lỗi.
+     *
+     * @param  mixed  $value  giá trị người dùng nhập
+     * @return mixed chuỗi số dùng dấu chấm, null nếu trống, hoặc giá trị gốc
+     */
+    public static function quantity(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (preg_match('/^-?\d{1,3}(\.\d{3})*,\d+$/', $trimmed)) {
+            return str_replace(['.', ','], ['', '.'], $trimmed);
+        }
+        if (preg_match('/^-?\d{1,3}(\.\d{3})+$/', $trimmed)) {
+            return str_replace('.', '', $trimmed);
+        }
+
+        return self::decimal($trimmed);
+    }
 }

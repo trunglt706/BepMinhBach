@@ -4,6 +4,7 @@
     $isThisOld = (string) old('_ingredient') === (string) $ingredient->id;
     $canReport = ! $ingredient->needs_restock && auth()->user()->can('reportShortage', $ingredient);
     $canResolve = $ingredient->needs_restock && auth()->user()->can('resolveShortage', $ingredient);
+    $canSeePrice = $ingredient->unit_price_vnd !== null && auth()->user()->can('viewFinancials', $ingredient->batch);
 @endphp
 <div @class(['item-row', 'is-short' => $ingredient->needs_restock])>
     <div class="item-body">
@@ -31,9 +32,16 @@
             @if($ingredient->actual_quantity !== null)
                 <strong>{{ Format::quantity($ingredient->actual_quantity) }} {{ $ingredient->unit }}</strong>
             @else
-                <span class="text-body-secondary">chưa ghi nhận</span>
+                <span class="text-body-secondary">{{ Format::EMPTY }}</span>
             @endif
         </div>
+        @if($canSeePrice)
+            <div class="small">
+                Đơn giá: <span class="tabular">{{ Format::vnd($ingredient->unit_price_vnd) }}/{{ $ingredient->unit }}</span>
+                · Thành tiền: <strong class="tabular">{{ Format::vnd($ingredient->costVnd()) }}</strong>
+                <span class="text-body-secondary">({{ $ingredient->actual_quantity !== null ? 'theo lượng thực tế' : 'theo lượng dự kiến' }})</span>
+            </div>
+        @endif
         @if($ingredient->notes)<div class="small text-body-secondary text-pre-line">{{ $ingredient->notes }}</div>@endif
         @if($ingredient->needs_restock)
             <div class="callout callout-danger mt-2">

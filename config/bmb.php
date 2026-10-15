@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Cấu hình riêng của BếpMinhBạch.
+ * Cấu hình riêng của Góp Gió.
  */
 return [
 
@@ -17,6 +17,7 @@ return [
         'reads' => (int) env('BMB_RATE_READS', 300),
         'public' => (int) env('BMB_RATE_PUBLIC', 120),
         'contact' => (int) env('BMB_RATE_CONTACT', 5), // số lần bấm gửi liên hệ / 10 phút / IP (kể cả lần bị lỗi)
+        'password_reset' => (int) env('BMB_RATE_PASSWORD_RESET', 5), // số lần gửi form quên/đặt lại mật khẩu / 10 phút / IP
     ],
 
     /*

@@ -5,7 +5,7 @@ Dán prompt này khi mở repository trong Claude Code:
 > Hãy đọc `CLAUDE.md` và toàn bộ tài liệu trong `docs/`, sau đó khảo sát repository hiện tại và `git status`. Đừng ghi đè thay đổi của tôi.
 >
 > Nhiệm vụ:
-> 1. Đối chiếu code hiện có với yêu cầu BếpMinhBạch.
+> 1. Đối chiếu code hiện có với yêu cầu Góp Gió.
 > 2. Cập nhật `tasks/BACKLOG.md` thành kế hoạch triển khai thực tế, đánh dấu rõ task đã có, thiếu hoặc cần sửa.
 > 3. Tạo danh sách giả định/mâu thuẫn nghiệp vụ cần xác nhận trong `docs/OPEN_QUESTIONS.md`; không dừng toàn bộ tiến trình vì câu hỏi không chặn MVP.
 > 4. Bắt đầu task P0 ưu tiên cao nhất có thể hoàn thành an toàn.
