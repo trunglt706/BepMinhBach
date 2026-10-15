@@ -40,7 +40,7 @@
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-link text-body-secondary me-auto" data-bs-dismiss="modal">{{ $cancelLabel }}</button>
-            {{ $actions }}
+            {{ $actions ?? '' }}
         </div>
     </form>
 @else
@@ -57,7 +57,7 @@
                     <section class="card mb-3"><div class="card-body pb-1">{{ $slot }}</div></section>
                 @endif
                 <div class="form-actions">
-                    {{ $actions }}
+                    {{ $actions ?? '' }}
                     <a href="{{ $back }}" class="btn btn-link text-body-secondary">{{ $cancelLabel }}</a>
                 </div>
             </form>

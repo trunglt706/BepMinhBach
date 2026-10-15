@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\SponsorType;
+use App\Support\PostHtml;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -34,6 +36,47 @@ class Sponsor extends Model
             'is_active' => 'boolean',
             'logo_widths' => 'array',
         ];
+    }
+
+    /**
+     * Giới thiệu soạn bằng trình soạn thảo: luôn lọc HTML khi gán (như nội dung bài viết) nên trang công khai
+     * in thẳng được. Chữ thuần (không có thẻ đóng — ví dụ trình duyệt tắt JS) được chuyển mỗi dòng thành một đoạn.
+     * Trống sau khi lọc → null.
+     *
+     * @return Attribute<string|null, string|null>
+     */
+    protected function description(): Attribute
+    {
+        return Attribute::make(set: function (?string $value) {
+            // Trình soạn thảo luôn sinh thẻ đóng/<br>; không có thì là chữ thuần (kể cả khi có ký tự "<").
+            if ($value !== null && ! preg_match('#</[a-z][a-z0-9]*\s*>|<br\s*/?>#i', $value)) {
+                $value = self::plainToHtml($value);
+            }
+            $html = PostHtml::sanitize($value);
+
+            return PostHtml::toText($html) === '' ? null : $html;
+        });
+    }
+
+    /**
+     * Chữ thuần → HTML: escape, mỗi dòng không rỗng thành một <div> (giống định dạng của trình soạn thảo).
+     *
+     * @param  string  $text  chữ thuần
+     */
+    public static function plainToHtml(string $text): string
+    {
+        return collect(preg_split('/\R/u', trim($text)))
+            ->map(fn ($line) => trim($line))
+            ->map(fn ($line) => '<div>'.($line === '' ? '<br>' : e($line)).'</div>')
+            ->implode('');
+    }
+
+    /**
+     * Giới thiệu dạng chữ thuần (mô tả SEO, tóm tắt).
+     */
+    public function descriptionText(): string
+    {
+        return $this->description ? PostHtml::toText($this->description) : '';
     }
 
     /**

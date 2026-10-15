@@ -47,7 +47,7 @@ class SponsorRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:150'],
             'type' => ['required', Rule::enum(SponsorType::class)],
-            'description' => ['nullable', 'string', 'max:5000'],
+            'description' => ['nullable', 'string', 'max:20000'], // HTML từ trình soạn thảo (được lọc khi lưu)
             // Chỉ http/https: không cho javascript:, data: … vào link công khai.
             'website' => ['nullable', 'string', 'max:255', 'url:http,https'],
             'is_active' => ['boolean'],

@@ -80,6 +80,28 @@ Cập nhật lần cuối: 2026-10-14. Bộ test: `php artisan test` → 188 tes
 - [x] BM-085 Đơn vị tài trợ / hỗ trợ: danh bạ (phân loại, logo, tên, giới thiệu, website, ẩn/hiện), gắn vào chương trình kèm đóng góp; trang công khai `/don-vi-dong-hanh` (theo phân loại) và trang riêng từng đơn vị (các chương trình đã tham gia); khối "Đơn vị tham gia" theo phân loại trên trang chương trình công khai; sitemap. *(`SponsorTest`)*
 - [x] BM-086 Rà soát QA/bảo mật/hiệu năng trước production: sửa N+1 "Công việc của tôi", lộ email ở quên mật khẩu, log xoay vòng, lịch dọn dẹp; giới hạn số truy vấn trang chính. *(`QueryBudgetTest`)*
 
-## Ý tưởng sau MVP (chưa làm, không thuộc phạm vi)
+## Ý tưởng sau MVP (chưa làm — chờ duyệt, đề xuất 15/10/2026)
+Nguyên tắc: không thêm thanh toán online, không thu thập thông tin người nhận, ưu tiên tạo niềm tin với nhà hảo tâm.
+Thứ tự khuyên làm: A3 → B3 → A1 → A2 → C2, sau đó B1/B2 tùy nhu cầu tuyển tình nguyện viên.
+
+| # | Tính năng | Giá trị | Công sức |
+|---|---|---|---|
+| A1 | Ghi nhận khoản ủng hộ (thu) + cân đối thu–chi từng chương trình. Chỉ ghi sổ, không thanh toán online; người ủng hộ có thể ẩn danh | Minh bạch, là nền cho A2 | Vừa |
+| A2 | Báo cáo minh bạch công khai (bật/tắt từng chương trình): tổng thu, tổng chi theo nhóm, số suất, đơn vị tham gia. Không hiện khoản chi chi tiết hay thông tin cá nhân | Rất cao với nhà hảo tâm | Vừa |
+| A3 | "Con số tác động" trên trang chủ: tổng chương trình, suất đã phát, số tình nguyện viên, số đơn vị đồng hành | Cao, tạo thiện cảm ngay khi vào trang | Nhỏ |
+| B1 | Đăng ký tình nguyện viên online cho từng chương trình: khách chọn ca/việc, điều phối viên duyệt rồi giao việc | Cao, giảm việc gom người qua tin nhắn | Vừa–Lớn |
+| B2 | Điểm danh, giờ tham gia và giấy chứng nhận tình nguyện (PDF) | Giữ chân tình nguyện viên | Vừa |
+| B3 | Sao chép chương trình / mẫu chương trình (nguyên liệu, công việc, đơn vị lặp lại) | Tiết kiệm thời gian điều phối | Nhỏ |
+| B4 | Lịch chương trình (xem theo tháng) + nhắc việc qua email trước hạn | Giảm quên việc | Vừa |
+| C1 | Đăng ký nhận bản tin cho nhà hảo tâm: email khi có bài mới/báo cáo minh bạch; có hủy đăng ký, xác nhận 2 bước | Tăng quay lại | Vừa |
+| C2 | Xác thực 2 lớp (2FA) cho quản trị viên và điều phối viên | Bảo mật | Nhỏ–Vừa |
+| C3 | Dùng được khi mạng yếu (PWA) trong ngày chạy chương trình: xem checklist, cập nhật việc, tự đồng bộ khi có mạng | Hữu ích tại hiện trường | Lớn |
+
+Cần quyết định trước khi làm:
+- A1/A2: có công khai tên người ủng hộ không (mặc định ẩn danh); công khai chi phí ở mức nào (chỉ tổng hay theo nhóm).
+- B1: tình nguyện viên đăng ký online được tự tạo tài khoản, hay điều phối viên tạo sau khi duyệt.
+- Có đổi mục "Nguyên liệu" thành "Vật phẩm" cho chương trình phát quà không.
+
+Ý tưởng cũ (giữ lại):
 - Thông báo qua email/Zalo (Slack/Telegram/Chatwork đã có — BM-073).
-- Sao chép một đợt cũ thành đợt mới (mẫu nguyên liệu/công việc).
+- Sao chép một chương trình cũ thành chương trình mới — gộp vào B3.

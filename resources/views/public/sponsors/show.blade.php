@@ -2,7 +2,7 @@
     use App\Support\Format;
     $logo = $sponsor->logo();
     $description = $sponsor->description
-        ? Illuminate\Support\Str::limit(preg_replace('/\s+/u', ' ', $sponsor->description), 160)
+        ? Illuminate\Support\Str::limit($sponsor->descriptionText(), 160)
         : $sponsor->type->label().' đồng hành cùng các chương trình thiện nguyện của Góp Gió.';
 @endphp
 {{-- Trang riêng của một đơn vị: phân loại, logo, tên, giới thiệu và các chương trình đã tham gia (chỉ chương trình công khai). --}}
@@ -32,7 +32,8 @@
             @if($sponsor->description)
                 <section class="card mb-3" aria-labelledby="about-title">
                     <div class="panel-header"><h2 id="about-title" class="panel-title"><i class="bi bi-info-circle" aria-hidden="true"></i> Giới thiệu</h2></div>
-                    <div class="card-body text-pre-line">{{ $sponsor->description }}</div>
+                    {{-- HTML đã lọc khi lưu (Sponsor::description → PostHtml::sanitize), in thẳng như nội dung bài viết --}}
+                    <div class="card-body post-body">{!! $sponsor->description !!}</div>
                 </section>
             @endif
 

@@ -291,3 +291,16 @@ Claude cập nhật file này sau mỗi lát cắt có ý nghĩa. Không ghi sec
 - Khu quản lý: menu "Đơn vị đồng hành" (danh sách, lọc theo tên/phân loại, form modal có logo); khối "Đơn vị tham gia" ở trang chi tiết chương trình.
 - Công khai: menu "Đồng hành"; `/don-vi-dong-hanh` (theo phân loại, số chương trình công khai đã tham gia); `/don-vi-dong-hanh/{slug}` (phân loại, logo, tên, giới thiệu, website, chương trình đã tham gia — chỉ chương trình công khai); khối "Đơn vị tham gia" theo phân loại trên trang chương trình công khai; sitemap; đơn vị đang ẩn trả 404. Website chỉ nhận http/https (chặn `javascript:`). Bộ nhớ đệm công khai tự làm mới khi đơn vị hoặc liên kết thay đổi.
 - Kiểm thử: `SponsorTest` (4 test, 55 assertion).
+
+### 2026-10-15 — Sửa lỗi thêm đơn vị vào chương trình khi danh bạ trống; ý tưởng sau MVP vào backlog
+- **Lỗi:** bấm "Thêm" ở khối "Đơn vị tham gia" khi chưa có đơn vị nào → lỗi 500 `Undefined variable $actions` (form không có khối nút khi danh sách trống, mà `x-form-shell` bắt buộc khối này). Test trước đó luôn tạo sẵn đơn vị nên không bắt được; log `storage/logs/laravel.log` ghi nhận 5 lần.
+- **Sửa:** `x-form-shell` không còn lỗi khi thiếu khối nút (`$actions ?? ''`); form "Thêm đơn vị tham gia" cho **tạo nhanh đơn vị mới** (tên + phân loại) ngay trong form, mở sẵn khi danh bạ trống. Kiểm tra: chọn có sẵn HOẶC tạo mới (không cả hai), trùng tên (không phân biệt hoa thường) → báo chọn ở danh sách, thiếu phân loại → lỗi. Logo/giới thiệu bổ sung sau ở "Đơn vị đồng hành".
+- **Backlog:** mục "Ý tưởng sau MVP" ghi 10 đề xuất A1–C3 (giá trị, công sức, thứ tự khuyên làm, các câu hỏi cần quyết định).
+- **Kiểm thử:** thêm `SponsorTest::test_add_form_works_with_empty_directory_and_creates_new_sponsor_inline` (trang + modal khi danh bạ trống, tạo nhanh, các trường hợp lỗi).
+
+### 2026-10-15 — Giới thiệu đơn vị đồng hành dùng trình soạn thảo
+- Form đơn vị: ô "Giới thiệu" dùng trình soạn thảo như nội dung bài viết (`textarea[data-rich-editor]`, chạy cả trong modal).
+- Lưu: `Sponsor::description` luôn lọc HTML bằng `PostHtml::sanitize` khi gán (bỏ script, thuộc tính sự kiện, link `javascript:`); trống sau khi lọc → null. Không có thẻ đóng/`<br>` (trình duyệt tắt JS) → coi là chữ thuần: escape, mỗi dòng một đoạn. Giới hạn 20.000 ký tự (HTML).
+- Trang công khai in HTML đã lọc (kiểu chữ `.post-body`); mô tả SEO dùng bản chữ thuần (`descriptionText()`).
+- Migration `2026_10_15_000400`: chuyển mọi giới thiệu chữ thuần có trước thành HTML (giữ xuống dòng, escape cả ký tự `<`); có `down()` chuyển ngược.
+- Kiểm thử: `php artisan test` **246 passed** (thêm test lọc HTML/hiển thị/chữ thuần/editor trống và test migration).

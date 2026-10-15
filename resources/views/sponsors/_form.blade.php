@@ -33,8 +33,16 @@
     </div>
 </div>
 
-<x-textarea name="description" label="Giới thiệu" :value="$sponsor->description" rows="4" maxlength="5000"
-            help="Hiện ở trang công khai của đơn vị. Không ghi số điện thoại, email cá nhân hay số tiền tài trợ." />
+{{-- Trình soạn thảo (như nội dung bài viết): HTML được lọc ở máy chủ khi lưu (Sponsor::description). --}}
+<div class="mb-3">
+    <label for="f_description" class="form-label fw-semibold">Giới thiệu</label>
+    <textarea id="f_description" name="description" rows="6" data-rich-editor
+              aria-describedby="f_description_help @error('description') f_description_error @enderror"
+              @class(['form-control', 'is-invalid' => $errors->has('description')])>{{ old('description', $sponsor->description) }}</textarea>
+    <div id="f_description_help" class="form-text">Hiện ở trang công khai của đơn vị. Dùng thanh công cụ để in đậm, danh sách, liên kết.
+        Không ghi số điện thoại, email cá nhân hay số tiền tài trợ.</div>
+    @error('description')<div id="f_description_error" class="invalid-feedback d-block">{{ $message }}</div>@enderror
+</div>
 <x-input name="website" label="Website / trang mạng xã hội" :value="$sponsor->website" maxlength="255" inputmode="url" placeholder="https://…" />
 <div class="form-check form-switch mb-3">
     <input type="hidden" name="is_active" value="0">

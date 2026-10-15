@@ -10,6 +10,7 @@ use App\Models\Sponsor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -129,5 +130,87 @@ class SponsorTest extends TestCase
         $this->actingAs($admin)->post("/admin/batches/{$batch->id}/sponsors", ['sponsor_id' => $sponsor->id])->assertRedirect();
         auth()->guard('web')->logout();
         $this->get("/chuong-trinh/{$batch->public_id}")->assertSee('Đơn vị mới thêm');
+    }
+
+    public function test_description_uses_rich_editor_and_is_sanitized(): void
+    {
+        $coordinator = User::factory()->coordinator()->create();
+
+        $this->actingAs($coordinator)->get('/admin/sponsors/create')->assertOk()
+            ->assertSee('id="f_description" name="description" rows="6" data-rich-editor', false);
+
+        // HTML từ trình soạn thảo: giữ định dạng an toàn, bỏ script/thuộc tính sự kiện/link javascript:
+        $this->actingAs($coordinator)->post('/admin/sponsors', [
+            'name' => 'Quỹ Mầm Xanh', 'type' => 'sponsor', 'is_active' => '1',
+            'description' => '<div><strong>Đồng hành</strong> từ 2020<script>alert(1)</script></div>'
+                .'<ul><li onclick="x()">Học bổng</li></ul><a href="javascript:alert(1)">xấu</a> <a href="https://mamxanh.vn">web</a>',
+        ])->assertRedirect();
+        $html = Sponsor::sole()->description;
+        $this->assertStringContainsString('<strong>Đồng hành</strong>', $html);
+        $this->assertStringContainsString('<li>Học bổng</li>', $html);
+        $this->assertStringContainsString('href="https://mamxanh.vn"', $html);
+        $this->assertStringNotContainsString('script', $html);
+        $this->assertStringNotContainsString('onclick', $html);
+        $this->assertStringNotContainsString('javascript:', $html);
+
+        // Trang công khai in HTML đã lọc; mô tả SEO là chữ thuần
+        $sponsor = Sponsor::sole();
+        $this->get("/don-vi-dong-hanh/{$sponsor->slug}")->assertOk()
+            ->assertSee('<strong>Đồng hành</strong>', false)
+            ->assertSee('<meta name="description" content="Đồng hành từ 2020 Học bổng xấu web">', false);
+
+        // Chữ thuần (không JS) giữ xuống dòng và được escape; editor trống → null
+        $sponsor->update(['description' => "Dòng 1 <b>\nDòng 2"]);
+        $this->assertSame('<div>Dòng 1 &lt;b&gt;</div><div>Dòng 2</div>', $sponsor->fresh()->description);
+        $sponsor->update(['description' => '<div><br></div>']);
+        $this->assertNull($sponsor->fresh()->description);
+    }
+
+    public function test_migration_converts_old_plain_descriptions(): void
+    {
+        $id = DB::table('sponsors')->insertGetId([
+            'name' => 'Cũ', 'slug' => 'cu', 'type' => 'sponsor', 'is_active' => true,
+            'description' => "Dòng một & <hai>\n\nDòng ba", 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $migration = require database_path('migrations/2026_10_15_000400_convert_sponsor_descriptions_to_html.php');
+        $migration->up();
+        $this->assertSame('<div>Dòng một &amp; &lt;hai&gt;</div><div><br></div><div>Dòng ba</div>', DB::table('sponsors')->where('id', $id)->value('description'));
+    }
+
+    /** Lỗi 15/10/2026: danh bạ trống → form "Thêm đơn vị tham gia" lỗi 500 (thiếu khối nút). */
+    public function test_add_form_works_with_empty_directory_and_creates_new_sponsor_inline(): void
+    {
+        $coordinator = User::factory()->coordinator()->create();
+        $batch = CookingBatch::factory()->create(['coordinator_id' => $coordinator->id, 'created_by' => $coordinator->id]);
+
+        foreach (["/admin/batches/{$batch->id}/sponsors/create", "/admin/batches/{$batch->id}/sponsors/create?modal=1"] as $url) {
+            $this->actingAs($coordinator)->get($url)->assertOk()
+                ->assertSee('Thêm đơn vị mới')->assertSee('name="new_name"', false)->assertSee('Thêm vào chương trình');
+        }
+
+        // Tạo nhanh đơn vị mới và gắn luôn vào chương trình
+        $this->actingAs($coordinator)->post("/admin/batches/{$batch->id}/sponsors", [
+            'new_name' => '  Bếp chay Hoa Sen ', 'new_type' => 'in_kind', 'contribution' => '100 kg gạo',
+        ])->assertRedirect(route('batches.show', $batch).'#don-vi');
+        $sponsor = Sponsor::sole();
+        $this->assertSame('Bếp chay Hoa Sen', $sponsor->name);
+        $this->assertSame(SponsorType::InKind, $sponsor->type);
+        $this->assertTrue($sponsor->is_active);
+        $this->assertSame($coordinator->id, $sponsor->created_by);
+        $this->assertSame('100 kg gạo', $batch->sponsors()->sole()->pivot->contribution);
+
+        // Không chọn gì / làm cả hai / trùng tên → báo lỗi rõ ràng, không tạo bản trùng
+        $other = CookingBatch::factory()->create(['coordinator_id' => $coordinator->id, 'created_by' => $coordinator->id]);
+        $this->actingAs($coordinator)->post("/admin/batches/{$other->id}/sponsors", [])->assertSessionHasErrors('sponsor_id');
+        $this->actingAs($coordinator)->post("/admin/batches/{$other->id}/sponsors", ['sponsor_id' => $sponsor->id, 'new_name' => 'X', 'new_type' => 'media'])
+            ->assertSessionHasErrors('sponsor_id');
+        $this->actingAs($coordinator)->post("/admin/batches/{$other->id}/sponsors", ['new_name' => 'bếp chay hoa sen', 'new_type' => 'sponsor'])
+            ->assertSessionHasErrors('new_name');
+        $this->actingAs($coordinator)->post("/admin/batches/{$other->id}/sponsors", ['new_name' => 'Đơn vị Y'])->assertSessionHasErrors('new_type');
+        $this->assertSame(1, Sponsor::count());
+
+        // Đã có đơn vị: form vẫn cho chọn có sẵn và tạo mới
+        $this->actingAs($coordinator)->get("/admin/batches/{$other->id}/sponsors/create")->assertOk()
+            ->assertSee('Chọn đơn vị có sẵn')->assertSee('Bếp chay Hoa Sen')->assertSee('Hoặc thêm đơn vị mới');
     }
 }

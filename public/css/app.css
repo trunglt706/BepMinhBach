@@ -3682,3 +3682,14 @@ input.form-control.input {
 .sponsor-chip:focus-visible {
     background: var(--bmb-green-50);
 }
+
+/* Form "Thêm đơn vị tham gia": phần tạo nhanh đơn vị mới (thu gọn được) */
+.quick-new {
+    padding: .6rem .8rem;
+    border: 1px dashed var(--bmb-border-strong);
+    border-radius: var(--bmb-radius);
+}
+.quick-new > summary {
+    cursor: pointer;
+    color: var(--bmb-green-700);
+}
