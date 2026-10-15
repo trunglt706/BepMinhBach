@@ -47,7 +47,7 @@ Artisan::command('bmb:create-admin {--name= : Họ tên} {--email= : Email đăn
     return 0;
 })->purpose('Tạo tài khoản quản trị Góp Gió');
 
-// Dọn dẹp định kỳ (cron "schedule:run" mỗi phút do deploy.sh tạo trong /etc/cron.d/gopgio):
+// Dọn dẹp định kỳ (cron "schedule:run" mỗi phút, cấu hình theo docs/DEPLOYMENT.md mục 0.1):
 // token đặt lại mật khẩu đã hết hạn, job gửi thông báo lỗi quá 30 ngày.
 Schedule::command('auth:clear-resets')->dailyAt('03:10');
 Schedule::command('queue:prune-failed', ['--hours' => 720])->weeklyOn(1, '03:20');

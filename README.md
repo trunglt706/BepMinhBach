@@ -82,7 +82,7 @@ DB_CONNECTION=mysql DB_DATABASE=gopgio_test php artisan test
 
 ### Vận hành cơ bản
 - **Kênh thông báo:** mỗi đợt nấu có thể gắn kênh Slack / Telegram / Chatwork (trang chi tiết đợt → "Kênh thông báo"); hướng dẫn lấy token ngay dưới từng ô nhập. Mọi người thấy nút "Tham gia kênh".
-- **Triển khai VPS một lệnh:** `sudo DOMAIN=ten-mien LE_EMAIL=email bash deploy/deploy.sh` trên Ubuntu 22.04/24.04 hoặc Debian 12 (cài toàn bộ, HTTPS, tường lửa, sao lưu hằng ngày; chạy lại = cập nhật). Chi tiết, sao lưu/khôi phục và cách làm thủ công (cPanel): `docs/DEPLOYMENT.md`.
+- **Cập nhật trên máy chủ:** `sudo bash deploy/deploy.sh` (bảo trì → pull code → composer → npm → quyền thư mục → migrate → cache → khởi động lại PHP-FPM và worker). Script không cài/cấu hình hệ thống — cấu hình máy chủ lần đầu, sao lưu/khôi phục và cách làm thủ công (cPanel): `docs/DEPLOYMENT.md`.
 - Production: `APP_ENV=production`, `APP_DEBUG=false`, HTTPS; sau khi cấu hình chạy `php artisan bmb:check-production` (chỉ đọc, báo LỖI/CHÚ Ý, mã thoát 1 nếu còn lỗi).
 - Backup gồm **cơ sở dữ liệu + thư mục `public/uploads/`** (ảnh bài viết). Nên backup tự động hằng ngày và thử khôi phục định kỳ.
 - Cập nhật Bootstrap: sửa phiên bản trong `package.json`, `npm install && npm run assets`.

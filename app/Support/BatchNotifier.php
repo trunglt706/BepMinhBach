@@ -24,7 +24,7 @@ use Throwable;
  *   link đều tham gia kênh được); không gửi chữ tự do (lý do vướng, ghi chú…) — tin nhắn có link về hệ thống.
  * - Gửi qua QUEUE (SendBatchChannelNotification, mỗi kênh đang bật một job) SAU khi giao dịch DB thành công:
  *   thao tác không chờ mạng; lỗi mạng/token sai không làm hỏng thao tác — chỉ ghi lỗi vào kênh (last_error).
- *   Production cần worker `php artisan queue:work` (deploy.sh tạo dịch vụ gopgio-queue).
+ *   Production cần worker `php artisan queue:work` (dịch vụ gopgio-queue, cấu hình theo docs/DEPLOYMENT.md mục 0.1).
  * - Không gửi khi tạo chương trình (chương trình mới chưa có kênh) và khi xóa chương trình nháp (kênh bị xóa cùng chương trình).
  */
 class BatchNotifier

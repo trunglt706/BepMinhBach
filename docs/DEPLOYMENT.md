@@ -1,67 +1,101 @@
 # Triển khai Góp Gió
 
-> Máy chủ **không cần Node.js**: CSS/JS/font đã nằm sẵn trong `public/`.
+> Máy chủ **không bắt buộc có Node.js**: CSS/JS/font đã nằm sẵn trong `public/vendor` (có Node thì `deploy.sh` tự dựng lại).
 
-## 0. Cách nhanh nhất: VPS + một lệnh (`deploy/deploy.sh`)
+## 0. Cập nhật phiên bản mới: `deploy/deploy.sh`
 
-Dành cho VPS **Ubuntu 22.04 / 24.04** hoặc **Debian 12** mới cài (≥ 1 GB RAM, 10 GB ổ đĩa).
+`deploy/deploy.sh` chỉ **cập nhật** trên máy chủ **đã cấu hình sẵn** (mục 0.1). Script không cài gói, không sửa Nginx,
+CSDL, HTTPS, tường lửa, `.env`, dịch vụ systemd hay cron.
 
-**Chuẩn bị (1 lần):**
-1. Trỏ tên miền (bản ghi `A`) về IP của VPS, ví dụ `bep.example.org → 203.0.113.10`. Đợi vài phút cho DNS cập nhật.
-2. SSH vào VPS bằng tài khoản có quyền `sudo`.
-
-**Chạy:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/trunglt706/BepMinhBach/main/deploy/deploy.sh -o deploy.sh
-sudo DOMAIN=bep.example.org LE_EMAIL=ban@example.org bash deploy.sh
+cd /var/www/gopgio && sudo bash deploy/deploy.sh
 ```
-Script hỏi họ tên, email, mật khẩu cho **quản trị viên đầu tiên** (mật khẩu nhập ẩn). Muốn chạy hoàn toàn tự động:
-```bash
-sudo DOMAIN=bep.example.org LE_EMAIL=ban@example.org \
-     ADMIN_NAME="Nguyễn Văn A" ADMIN_EMAIL=admin@example.org ADMIN_PASSWORD='mat-khau-dai-it-nhat-10-ky-tu' \
-     bash deploy.sh
-```
-
-**Script làm gì** (chạy lại an toàn — lần sau chính là cập nhật):
 
 | Bước | Nội dung |
 |---|---|
-| 1 | Cài Nginx, PHP 8.3-FPM (+ intl, gd/WebP, mbstring, mysql, zip, opcache…), MariaDB, Composer (kiểm chữ ký), Certbot, ufw. Thiếu PHP 8.3 trong kho mặc định thì tự thêm kho Ondřej Surý |
-| 2 | Tạo CSDL `gopgio` (utf8mb4) + tài khoản CSDL riêng, mật khẩu ngẫu nhiên lưu ở `/root/.gopgio/db.env` (chỉ root đọc) |
-| 3 | Lấy mã từ GitHub (`REPO_URL`, `BRANCH`) vào `/var/www/gopgio`; lần cập nhật bật chế độ bảo trì trước khi kéo mã |
-| 4 | Tạo `.env` production: `APP_ENV=production`, `APP_DEBUG=false`, `LOG_LEVEL=warning`, cookie Secure khi HTTPS, `APP_KEY` mới. **Không** chạy seeder demo |
-| 5 | `composer install --no-dev`; mã nguồn chỉ đọc với web server, chỉ `storage/`, `bootstrap/cache/`, `public/uploads/` ghi được; `.env` quyền 640 |
-| 6 | PHP-FPM: upload 12 MB/ảnh, post 64 MB, memory 256 MB, tắt `expose_php`, bật opcache |
-| 7 | `migrate --force`, cache config/route/view |
-| 8 | Nginx: web root `public/`, chặn file ẩn (`.env`, `.git`), thư mục ảnh không chạy mã, cache file tĩnh |
-| 9 | HTTPS Let's Encrypt + chuyển hướng http→https (tự gia hạn). Cảnh báo nếu DNS chưa trỏ đúng; lỗi thì tạm chạy HTTP |
-| 10 | ufw: chỉ mở cổng SSH **đang dùng thật** (dò từ sshd, tránh tự khóa mình), 80, 443 |
-| 11 | Sao lưu 02:30 hằng ngày: CSDL (`mysqldump`) + ảnh → `/var/backups/gopgio`, giữ 14 ngày; chạy thử 1 bản ngay |
-| 12 | Tạo quản trị viên đầu tiên nếu chưa có |
-| 13 | Tắt bảo trì, chạy `bmb:check-production`, in tóm tắt; lưu cấu hình vào `/root/.gopgio/deploy.conf` |
+| 1 | Kiểm tra: chạy bằng root, có mã nguồn, có `.env`, có Composer; khóa để không chạy chồng 2 lần |
+| 2 | Bật chế độ bảo trì (`artisan down --retry=30`) |
+| 3 | `git fetch` + `git pull --ff-only` nhánh `BRANCH` (dừng nếu máy chủ có sửa đổi chưa commit) |
+| 4 | `composer install --no-dev --optimize-autoloader` |
+| 5 | `npm ci` + `npm run assets` (bỏ qua nếu `SKIP_NPM=1` hoặc không có Node) |
+| 6 | Tạo thư mục `storage/…`; mã nguồn root sở hữu, chỉ đọc với web server; chỉ `storage/`, `bootstrap/cache/`, `public/uploads/` ghi được; `.env` quyền 640 |
+| 7 | `migrate --force` |
+| 8 | Làm mới cache: `optimize:clear`, `config:cache`, `route:cache`, `view:cache`, `event:cache` |
+| 9 | Tắt chế độ bảo trì |
+| 10 | `systemctl reload phpX.Y-fpm`; `queue:restart` + `systemctl restart` dịch vụ worker (`gopgio-queue` hoặc `bepminhbach-queue`) |
+| 11 | `bmb:check-production` |
 
-**Kênh thông báo (Slack/Telegram/Chatwork):** máy chủ cần ra Internet qua HTTPS tới `hooks.slack.com`, `api.telegram.org`, `api.chatwork.com` (ufw mặc định không chặn chiều ra). Token được mã hóa bằng `APP_KEY` — **không đổi APP_KEY** sau khi đã cấu hình kênh (nếu đổi, nhập lại token ở từng kênh). Không cần queue worker.
+Lỗi ở bất kỳ bước nào: script tự tắt chế độ bảo trì để bản đang chạy vẫn phục vụ. **Luôn sao lưu CSDL trước khi cập nhật.**
 
-**Cập nhật phiên bản mới** (sau khi đẩy mã lên nhánh `main`):
-```bash
-sudo bash /var/www/gopgio/deploy/deploy.sh
+**Biến tùy chọn** (môi trường hoặc file `deploy/deploy.env`): `APP_DIR` (mặc định thư mục cha của `deploy/`), `BRANCH` (main),
+`APP_USER` (www-data), `PHP_FPM` (tự dò), `QUEUE_SERVICE` (tự dò), `SKIP_NPM=1`, `SKIP_PULL=1` (code đã đồng bộ bằng cách khác, ví dụ `rsync`).
+
+### 0.1. Cấu hình máy chủ (làm một lần)
+Làm theo mục 1–5 (yêu cầu, mã nguồn, `.env`, khởi tạo dữ liệu, Nginx/HTTPS), cộng thêm:
+
+**`.env` production** — ngoài mục 3:
+```dotenv
+APP_NAME="Góp Gió"
+QUEUE_CONNECTION=database
+LOG_STACK=daily
+LOG_DAILY_DAYS=14
+MAIL_MAILER=smtp            # + MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM_ADDRESS (tên miền thật)
 ```
-(không cần nhắc lại DOMAIN/LE_EMAIL — đã lưu ở lần đầu.)
 
-**Biến tùy chọn:** `REPO_URL`, `BRANCH`, `APP_DIR`, `PHP_VERSION`, `SOURCE_DIR` (dùng thư mục mã đã tải lên thay vì git — ví dụ repo riêng tư), `SKIP_FIREWALL=1`, `SKIP_CERTBOT=1` (HTTPS do Cloudflare/proxy lo), `TRUSTED_PROXIES`. Có thể ghi các biến vào file `deploy.env` đặt cạnh script.
+**PHP-FPM** — `/etc/php/8.3/fpm/conf.d/99-gopgio.ini`:
+```ini
+upload_max_filesize = 12M
+post_max_size = 64M
+max_file_uploads = 20
+memory_limit = 256M
+max_execution_time = 60
+expose_php = Off
+opcache.enable = 1
+```
 
-**Repo riêng tư / không dùng GitHub:** từ máy mình chạy `git archive --format=tar.gz -o bmb.tar.gz HEAD`, chép lên VPS (`scp`), giải nén vào `/root/bmb-src`, rồi `sudo SOURCE_DIR=/root/bmb-src DOMAIN=… LE_EMAIL=… bash /root/bmb-src/deploy/deploy.sh`.
+**Worker queue** (thông báo Slack/Telegram/Chatwork, email quên mật khẩu) — `/etc/systemd/system/gopgio-queue.service`:
+```ini
+[Unit]
+Description=Gop Gio queue worker
+After=network.target mariadb.service
 
-**Nếu script dừng giữa chừng:** đọc dòng lỗi cuối, sửa nguyên nhân (thường là DNS chưa trỏ đúng hoặc VPS hết RAM khi cài gói) rồi chạy lại — các bước đã xong sẽ được bỏ qua/ghi đè an toàn; nếu đang cập nhật, trang sẽ được tắt chế độ bảo trì.
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/gopgio
+ExecStart=/usr/bin/php /var/www/gopgio/artisan queue:work database --sleep=3 --tries=3 --timeout=60 --max-time=3600
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
 
-Các mục dưới đây mô tả cách làm **thủ công** (hosting cPanel hoặc muốn tự cấu hình) và giải thích chi tiết từng phần mà script đã tự làm.
+[Install]
+WantedBy=multi-user.target
+```
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now gopgio-queue
+```
+
+**Cron** — `/etc/cron.d/gopgio` (lịch dọn dẹp của Laravel mỗi phút + sao lưu 02:30, xem mục 7):
+```cron
+* * * * * www-data /usr/bin/php /var/www/gopgio/artisan schedule:run >/dev/null 2>&1
+30 2 * * * root /usr/local/bin/gopgio-backup >/dev/null 2>&1
+```
+
+**Kênh thông báo:** máy chủ cần ra Internet qua HTTPS tới `hooks.slack.com`, `api.telegram.org`, `api.chatwork.com`. Token được mã hóa
+bằng `APP_KEY` — **không đổi APP_KEY** sau khi đã cấu hình kênh (nếu đổi, nhập lại token ở từng kênh).
+
+**Máy chủ cài trước 15/10/2026** (bản `deploy.sh` cũ cài toàn bộ hệ thống): thư mục, dịch vụ và cron dùng tên `bepminhbach`
+(`/var/www/bepminhbach`, `bepminhbach-queue`, `/etc/cron.d/bepminhbach`…) — vẫn chạy bình thường, `deploy.sh` tự dò tên dịch vụ worker.
+Cần tự thêm `APP_NAME="Góp Gió"` vào `.env` (đổi tên cookie phiên → mọi người bị đăng xuất một lần; ai bật "Ghi nhớ đăng nhập" tự đăng nhập lại).
+
+Các mục dưới đây mô tả chi tiết từng phần cấu hình **thủ công** (VPS hoặc hosting cPanel).
 
 ## 1. Yêu cầu máy chủ
 - PHP **8.2+** (đã kiểm thử 8.2 và 8.3), các extension: `pdo_mysql`, `mbstring`, `intl`, `fileinfo`, `gd` **có hỗ trợ WebP** (`php -r "var_dump(gd_info()['WebP Support']);"`), `exif` (nên có, để xoay ảnh chụp điện thoại đúng chiều), `openssl`, `tokenizer`, `xml`, `ctype`.
 - MySQL 8 hoặc MariaDB 10.6+, bảng mã `utf8mb4`.
 - HTTPS (Let's Encrypt hoặc chứng chỉ của hosting). Không đưa lên Internet khi chưa có HTTPS vì mật khẩu đi qua mạng.
 - `upload_max_filesize` ≥ 10M, `post_max_size` ≥ 64M (bài viết có nhiều ảnh; trình duyệt đã thu nhỏ ảnh trước khi gửi nên thực tế nhẹ hơn nhiều), `memory_limit` ≥ 256M (giải mã ảnh lớn).
-- Không cần queue worker hay cron: ứng dụng không chạy tác vụ nền.
+- **Bắt buộc** có worker queue (thông báo kênh, email quên mật khẩu) và cron `schedule:run` mỗi phút — xem mục 0.1.
 
 ## 2. Chuẩn bị mã nguồn
 Trên máy có Composer (máy cá nhân hoặc máy chủ):
@@ -139,11 +173,19 @@ Quyền thư mục: chủ sở hữu là user deploy, nhóm `www-data`; `storage
 
 ## 7. Sao lưu và khôi phục
 Cần sao lưu **2 thứ**: cơ sở dữ liệu và thư mục ảnh `public/uploads/` (cùng file `.env`, lưu riêng ở nơi an toàn).
+
+Script sao lưu hằng ngày `/usr/local/bin/gopgio-backup` (quyền 700, chạy bằng cron ở mục 0.1), giữ 14 bản gần nhất.
+Thông tin đăng nhập CSDL để trong `/root/.gopgio/my.cnf` (quyền 600: `[client]`, `user=…`, `password=…`), không gõ trên dòng lệnh:
 ```bash
-# Hằng ngày (cron của hosting hoặc VPS), giữ 14 bản gần nhất
-mysqldump --single-transaction --default-character-set=utf8mb4 -u gopgio -p gopgio | gzip > backup/db-$(date +%F).sql.gz
-tar -czf backup/uploads-$(date +%F).tar.gz -C public uploads
-find backup -name '*.gz' -mtime +14 -delete
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+STAMP=$(date +%F-%H%M)
+DIR=/var/backups/gopgio
+mkdir -p "$DIR"
+mysqldump --defaults-extra-file=/root/.gopgio/my.cnf --single-transaction --quick --default-character-set=utf8mb4 gopgio | gzip > "$DIR/db-$STAMP.sql.gz"
+tar -czf "$DIR/uploads-$STAMP.tar.gz" -C /var/www/gopgio/public uploads
+find "$DIR" -name '*.gz' -mtime +14 -delete
 ```
 Khôi phục:
 ```bash
@@ -155,36 +197,24 @@ php artisan cache:clear && php artisan up
 Nên chép bản sao lưu ra ngoài máy chủ (Google Drive/máy khác) và **thử khôi phục** vào một DB thử ít nhất mỗi quý. Mật khẩu DB nên đặt trong `~/.my.cnf` (quyền 600) thay vì gõ trên dòng lệnh.
 
 ## 8. Cập nhật phiên bản mới
+VPS: dùng `sudo bash deploy/deploy.sh` (mục 0). Hosting không chạy được script (cPanel…) thì làm tay:
 ```bash
 php artisan down
 git pull                     # hoặc tải mã mới lên
 composer install --no-dev --optimize-autoloader
 php artisan migrate --force
-php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache
 php artisan up
 php artisan queue:restart     # worker gửi thông báo nạp mã mới
 php artisan bmb:check-production
 ```
 Luôn sao lưu DB trước khi chạy migration.
 
-**Chạy nền (bắt buộc từ 15/10/2026)** — `deploy.sh` tự cấu hình; cài tay thì cần:
-- Worker queue (thông báo Slack/Telegram/Chatwork, email quên mật khẩu): dịch vụ luôn chạy
-  `php artisan queue:work database --tries=3 --timeout=60 --max-time=3600` (systemd/supervisor), `QUEUE_CONNECTION=database`.
-- Cron mỗi phút: `* * * * * www-data php /đường-dẫn/artisan schedule:run` (dọn token đặt lại mật khẩu hết hạn, job lỗi cũ).
-- Email thật: cấu hình `MAIL_*` (SMTP) và `MAIL_FROM_ADDRESS` thuộc tên miền của bạn — nếu để `MAIL_MAILER=log`, email "Quên mật khẩu" không tới người dùng.
-- Log: `LOG_STACK=daily`, `LOG_DAILY_DAYS=14` để `storage/logs` không phình đầy ổ đĩa.
-
-**Đổi tên thương hiệu Góp Gió (15/10/2026) trên máy đang chạy:** `deploy.sh` đặt `APP_NAME="Góp Gió"`. Tên cookie phiên sinh từ
-`APP_NAME`, nên sau lần cập nhật này **mọi người bị đăng xuất một lần** (ai bật "Ghi nhớ đăng nhập" vẫn tự đăng nhập lại).
-**Tên thư mục/dịch vụ:** tài liệu này dùng tên mới `gopgio` (`/var/www/gopgio`, `/root/.gopgio`, `/var/backups/gopgio`,
-dịch vụ `gopgio-queue`, cron `/etc/cron.d/gopgio`, CSDL `gopgio`). `deploy.sh` tự nhận diện: máy **đã cài trước 15/10/2026**
-(có `/root/.bepminhbach`) giữ nguyên mọi tên cũ `bepminhbach…` để cập nhật không làm hỏng máy đang chạy — khi đọc tài liệu
-trên máy đó, thay `gopgio` bằng `bepminhbach`.
-
 ## 9. Kiểm tra sau khi triển khai
 1. Mở `https://ten-mien-cua-ban/up` → trang "Application up".
 2. Đăng nhập bằng tài khoản quản trị, tạo tài khoản cho điều phối viên.
-3. Tạo một đợt nháp, thêm 1 nguyên liệu, 1 công việc; xóa đợt nháp đó.
-4. Viết bài thử có ảnh, xem ở `/bai-viet` trên điện thoại, rồi xóa bài.
+3. Tạo một chương trình nháp, thêm 1 nguyên liệu, 1 công việc; xóa chương trình nháp đó.
+4. Viết bài thử có ảnh (quản trị viên đăng ngay), xem ở trang chủ trên điện thoại, rồi xóa bài.
 5. Trình duyệt → DevTools → Network: trang có `Content-Security-Policy`, `Strict-Transport-Security`; Console không có lỗi CSP.
 6. Thử truy cập `https://ten-mien-cua-ban/.env` và `https://ten-mien-cua-ban/uploads/x.php` → phải là 403/404.
+7. Kiểm tra worker: `systemctl status gopgio-queue`; gửi thử ở một kênh thông báo của chương trình.

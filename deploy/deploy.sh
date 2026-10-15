@@ -1,64 +1,38 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Góp Gió — triển khai MỘT LỆNH lên VPS Ubuntu (22.04 / 24.04) hoặc Debian 12.
+#  Góp Gió — CẬP NHẬT phiên bản mới trên máy chủ ĐÃ CẤU HÌNH SẴN.
 #
-#  Lần đầu: cài Nginx, PHP-FPM, MariaDB, Composer, Certbot; tạo CSDL + tài khoản CSDL riêng;
-#  lấy mã nguồn; tạo .env production; migrate; cấu hình Nginx + HTTPS; tường lửa; sao lưu hằng ngày;
-#  tạo tài khoản quản trị đầu tiên.
-#  Lần sau: chạy lại đúng lệnh này = cập nhật phiên bản mới (bật chế độ bảo trì, kéo mã, migrate, tắt bảo trì).
+#  Script KHÔNG cài/cấu hình hệ thống (PHP, Nginx, CSDL, HTTPS, tường lửa, .env, dịch vụ systemd, cron).
+#  Phần đó làm một lần theo docs/DEPLOYMENT.md. Mỗi lần cập nhật script chạy:
+#    bật bảo trì → fetch + pull code → composer → npm → thư mục storage + cấp quyền → migrate
+#    → cache → tắt bảo trì → systemctl (reload PHP-FPM, khởi động lại worker queue) → kiểm tra production.
+#  Lỗi ở bất kỳ bước nào: tự tắt bảo trì để bản đang chạy vẫn phục vụ.
 #
-#  Cách dùng (trên VPS, quyền root):
-#    curl -fsSL https://raw.githubusercontent.com/trunglt706/BepMinhBach/main/deploy/deploy.sh -o deploy.sh
-#    sudo DOMAIN=bep.example.org LE_EMAIL=ban@example.org bash deploy.sh
+#  Cách dùng (quyền root, từ thư mục mã nguồn trên máy chủ):
+#    sudo bash deploy/deploy.sh
 #
-#  Biến cấu hình (truyền qua môi trường hoặc file deploy.env cạnh script):
-#    DOMAIN          tên miền đã trỏ về IP VPS (bỏ trống: chạy bằng IP, chỉ HTTP — chỉ nên dùng để thử)
-#    LE_EMAIL        email nhận thông báo Let's Encrypt (cần có để bật HTTPS tự động)
-#    REPO_URL        mặc định https://github.com/trunglt706/BepMinhBach.git
-#    BRANCH          mặc định main
-#    SOURCE_DIR      dùng mã nguồn có sẵn trên máy (thư mục đã tải lên) thay cho git
-#    APP_DIR         mặc định /var/www/gopgio (máy cài trước 15/10/2026: /var/www/bepminhbach)
-#    DB_NAME/DB_USER mặc định gopgio khi cài mới; máy đã cài giữ tên cũ trong db.env (mật khẩu CSDL tự sinh, lưu ở /root/.gopgio/db.env)
-#    PHP_VERSION     mặc định 8.3
-#    ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD   tạo quản trị viên không cần hỏi (bỏ trống: hỏi khi chạy)
-#    SKIP_FIREWALL=1 không cấu hình ufw (ví dụ VPS đã có tường lửa của nhà cung cấp)
-#    SKIP_CERTBOT=1  không xin chứng chỉ (ví dụ đã có HTTPS qua Cloudflare/proxy)
-#    TRUSTED_PROXIES IP/dải IP proxy đứng trước (Cloudflare…), ghi vào .env
+#  Biến tùy chọn (truyền qua môi trường hoặc file deploy/deploy.env):
+#    APP_DIR        thư mục mã nguồn (mặc định: thư mục cha của deploy/)
+#    BRANCH         nhánh git (mặc định main)
+#    APP_USER       người dùng chạy PHP-FPM / worker (mặc định www-data)
+#    PHP_FPM        tên dịch vụ PHP-FPM (mặc định tự dò: phpX.Y-fpm theo phiên bản php đang dùng)
+#    QUEUE_SERVICE  tên dịch vụ worker queue (mặc định tự dò: gopgio-queue, bepminhbach-queue)
+#    SKIP_NPM=1     bỏ qua bước npm (máy chủ không có Node; tài nguyên trong public/vendor đã có sẵn trong git)
+#    SKIP_PULL=1    không kéo code (đã đồng bộ code bằng cách khác, ví dụ rsync)
 # =============================================================================
 set -Eeuo pipefail
-umask 027
+umask 022
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Tên dùng cho thư mục, dịch vụ, cron, nginx, sao lưu. Máy đã cài trước khi đổi tên Góp Gió (15/10/2026) có
-# /root/.bepminhbach → giữ nguyên "bepminhbach" để cập nhật không làm hỏng máy đang chạy; máy cài mới dùng "gopgio".
-if [ -d /root/.bepminhbach ]; then SLUG=bepminhbach; else SLUG=gopgio; fi
-SECRETS_DIR=/root/.${SLUG}
-SAVED_CONF="$SECRETS_DIR/deploy.conf"
 # shellcheck disable=SC1091
 [ -f "$SCRIPT_DIR/deploy.env" ] && . "$SCRIPT_DIR/deploy.env"
-# Lần chạy trước đã lưu cấu hình (SAVED_*): chạy lại chỉ cần "sudo bash deploy.sh".
-# shellcheck disable=SC1090
-[ -f "$SAVED_CONF" ] && . "$SAVED_CONF"
 
-DOMAIN="${DOMAIN:-${SAVED_DOMAIN:-}}"
-LE_EMAIL="${LE_EMAIL:-${SAVED_LE_EMAIL:-}}"
-REPO_URL="${REPO_URL:-${SAVED_REPO_URL:-https://github.com/trunglt706/BepMinhBach.git}}"
-BRANCH="${BRANCH:-${SAVED_BRANCH:-main}}"
-SOURCE_DIR="${SOURCE_DIR:-}"
-APP_DIR="${APP_DIR:-${SAVED_APP_DIR:-/var/www/${SLUG}}}"
-DB_NAME="${DB_NAME:-gopgio}"
-DB_USER="${DB_USER:-gopgio}"
-PHP_VERSION="${PHP_VERSION:-${SAVED_PHP_VERSION:-8.3}}"
-ADMIN_NAME="${ADMIN_NAME:-}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
-SKIP_FIREWALL="${SKIP_FIREWALL:-${SAVED_SKIP_FIREWALL:-0}}"
-SKIP_CERTBOT="${SKIP_CERTBOT:-${SAVED_SKIP_CERTBOT:-0}}"
-TRUSTED_PROXIES="${TRUSTED_PROXIES:-${SAVED_TRUSTED_PROXIES:-}}"
-
-BACKUP_DIR=/var/backups/${SLUG}
-APP_USER=www-data
-export DEBIAN_FRONTEND=noninteractive COMPOSER_ALLOW_SUPERUSER=1
+APP_DIR="${APP_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+BRANCH="${BRANCH:-main}"
+APP_USER="${APP_USER:-www-data}"
+SKIP_NPM="${SKIP_NPM:-0}"
+SKIP_PULL="${SKIP_PULL:-0}"
+export COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_NO_INTERACTION=1
 
 # ---------------------------------------------------------------------------- tiện ích
 c_info=$'\033[1;34m'; c_ok=$'\033[1;32m'; c_warn=$'\033[1;33m'; c_err=$'\033[1;31m'; c_off=$'\033[0m'
@@ -69,389 +43,125 @@ die()  { printf '%s✗ %s%s\n' "$c_err" "$*" "$c_off" >&2; exit 1; }
 
 MAINTENANCE=0
 on_error() {
-    local line=$1
-    printf '%s✗ Lỗi ở dòng %s. Xem thông báo phía trên.%s\n' "$c_err" "$line" "$c_off" >&2
-    if [ "$MAINTENANCE" = 1 ] && [ -f "$APP_DIR/artisan" ]; then
-        warn "Tắt chế độ bảo trì để trang cũ vẫn chạy."
+    printf '%s✗ Lỗi ở dòng %s. Xem thông báo phía trên.%s\n' "$c_err" "$1" "$c_off" >&2
+    if [ "$MAINTENANCE" = 1 ]; then
+        warn "Tắt chế độ bảo trì để bản đang chạy vẫn phục vụ."
         (cd "$APP_DIR" && php artisan up >/dev/null 2>&1) || true
     fi
 }
 trap 'on_error $LINENO' ERR
 
-svc() { # svc <start|restart|reload|enable> <tên dịch vụ> — chạy được cả khi không có systemd (container)
-    local action=$1 name=$2
-    if pidof systemd >/dev/null 2>&1 && command -v systemctl >/dev/null; then
-        if [ "$action" = enable ]; then systemctl enable --now "$name" >/dev/null; else systemctl "$action" "$name"; fi
-    else
-        [ "$action" = enable ] && action=start
-        service "$name" "$action" >/dev/null 2>&1 || service "$name" restart
-    fi
-}
-
+# Chạy artisan bằng người dùng của web server (file cache/log tạo ra thuộc đúng chủ).
 artisan() { (cd "$APP_DIR" && runuser -u "$APP_USER" -- php artisan "$@"); }
 
-set_env() { # set_env KEY VALUE — thay hoặc thêm dòng trong .env (giá trị có khoảng trắng được đặt trong ngoặc kép)
-    local key=$1 value=$2 file="$APP_DIR/.env"
-    [[ "$value" =~ [[:space:]\#\"] ]] && value="\"${value//\"/\\\"}\""
-    if grep -qE "^#?\s*${key}=" "$file"; then
-        local escaped
-        escaped=$(printf '%s' "$value" | sed -e 's/[\/&|]/\\&/g')
-        sed -i -E "s|^#?\s*${key}=.*|${key}=${escaped}|" "$file"
-    else
-        printf '%s=%s\n' "$key" "$value" >> "$file"
-    fi
-}
-get_env() { { grep -E "^${1}=" "$APP_DIR/.env" 2>/dev/null || true; } | tail -n1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'; }
-
-# Chuỗi ngẫu nhiên chữ+số (dùng PHP: tránh lỗi SIGPIPE của "head -c" khi bật pipefail).
-random_secret() { php -r 'echo bin2hex(random_bytes(intdiv((int) $argv[1], 2)));' "${1:-32}"; }
+# Dịch vụ systemd có tồn tại không (không có systemd — ví dụ container — thì coi như không).
+has_unit() { command -v systemctl >/dev/null && systemctl list-unit-files "$1.service" --no-legend 2>/dev/null | grep -q .; }
 
 # ---------------------------------------------------------------------------- 0. kiểm tra
-step "Kiểm tra môi trường"
-[ "$(id -u)" -eq 0 ] || die "Cần chạy bằng root: sudo bash deploy.sh"
-. /etc/os-release
-case "${ID}:${VERSION_ID}" in
-    ubuntu:22.04|ubuntu:24.04|debian:12) ok "Hệ điều hành: $PRETTY_NAME" ;;
-    *) warn "Chưa kiểm thử trên $PRETTY_NAME (hỗ trợ: Ubuntu 22.04/24.04, Debian 12). Vẫn tiếp tục." ;;
-esac
-exec 9>/var/lock/${SLUG}-deploy.lock
-flock -n 9 || die "Một lần triển khai khác đang chạy."
-if [ -n "$DOMAIN" ] && ! [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]]; then die "DOMAIN không hợp lệ: $DOMAIN"; fi
-FIRST_INSTALL=1; [ -f "$APP_DIR/.env" ] && FIRST_INSTALL=0
-[ "$FIRST_INSTALL" = 1 ] && ok "Cài đặt mới vào $APP_DIR" || ok "Cập nhật bản đang chạy ở $APP_DIR"
+step "Kiểm tra"
+[ "$(id -u)" -eq 0 ] || die "Cần chạy bằng root (để cấp quyền thư mục và khởi động lại dịch vụ): sudo bash deploy/deploy.sh"
+[ -f "$APP_DIR/artisan" ] || die "Không thấy mã nguồn Laravel ở $APP_DIR (đặt APP_DIR=…)."
+[ -f "$APP_DIR/.env" ] || die "Chưa có $APP_DIR/.env — cấu hình máy chủ lần đầu theo docs/DEPLOYMENT.md trước."
+id "$APP_USER" >/dev/null 2>&1 || die "Không có người dùng $APP_USER (đặt APP_USER=…)."
+command -v composer >/dev/null || die "Chưa cài Composer."
+exec 9>"/tmp/$(basename "$APP_DIR")-deploy.lock"
+flock -n 9 || die "Một lần cập nhật khác đang chạy."
+# Git chạy bằng root trên thư mục thuộc người khác cần khai báo an toàn.
+git config --global --get-all safe.directory 2>/dev/null | grep -qxF "$APP_DIR" || git config --global --add safe.directory "$APP_DIR"
+ok "Mã nguồn: $APP_DIR (nhánh $BRANCH), chạy PHP bằng $APP_USER"
 
-# ---------------------------------------------------------------------------- 1. gói hệ thống
-step "Cài gói hệ thống (Nginx, PHP ${PHP_VERSION}, MariaDB, Composer…)"
-apt-get update -qq
-apt-get install -y -qq ca-certificates curl gnupg git unzip rsync cron nginx mariadb-server lsb-release >/dev/null
-if ! apt-cache show "php${PHP_VERSION}-fpm" >/dev/null 2>&1; then
-    warn "Kho mặc định không có PHP ${PHP_VERSION} — thêm kho PHP của Ondřej Surý"
-    if [ "$ID" = ubuntu ]; then
-        apt-get install -y -qq software-properties-common >/dev/null
-        add-apt-repository -y ppa:ondrej/php >/dev/null
-    else
-        curl -fsSL https://packages.sury.org/php/apt.gpg -o /usr/share/keyrings/sury-php.gpg
-        echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/sury-php.list
-        chmod 644 /usr/share/keyrings/sury-php.gpg /etc/apt/sources.list.d/sury-php.list
-    fi
-    apt-get update -qq
-fi
-PHP_PKGS=(fpm cli common mysql mbstring intl xml gd curl zip bcmath opcache)
-apt-get install -y -qq "${PHP_PKGS[@]/#/php${PHP_VERSION}-}" >/dev/null
-if [ "$SKIP_CERTBOT" != 1 ] && [ -n "$DOMAIN" ] && [ -n "$LE_EMAIL" ]; then
-    apt-get install -y -qq certbot python3-certbot-nginx >/dev/null
-fi
-[ "$SKIP_FIREWALL" != 1 ] && apt-get install -y -qq ufw >/dev/null
-php -r 'exit(function_exists("imagewebp") ? 0 : 1);' || die "PHP GD chưa hỗ trợ WebP (cần cho ảnh bài viết)."
-ok "PHP $(php -r 'echo PHP_VERSION;'), $(nginx -v 2>&1 | cut -d/ -f2), MariaDB $(mariadb --version | grep -m1 -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
-
-if ! command -v composer >/dev/null; then
-    EXPECTED=$(curl -fsSL https://composer.github.io/installer.sig)
-    curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php
-    ACTUAL=$(php -r "echo hash_file('sha384', '/tmp/composer-setup.php');")
-    [ "$EXPECTED" = "$ACTUAL" ] || die "Chữ ký trình cài Composer không khớp."
-    php /tmp/composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer
-    rm -f /tmp/composer-setup.php
-fi
-ok "Composer $(composer --version 2>/dev/null | grep -m1 -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
-
-svc enable mariadb
-svc enable "php${PHP_VERSION}-fpm"
-svc enable nginx
-svc enable cron
-
-# ---------------------------------------------------------------------------- 2. CSDL
-step "Cơ sở dữ liệu"
-mkdir -p "$SECRETS_DIR"; chmod 700 "$SECRETS_DIR"
-if [ -f "$SECRETS_DIR/db.env" ]; then
-    # shellcheck disable=SC1091
-    . "$SECRETS_DIR/db.env"
+# ---------------------------------------------------------------------------- 1. bật bảo trì
+step "Bật chế độ bảo trì"
+if [ -f "$APP_DIR/vendor/autoload.php" ]; then
+    artisan down --retry=30 >/dev/null && MAINTENANCE=1 && ok "Khách thấy trang bảo trì (tự tải lại sau 30 giây)"
 else
-    DB_PASSWORD=$(random_secret 32)
-    printf 'DB_NAME=%s\nDB_USER=%s\nDB_PASSWORD=%s\n' "$DB_NAME" "$DB_USER" "$DB_PASSWORD" > "$SECRETS_DIR/db.env"
-    chmod 600 "$SECRETS_DIR/db.env"
+    warn "Chưa có vendor/ (lần đầu cài thư viện) — bỏ qua bước bảo trì."
 fi
-mariadb <<SQL
-CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';
-ALTER USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
-FLUSH PRIVILEGES;
-SQL
-# File đăng nhập cho mysqldump của script sao lưu (không lộ mật khẩu trên dòng lệnh)
-printf '[client]\nuser=%s\npassword=%s\n' "$DB_USER" "$DB_PASSWORD" > "$SECRETS_DIR/my.cnf"
-chmod 600 "$SECRETS_DIR/my.cnf"
-ok "CSDL ${DB_NAME} + tài khoản ${DB_USER} (mật khẩu ở $SECRETS_DIR/db.env)"
 
-# ---------------------------------------------------------------------------- 3. mã nguồn
-step "Lấy mã nguồn"
-if [ "$FIRST_INSTALL" = 0 ] && [ -f "$APP_DIR/artisan" ] && [ -f "$APP_DIR/vendor/autoload.php" ]; then
-    artisan down --retry=30 >/dev/null 2>&1 && MAINTENANCE=1 && ok "Bật chế độ bảo trì"
+# ---------------------------------------------------------------------------- 2. lấy code mới
+if [ "$SKIP_PULL" != 1 ]; then
+    step "Lấy code mới (git fetch + pull)"
+    # Tài nguyên trong public/vendor do "npm run assets" sinh lại → trả về bản trong git để pull không bị vướng.
+    git -C "$APP_DIR" checkout -- public/vendor 2>/dev/null || true
+    BEFORE=$(git -C "$APP_DIR" rev-parse --short HEAD)
+    git -C "$APP_DIR" fetch --prune origin "$BRANCH"
+    git -C "$APP_DIR" checkout "$BRANCH" >/dev/null 2>&1 || git -C "$APP_DIR" checkout -b "$BRANCH" "origin/$BRANCH"
+    git -C "$APP_DIR" pull --ff-only origin "$BRANCH" \
+        || die "Không pull được (có sửa đổi trên máy chủ?). Kiểm tra: git -C $APP_DIR status"
+    ok "$BEFORE → $(git -C "$APP_DIR" log -1 --format='%h %s')"
 fi
-mkdir -p "$APP_DIR"
-if [ -n "$SOURCE_DIR" ]; then
-    [ -f "$SOURCE_DIR/artisan" ] || die "SOURCE_DIR không phải thư mục dự án: $SOURCE_DIR"
-    rsync -a --delete \
-        --exclude='.git/' --exclude='.env' --exclude='vendor/' --exclude='node_modules/' \
-        --exclude='storage/' --exclude='public/uploads/' --exclude='bootstrap/cache/*.php' \
-        "$SOURCE_DIR/" "$APP_DIR/"
-    ok "Đồng bộ từ $SOURCE_DIR"
-elif [ -d "$APP_DIR/.git" ]; then
-    git -C "$APP_DIR" fetch --quiet origin "$BRANCH"
-    git -C "$APP_DIR" reset --quiet --hard "origin/$BRANCH"
-    ok "Cập nhật lên $(git -C "$APP_DIR" log -1 --format='%h %s')"
+
+# ---------------------------------------------------------------------------- 3. thư viện PHP
+step "Composer (không gói dev)"
+(cd "$APP_DIR" && composer install --no-dev --optimize-autoloader --no-progress --quiet)
+ok "vendor/ đã cập nhật"
+
+# ---------------------------------------------------------------------------- 4. tài nguyên giao diện
+if [ "$SKIP_NPM" != 1 ] && command -v npm >/dev/null; then
+    step "npm (sao chép thư viện giao diện + bộ icon rút gọn vào public/vendor)"
+    (cd "$APP_DIR" && npm ci --no-audit --no-fund --loglevel=error && npm run --silent assets)
+    ok "public/vendor đã cập nhật"
 else
-    [ -z "$(ls -A "$APP_DIR" 2>/dev/null)" ] || die "$APP_DIR đã có dữ liệu nhưng không phải git repo. Dùng SOURCE_DIR hoặc dọn thư mục."
-    git clone --quiet --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
-    ok "Clone $(git -C "$APP_DIR" log -1 --format='%h %s')"
+    warn "Bỏ qua npm (SKIP_NPM=1 hoặc máy chủ không có Node) — dùng public/vendor có sẵn trong git."
 fi
-# storage/ có thể chưa có (lần đầu hoặc đồng bộ bằng rsync)
-mkdir -p "$APP_DIR"/storage/{app/public,framework/{cache/data,sessions,views,testing},logs} "$APP_DIR/bootstrap/cache" "$APP_DIR/public/uploads"
+
+# ---------------------------------------------------------------------------- 5. storage + quyền thư mục
+step "Thư mục storage và quyền"
+mkdir -p "$APP_DIR"/storage/{app/public,framework/{cache/data,sessions,views,testing},logs} \
+         "$APP_DIR/bootstrap/cache" "$APP_DIR/public/uploads"
 [ -f "$APP_DIR/public/uploads/.htaccess" ] || git -C "$APP_DIR" checkout -- public/uploads/.htaccess 2>/dev/null || true
-
-# ---------------------------------------------------------------------------- 4. .env
-step "Cấu hình .env production"
-SCHEME=http
-if [ -n "$DOMAIN" ] && { [ -d "/etc/letsencrypt/live/$DOMAIN" ] || [ -n "$LE_EMAIL" ] || [ "$SKIP_CERTBOT" = 1 ]; }; then
-    SCHEME=https
-fi
-HOST="${DOMAIN:-$(curl -fsS --max-time 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')}"
-[ -f "$APP_DIR/.env" ] || cp "$APP_DIR/.env.example" "$APP_DIR/.env"
-set_env APP_NAME "Góp Gió"
-set_env APP_ENV production
-set_env APP_DEBUG false
-set_env APP_URL "${SCHEME}://${HOST}"
-set_env LOG_LEVEL warning
-set_env LOG_STACK daily        # log theo ngày, tự xóa sau LOG_DAILY_DAYS (không để laravel.log phình đầy ổ đĩa)
-set_env LOG_DAILY_DAYS 14
-set_env DB_CONNECTION mysql
-set_env DB_HOST 127.0.0.1
-set_env DB_PORT 3306
-set_env DB_DATABASE "$DB_NAME"
-set_env DB_USERNAME "$DB_USER"
-set_env DB_PASSWORD "$DB_PASSWORD"
-set_env DEMO_PASSWORD ""
-set_env SESSION_SECURE_COOKIE "$([ "$SCHEME" = https ] && echo true || echo false)"
-[ -n "$TRUSTED_PROXIES" ] && set_env TRUSTED_PROXIES "$TRUSTED_PROXIES"
-chown root:"$APP_USER" "$APP_DIR/.env"; chmod 640 "$APP_DIR/.env"
-ok "APP_URL=${SCHEME}://${HOST}"
-
-# ---------------------------------------------------------------------------- 5. thư viện + quyền thư mục
-step "Cài thư viện PHP (composer, không gói dev)"
-(cd "$APP_DIR" && composer install --no-dev --optimize-autoloader --no-interaction --no-progress --quiet)
+# Mã nguồn: root sở hữu, web server chỉ đọc (bỏ qua node_modules/.git cho nhanh).
 chown -R root:root "$APP_DIR"
-find "$APP_DIR" -type d -exec chmod 755 {} +
-find "$APP_DIR" -type f -exec chmod 644 {} +
+find "$APP_DIR" \( -path "$APP_DIR/node_modules" -o -path "$APP_DIR/.git" \) -prune -o -type d -exec chmod 755 {} +
+find "$APP_DIR" \( -path "$APP_DIR/node_modules" -o -path "$APP_DIR/.git" \) -prune -o -type f -exec chmod 644 {} +
+# Chỉ các thư mục cần ghi mới thuộc web server.
 chown -R "$APP_USER":"$APP_USER" "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/public/uploads"
 chmod -R u+rwX,g+rwX "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/public/uploads"
 chown root:"$APP_USER" "$APP_DIR/.env"; chmod 640 "$APP_DIR/.env"
-[ -f "$APP_DIR/deploy/deploy.sh" ] && chmod 750 "$APP_DIR/deploy/deploy.sh"
-if [ -z "$(get_env APP_KEY)" ]; then
-    (cd "$APP_DIR" && php artisan key:generate --force --no-interaction >/dev/null)
-    ok "Đã tạo APP_KEY"
-fi
-ok "Mã nguồn chỉ đọc với web server; chỉ storage/, bootstrap/cache/, public/uploads/ ghi được"
+chmod 750 "$APP_DIR/deploy/deploy.sh"
+ok "Chỉ storage/, bootstrap/cache/, public/uploads/ ghi được; .env chỉ root + $APP_USER đọc"
 
-# ---------------------------------------------------------------------------- 6. PHP-FPM
-step "Cấu hình PHP-FPM"
-cat > "/etc/php/${PHP_VERSION}/fpm/conf.d/99-${SLUG}.ini" <<'INI'
-; Góp Gió: ảnh bài viết (trình duyệt đã thu nhỏ trước khi gửi, máy chủ giới hạn 10 MB/ảnh)
-upload_max_filesize = 12M
-post_max_size = 64M
-max_file_uploads = 20
-memory_limit = 256M
-max_execution_time = 60
-expose_php = Off
-opcache.enable = 1
-opcache.validate_timestamps = 1
-opcache.revalidate_freq = 2
-INI
-svc restart "php${PHP_VERSION}-fpm"
-ok "upload 12M/ảnh, post 64M, memory 256M"
-
-# ---------------------------------------------------------------------------- 7. Laravel
-step "Migrate CSDL và tối ưu cấu hình"
+# ---------------------------------------------------------------------------- 6. CSDL
+step "Migrate CSDL"
 artisan migrate --force --no-interaction
+
+# ---------------------------------------------------------------------------- 7. cache
+step "Làm mới cache (config, route, view, event)"
 artisan optimize:clear >/dev/null
 artisan config:cache >/dev/null
 artisan route:cache >/dev/null
 artisan view:cache >/dev/null
-ok "Đã migrate và cache config/route/view"
+artisan event:cache >/dev/null
+ok "Đã cache config/route/view/event"
 
-# ---------------------------------------------------------------------------- 7b. Queue worker
-# Thông báo kênh của đợt (Slack/Telegram/Chatwork) gửi nền qua queue (bảng jobs) để thao tác không chờ mạng.
-step "Queue worker (gửi thông báo nền)"
-set_env QUEUE_CONNECTION database
-artisan config:cache >/dev/null
-WORKER_CMD="/usr/bin/php ${APP_DIR}/artisan queue:work database --sleep=3 --tries=3 --timeout=60 --max-time=3600"
-if pidof systemd >/dev/null 2>&1 && command -v systemctl >/dev/null; then
-    cat > /etc/systemd/system/${SLUG}-queue.service <<UNIT
-[Unit]
-Description=Gop Gio queue worker (thong bao kenh)
-After=network.target mariadb.service
+# ---------------------------------------------------------------------------- 8. tắt bảo trì
+if [ "$MAINTENANCE" = 1 ]; then
+    step "Tắt chế độ bảo trì"
+    artisan up >/dev/null; MAINTENANCE=0
+    ok "Trang đã mở lại"
+fi
 
-[Service]
-User=${APP_USER}
-Group=${APP_USER}
-WorkingDirectory=${APP_DIR}
-ExecStart=${WORKER_CMD}
-Restart=always
-RestartSec=5
-NoNewPrivileges=true
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-    rm -f /etc/cron.d/${SLUG}-queue
-    systemctl daemon-reload
-    systemctl enable --now ${SLUG}-queue >/dev/null
-    artisan queue:restart >/dev/null   # worker đang chạy nạp lại mã mới sau job hiện tại
-    systemctl restart ${SLUG}-queue
-    ok "Dịch vụ ${SLUG}-queue (systemd) đang chạy"
+# ---------------------------------------------------------------------------- 9. dịch vụ
+step "Dịch vụ (systemctl)"
+PHP_FPM="${PHP_FPM:-php$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')-fpm}"
+if has_unit "$PHP_FPM"; then
+    systemctl reload "$PHP_FPM" && ok "Reload $PHP_FPM (xóa opcache, nạp code mới)"
 else
-    # Không có systemd (container): cron mỗi phút chạy worker tới khi hết việc.
-    printf '# Góp Gió: gửi thông báo nền\n* * * * * %s %s --stop-when-empty --max-time=55 >/dev/null 2>&1\n' \
-        "$APP_USER" "${WORKER_CMD% --max-time=3600}" > /etc/cron.d/${SLUG}-queue
-    chmod 644 /etc/cron.d/${SLUG}-queue
-    ok "Không có systemd: worker chạy mỗi phút qua cron (/etc/cron.d/${SLUG}-queue)"
+    warn "Không thấy dịch vụ $PHP_FPM — tự reload PHP-FPM nếu cần (đặt PHP_FPM=…)."
 fi
-
-# ---------------------------------------------------------------------------- 8. Nginx
-step "Cấu hình Nginx"
-SOCK="/run/php/php${PHP_VERSION}-fpm.sock"
-SERVER_NAME="${DOMAIN:-_}"
-cat > /etc/nginx/sites-available/${SLUG} <<NGINX
-# Góp Gió — tạo bởi deploy/deploy.sh (chạy lại script sẽ ghi đè; Certbot tự thêm phần HTTPS)
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${SERVER_NAME};
-    root ${APP_DIR}/public;
-    index index.php;
-    charset utf-8;
-    client_max_body_size 64m;
-    server_tokens off;
-
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
-
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
-
-    location ~ \.php\$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:${SOCK};
-        fastcgi_read_timeout 60s;
-    }
-
-    # Thư mục ảnh tải lên: không bao giờ chạy mã
-    location ^~ /uploads/ {
-        location ~* \.(php|phtml|phar|pl|py|cgi|sh|html?|svg|js)\$ { deny all; }
-        add_header X-Content-Type-Options nosniff always;
-        expires 30d;
-        try_files \$uri =404;
-    }
-
-    location ~* \.(woff2?|ttf)\$ { expires 1y; add_header Cache-Control "public, immutable"; access_log off; try_files \$uri =404; }
-    location ~* \.(css|js|svg|ico|webp|png|jpe?g)\$ { expires 7d; access_log off; try_files \$uri =404; }
-
-    # Không lộ file ẩn (.env, .git…)
-    location ~ /\.(?!well-known) { deny all; }
-}
-NGINX
-ln -sf /etc/nginx/sites-available/${SLUG} /etc/nginx/sites-enabled/${SLUG}
-rm -f /etc/nginx/sites-enabled/default
-nginx -t -q
-svc reload nginx
-ok "server_name ${SERVER_NAME} → ${APP_DIR}/public"
-
-# ---------------------------------------------------------------------------- 9. HTTPS
-if [ -n "$DOMAIN" ] && [ "$SKIP_CERTBOT" != 1 ] && [ -n "$LE_EMAIL" ]; then
-    step "HTTPS (Let's Encrypt)"
-    SERVER_IP=$(curl -fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)
-    DNS_IP=$(getent ahostsv4 "$DOMAIN" | awk 'NR==1{print $1}' || true)
-    if [ -n "$SERVER_IP" ] && [ "$DNS_IP" != "$SERVER_IP" ]; then
-        warn "DNS $DOMAIN đang trỏ về '${DNS_IP:-không có}', IP máy này là $SERVER_IP — Let's Encrypt có thể thất bại."
-    fi
-    if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$LE_EMAIL" --redirect --keep-until-expiring -q; then
-        ok "Đã bật HTTPS + chuyển hướng http → https (tự gia hạn qua certbot.timer)"
-    else
-        warn "Chưa xin được chứng chỉ. Trang tạm chạy HTTP; sửa DNS rồi chạy lại script."
-        set_env APP_URL "http://${DOMAIN}"; set_env SESSION_SECURE_COOKIE false
-        artisan config:cache >/dev/null
-    fi
-elif [ -z "$DOMAIN" ]; then
-    warn "Chưa có DOMAIN: chạy bằng HTTP qua IP — KHÔNG dùng cho dữ liệu thật (mật khẩu đi qua mạng không mã hóa)."
+# Worker đang chạy nạp lại code mới sau job hiện tại; dịch vụ systemd tự chạy lại worker.
+artisan queue:restart >/dev/null
+if [ -z "${QUEUE_SERVICE:-}" ]; then
+    for name in gopgio-queue bepminhbach-queue; do has_unit "$name" && QUEUE_SERVICE=$name && break; done
 fi
-
-# ---------------------------------------------------------------------------- 10. tường lửa
-if [ "$SKIP_FIREWALL" != 1 ] && command -v ufw >/dev/null; then
-    step "Tường lửa (ufw)"
-    SSH_PORTS=$(ss -Htlnp 2>/dev/null | awk '/sshd/ {n = split($4, a, ":"); print a[n]}' | sort -u || true)
-    for port in ${SSH_PORTS:-22}; do ufw allow "${port}/tcp" >/dev/null; done
-    ufw allow 'Nginx Full' >/dev/null
-    ufw --force enable >/dev/null
-    ok "Chỉ mở SSH (cổng ${SSH_PORTS//$'\n'/, }), HTTP, HTTPS"
-fi
-
-# ---------------------------------------------------------------------------- 11. sao lưu hằng ngày
-step "Sao lưu tự động"
-mkdir -p "$BACKUP_DIR"; chmod 700 "$BACKUP_DIR"
-cat > /usr/local/bin/${SLUG}-backup <<BACKUP
-#!/usr/bin/env bash
-# Sao lưu CSDL + ảnh tải lên của Góp Gió, giữ 14 ngày. Tạo bởi deploy/deploy.sh.
-set -euo pipefail
-umask 077
-STAMP=\$(date +%F-%H%M)
-mysqldump --defaults-extra-file=${SECRETS_DIR}/my.cnf --single-transaction --quick --default-character-set=utf8mb4 ${DB_NAME} | gzip > ${BACKUP_DIR}/db-\$STAMP.sql.gz
-tar -czf ${BACKUP_DIR}/uploads-\$STAMP.tar.gz -C ${APP_DIR}/public uploads
-find ${BACKUP_DIR} -name '*.gz' -mtime +14 -delete
-BACKUP
-chmod 700 /usr/local/bin/${SLUG}-backup
-printf '# Góp Gió: sao lưu 02:30 hằng ngày; lịch dọn dẹp của Laravel (routes/console.php) mỗi phút\n30 2 * * * root /usr/local/bin/%s-backup >/dev/null 2>&1\n* * * * * %s /usr/bin/php %s/artisan schedule:run >/dev/null 2>&1\n' \
-    "$SLUG" "$APP_USER" "$APP_DIR" > /etc/cron.d/${SLUG}
-chmod 644 /etc/cron.d/${SLUG}
-/usr/local/bin/${SLUG}-backup
-ok "02:30 hằng ngày → $BACKUP_DIR (giữ 14 ngày). Đã chạy thử 1 bản."
-
-# ---------------------------------------------------------------------------- 12. quản trị viên đầu tiên
-step "Tài khoản quản trị"
-ADMINS=$(cd "$APP_DIR" && runuser -u "$APP_USER" -- php -r '
-    require "vendor/autoload.php"; $app = require "bootstrap/app.php";
-    $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-    echo App\Models\User::where("role", App\Enums\Role::Admin->value)->where("is_active", true)->count();')
-if [ "${ADMINS:-0}" -gt 0 ]; then
-    ok "Đã có ${ADMINS} quản trị viên"
-elif [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASSWORD" ]; then
-    (cd "$APP_DIR" && BMB_ADMIN_PASSWORD="$ADMIN_PASSWORD" runuser -u "$APP_USER" -- \
-        php artisan bmb:create-admin --name="${ADMIN_NAME:-Quản trị}" --email="$ADMIN_EMAIL" --no-interaction)
-elif [ -t 0 ]; then
-    (cd "$APP_DIR" && runuser -u "$APP_USER" -- php artisan bmb:create-admin)
+if [ -n "${QUEUE_SERVICE:-}" ] && has_unit "$QUEUE_SERVICE"; then
+    systemctl restart "$QUEUE_SERVICE" && ok "Khởi động lại $QUEUE_SERVICE"
 else
-    warn "Chưa có quản trị viên. Chạy: cd $APP_DIR && sudo -u $APP_USER php artisan bmb:create-admin"
+    warn "Không thấy dịch vụ worker queue — thông báo kênh/email sẽ không gửi nếu chưa có worker (xem docs/DEPLOYMENT.md)."
 fi
 
-# ---------------------------------------------------------------------------- 13. hoàn tất
-{
-    printf '# Cấu hình lần triển khai gần nhất (deploy.sh tự đọc lại). Sửa tay hoặc truyền biến môi trường để đổi.\n'
-    for var in DOMAIN LE_EMAIL REPO_URL BRANCH APP_DIR PHP_VERSION SKIP_FIREWALL SKIP_CERTBOT TRUSTED_PROXIES; do
-        printf 'SAVED_%s=%q\n' "$var" "${!var}"
-    done
-} > "$SAVED_CONF"
-chmod 600 "$SAVED_CONF"
-
-if [ "$MAINTENANCE" = 1 ]; then artisan up >/dev/null; MAINTENANCE=0; ok "Tắt chế độ bảo trì"; fi
+# ---------------------------------------------------------------------------- 10. kiểm tra
 step "Kiểm tra cấu hình production"
 artisan bmb:check-production || warn "Còn mục cần xử lý (xem bảng trên)."
 
-APP_URL_FINAL=$(get_env APP_URL)
-printf '\n%s============================================================%s\n' "$c_ok" "$c_off"
-printf '%s  Góp Gió đã chạy: %s%s\n' "$c_ok" "$APP_URL_FINAL" "$c_off"
-printf '  Trang quản trị:      %s/admin\n' "$APP_URL_FINAL"
-printf '  Mã nguồn:            %s\n' "$APP_DIR"
-printf '  Mật khẩu CSDL:       %s/db.env (chỉ root đọc được)\n' "$SECRETS_DIR"
-printf '  Sao lưu:             %s (02:30 hằng ngày)\n' "$BACKUP_DIR"
-printf '  Gửi thông báo nền:   dịch vụ %s-queue (xem log: journalctl -u %s-queue)\n' "$SLUG" "$SLUG"
-printf '  Cập nhật bản mới:    sudo bash %s/deploy/deploy.sh\n' "$APP_DIR"
-printf '%s============================================================%s\n' "$c_ok" "$c_off"
+printf '\n%s✓ Cập nhật xong: %s%s\n' "$c_ok" "$(git -C "$APP_DIR" log -1 --format='%h %s' 2>/dev/null || echo "$APP_DIR")" "$c_off"

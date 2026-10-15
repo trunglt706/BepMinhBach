@@ -304,3 +304,9 @@ Claude cập nhật file này sau mỗi lát cắt có ý nghĩa. Không ghi sec
 - Trang công khai in HTML đã lọc (kiểu chữ `.post-body`); mô tả SEO dùng bản chữ thuần (`descriptionText()`).
 - Migration `2026_10_15_000400`: chuyển mọi giới thiệu chữ thuần có trước thành HTML (giữ xuống dòng, escape cả ký tự `<`); có `down()` chuyển ngược.
 - Kiểm thử: `php artisan test` **246 passed** (thêm test lọc HTML/hiển thị/chữ thuần/editor trống và test migration).
+
+### 2026-10-15 — `deploy/deploy.sh` chỉ còn cập nhật code
+- Bỏ toàn bộ phần cấu hình hệ thống (cài gói apt, PHP/Composer, tạo CSDL + tài khoản, tạo/sửa `.env`, php.ini, Nginx, HTTPS/Certbot, ufw, tạo dịch vụ systemd/cron, script sao lưu, tạo quản trị viên đầu tiên, lưu `deploy.conf`).
+- Script mới (chạy bằng root trên máy đã cấu hình): kiểm tra (root, mã nguồn, `.env`, Composer, khóa chạy chồng, `git safe.directory`) → bật bảo trì → `git fetch` + `pull --ff-only` → `composer install --no-dev` → `npm ci` + `npm run assets` (bỏ qua nếu không có Node / `SKIP_NPM=1`) → thư mục storage + quyền (mã nguồn root chỉ đọc; `storage/`, `bootstrap/cache/`, `public/uploads/` thuộc web server; `.env` 640) → `migrate --force` → `optimize:clear` + cache config/route/view/event → tắt bảo trì → `systemctl reload` PHP-FPM, `queue:restart` + `systemctl restart` worker (tự dò `gopgio-queue`/`bepminhbach-queue`) → `bmb:check-production`. Lỗi bất kỳ bước nào → tự tắt bảo trì.
+- `docs/DEPLOYMENT.md`: mục 0 viết lại (cách dùng script + mục 0.1 "Cấu hình máy chủ một lần": `.env`, php.ini, unit systemd worker, cron, kênh thông báo, máy cài trước 15/10/2026); mục 1 sửa "không cần worker/cron" → bắt buộc; mục 7 có nội dung script sao lưu; mục 8 trỏ tới script + các lệnh làm tay; README cập nhật.
+- Kiểm tra: `bash -n deploy/deploy.sh`; `event:cache` chạy được. **Chưa chạy trên máy chủ thật.**
